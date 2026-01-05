@@ -47,7 +47,7 @@ const features = [
 ]
 
 const onStart = () => {
-  router.push('/dashboard')
+  router.push('/auth')
 }
 </script>
 
