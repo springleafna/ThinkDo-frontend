@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Button } from '@/components/ui/button'
+import { Toaster } from '@/components/ui/sonner'
 </script>
 
 <template>
-  <Button variant="outline">
-    Outline
-  </Button>
+  <div id="app">
+    <Toaster />
+    <RouterView />
+  </div>
 </template>

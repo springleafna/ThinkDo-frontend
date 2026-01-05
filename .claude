@@ -1,0 +1,22 @@
+# Project Context
+
+## Tech Stack
+- **UI Framework**: shadcn-vue (already installed)
+- **Styling**: Tailwind CSS (already installed)
+- **Icons**: Lucide Vue (already installed)
+
+## Coding Conventions
+- When creating UI components, use shadcn-vue components
+- Use Tailwind CSS classes for styling
+- Use Lucide icons for any icon requirements
+- Do not ask for confirmation when using these technologies - they are the project standards
+
+## Component Library
+Use shadcn-vue components from `@/components/ui/` for common UI patterns like:
+- Button
+- Input
+- Card
+- Dialog
+- Toast/sonner (vue-sonner)
+- Form components
+- etc.
