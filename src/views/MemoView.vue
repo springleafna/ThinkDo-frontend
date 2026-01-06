@@ -240,35 +240,36 @@ const deleteStick = (id: string) => {
       </button>
     </div>
 
-    <!-- Note Modal (Create/Edit) -->
-    <div
-      v-if="showModal"
-      class="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/20 backdrop-blur-sm animate-in fade-in duration-200"
-    >
+    <!-- Note Modal (Create/Edit) - Teleported to body -->
+    <Teleport to="body">
       <div
-        class="w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300"
+        v-if="showModal"
+        class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/20 backdrop-blur-sm animate-in fade-in duration-200"
       >
-        <div class="p-8 border-b border-black/5 flex justify-between items-center bg-stone-50/50">
-          <div>
-            <h3 class="text-lg font-medium text-neutral-900">
-              {{ editId ? '编辑灵感节点' : '记录瞬间灵感' }}
-            </h3>
-            <p class="text-[10px] mono uppercase tracking-widest text-neutral-400">
-              {{ editId ? 'Update Existing Fragment' : 'Capture Thought Fragment' }}
-            </p>
-          </div>
-          <button
-            @click="showModal = false"
-            class="p-2 text-neutral-300 hover:text-neutral-900 transition-colors"
-          >
-            <X :size="20" />
-          </button>
+      <div
+      class="w-full max-w-md max-h-[90vh] overflow-auto p-6 bg-white rounded-[2.5rem] shadow-2xl animate-in slide-in-from-bottom-4 duration-300"
+    >
+      <div class="p-2 border-b border-black/5 flex justify-between items-center bg-stone-50/50">
+        <div>
+          <h3 class="text-lg font-medium text-neutral-900">
+            {{ editId ? '编辑灵感节点' : '记录瞬间灵感' }}
+          </h3>
+          <p class="text-[10px] mono uppercase tracking-widest text-neutral-400">
+            {{ editId ? 'Update Existing Fragment' : 'Capture Thought Fragment' }}
+          </p>
         </div>
+        <button
+          @click="showModal = false"
+          class="p-2 text-neutral-300 hover:text-neutral-900 transition-colors"
+        >
+          <X :size="20" />
+        </button>
+      </div>
 
-        <form @submit="handleSubmit" class="p-8 space-y-6">
+        <form @submit="handleSubmit" class="pt-6 space-y-6">
           <div class="space-y-2">
             <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1"
-              >便签标题 (可选)</label
+              >便签标题</label
             >
             <input
               v-model="form.title"
@@ -281,7 +282,7 @@ const deleteStick = (id: string) => {
 
           <div class="space-y-2">
             <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1"
-              >内容描述 (可选)</label
+              >内容描述</label
             >
             <textarea
               v-model="form.content"
@@ -340,6 +341,7 @@ const deleteStick = (id: string) => {
         </form>
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
 
