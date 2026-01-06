@@ -11,8 +11,11 @@ import {
   ChevronLeft
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
+import { userApi, type LoginParams, type RegisterParams } from '@/api/user'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 type AuthMode = 'login' | 'register'
 const mode = ref<AuthMode>('login')
@@ -44,7 +47,10 @@ const validateForm = (): boolean => {
     isValid = false
   }
 
-  if (formData.value.password.length < 6 || formData.value.password.length > 20) {
+  if (!formData.value.password) {
+    errors.value.password = '密码不能为空'
+    isValid = false
+  } else if (formData.value.password.length < 6 || formData.value.password.length > 20) {
     errors.value.password = '密码长度必须在6-20位之间'
     isValid = false
   }
@@ -62,7 +68,7 @@ const validateForm = (): boolean => {
   return isValid
 }
 
-const handleSubmit = (e: Event) => {
+const handleSubmit = async (e: Event) => {
   e.preventDefault()
 
   if (!validateForm()) {
@@ -71,15 +77,44 @@ const handleSubmit = (e: Event) => {
 
   isLoading.value = true
 
-  setTimeout(() => {
+  try {
+    if (mode.value === 'login') {
+      // 登录
+      const loginParams: LoginParams = {
+        username: formData.value.username.trim(),
+        password: formData.value.password
+      }
+
+      const token = await userApi.login(loginParams)
+
+      // 保存 token 和用户名到 store
+      userStore.setToken(token)
+      userStore.setUsername(formData.value.username.trim())
+
+      toast.success('登录成功')
+      router.push('/dashboard')
+    } else {
+      // 注册
+      const registerParams: RegisterParams = {
+        username: formData.value.username.trim(),
+        password: formData.value.password
+      }
+
+      await userApi.register(registerParams)
+
+      toast.success('注册成功，请登录')
+
+      // 切换到登录模式
+      mode.value = 'login'
+      formData.value.password = ''
+      formData.value.confirmPassword = ''
+    }
+  } catch (error) {
+    // 错误信息已经在 request.ts 的拦截器中处理
+    console.error('认证失败:', error)
+  } finally {
     isLoading.value = false
-    toast.success(mode.value === 'login' ? '登录成功' : '注册成功')
-
-    localStorage.setItem('token', 'demo-token')
-    localStorage.setItem('username', formData.value.username)
-
-    router.push('/dashboard')
-  }, 1200)
+  }
 }
 
 const onBackToLanding = () => {

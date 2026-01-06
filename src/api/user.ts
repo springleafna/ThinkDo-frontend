@@ -9,32 +9,47 @@ export interface User {
   createdAt: string
 }
 
+// 用户登录请求参数
 export interface LoginParams {
   username: string
   password: string
 }
 
+// 用户登录响应
 export interface LoginResponse {
   token: string
-  user: User
 }
 
+// 用户注册请求参数
 export interface RegisterParams {
   username: string
-  email: string
   password: string
 }
 
 // 用户相关 API
 export const userApi = {
-  // 登录
+  /**
+   * 用户登录
+   * POST /system/user/login
+   */
   login(data: LoginParams) {
-    return request.post<LoginResponse>('/auth/login', data)
+    return request.post<string>('/system/user/login', data)
   },
 
-  // 注册
+  /**
+   * 用户注册
+   * POST /system/user/register
+   */
   register(data: RegisterParams) {
-    return request.post('/auth/register', data)
+    return request.post<void>('/system/user/register', data)
+  },
+
+  /**
+   * 退出登录
+   * POST /system/user/logout
+   */
+  logout() {
+    return request.post<void>('/system/user/logout')
   },
 
   // 获取用户信息
@@ -45,10 +60,5 @@ export const userApi = {
   // 更新用户信息
   updateUserInfo(data: Partial<User>) {
     return request.put<User>('/user/info', data)
-  },
-
-  // 退出登录
-  logout() {
-    return request.post('/auth/logout')
   }
 }

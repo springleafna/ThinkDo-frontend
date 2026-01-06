@@ -15,8 +15,12 @@ import {
   PanelLeftClose,
   PanelLeftOpen
 } from 'lucide-vue-next'
+import { userApi } from '@/api/user'
+import { useUserStore } from '@/stores/user'
+import { toast } from 'vue-sonner'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 defineProps<{
   isOpen: boolean
@@ -39,10 +43,23 @@ const navigation = [
   { id: 'sticky', label: '快捷便签', icon: StickyNote }
 ]
 
-const handleLogout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('username')
-  router.push('/auth')
+const handleLogout = async () => {
+  try {
+    // 调用后端退出登录接口
+    await userApi.logout()
+
+    // 清空本地状态
+    userStore.logout()
+
+    toast.success('已安全退出')
+
+    // 跳转到登录页
+    router.push('/auth')
+  } catch (error) {
+    // 即使接口失败，也清空本地状态并跳转
+    userStore.logout()
+    router.push('/auth')
+  }
 }
 </script>
 
@@ -118,7 +135,7 @@ const handleLogout = () => {
           <User :size="14" class="opacity-60" />
         </div>
         <div v-if="isOpen" class="flex-1 overflow-hidden">
-          <p class="text-[11px] font-medium truncate">归档节点 01</p>
+          <p class="text-[11px] font-medium truncate">{{ userStore.username || '未登录' }}</p>
           <p class="mono text-[8px] opacity-40 uppercase tracking-tighter">在线连接</p>
         </div>
       </div>
