@@ -15,6 +15,15 @@ import {
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { memoApi, type Memo, type CreateMemoParams, type UpdateMemoParams } from '@/api/memo'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
 interface MemoWithColor extends Memo {
   color: string
@@ -27,6 +36,8 @@ const showModal = ref(false)
 const editId = ref<number | null>(null)
 const isLoading = ref(false)
 const isLoadingMemos = ref(false)
+const showDeleteDialog = ref(false)
+const deleteMemoId = ref<number | null>(null)
 
 const memos = ref<MemoWithColor[]>([])
 
@@ -247,17 +258,23 @@ const handleSubmit = async (e: Event) => {
 }
 
 const deleteStick = async (id: number) => {
-  if (!confirm('确定要删除这条便签吗？')) {
-    return
-  }
+  deleteMemoId.value = id
+  showDeleteDialog.value = true
+}
+
+const confirmDelete = async () => {
+  if (!deleteMemoId.value) return
 
   try {
-    await memoApi.delete(id)
+    await memoApi.delete(deleteMemoId.value)
     toast.success('便签已删除')
     await loadMemos() // 重新加载列表
   } catch (error) {
     console.error('删除便签失败:', error)
     toast.error('删除失败')
+  } finally {
+    showDeleteDialog.value = false
+    deleteMemoId.value = null
   }
 }
 
@@ -271,10 +288,6 @@ onMounted(() => {
   <div class="max-w-7xl mx-auto space-y-10 pb-12 section-reveal">
     <div class="flex items-center justify-between">
       <div>
-        <span class="mono text-[10px] uppercase tracking-[0.2em] opacity-40 mb-2 block"
-          >Ephemeral Brain Dump</span
-        >
-        <h1 class="text-3xl font-light tracking-tight text-neutral-900">快捷便签</h1>
         <p class="text-sm text-neutral-400 mt-1 italic">
           在灵感消逝前捕捉那些转瞬即逝的思想火花。
         </p>
@@ -306,13 +319,13 @@ onMounted(() => {
         :key="memo.id"
         @click="handleOpenEdit(memo)"
         :class="[
-          'p-6 rounded-[2rem] shadow-sm relative group flex flex-col justify-between card-hover animate-in fade-in zoom-in duration-300 cursor-pointer',
+          'rounded-[2rem] shadow-sm relative group flex flex-col card-hover animate-in fade-in zoom-in duration-300 cursor-pointer overflow-hidden',
           memo.color,
           memo.borderColor,
           memo.textColor
         ]"
       >
-        <div class="flex-1 overflow-hidden flex flex-col min-h-0">
+        <div class="flex-1 overflow-hidden flex flex-col p-6 min-h-0">
           <div class="flex justify-between items-center mb-3 shrink-0">
             <component :is="memo.icon" class="w-4 h-4 opacity-60" />
             <div class="flex items-center gap-2">
@@ -333,58 +346,56 @@ onMounted(() => {
             {{ memo.title }}
           </h4>
           <p
-            class="text-xs font-medium leading-relaxed opacity-80 flex-1 overflow-hidden"
+            class="text-xs font-medium leading-relaxed opacity-80 flex-1 memo-content"
             :title="memo.content"
             :style="{
-              display: '-webkit-box',
-              WebkitLineClamp: memo.title ? 5 : 7,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
+              '--line-clamp': memo.title ? 4 : 6
             }"
           >
             {{ memo.content }}
           </p>
         </div>
 
-        <div class="mt-3 flex justify-between items-center">
-          <p class="text-[9px] mono opacity-30 uppercase tracking-tighter shrink-0">
-            {{ formatTime(memo.updatedAt) }}
-          </p>
-        </div>
+        <div class="px-6 pb-4 pt-2 shrink-0">
+          <div class="flex justify-between items-center mb-3">
+            <p class="text-[9px] mono opacity-30 uppercase tracking-tighter shrink-0">
+              {{ formatTime(memo.updatedAt) }}
+            </p>
+          </div>
 
-        <div
-          class="mt-4 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 shrink-0"
-        >
-          <div class="flex gap-2">
+          <div
+            class="flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          >
+            <div class="flex gap-2">
+              <button
+                @click.stop="handleOpenEdit(memo)"
+                class="p-1.5 hover:bg-white/40 rounded-lg transition-colors"
+                title="编辑"
+              >
+                <Edit3 :size="12" class="opacity-40" />
+              </button>
+              <button
+                @click.stop="togglePinned(memo)"
+                class="p-1.5 hover:bg-white/40 rounded-lg transition-colors"
+                :title="memo.pinned === 1 ? '取消置顶' : '置顶'"
+              >
+                <PinOff v-if="memo.pinned === 1" :size="12" class="opacity-40" />
+                <Pin v-else :size="12" class="opacity-40" />
+              </button>
+              <button
+                @click.stop
+                class="p-1.5 hover:bg-white/40 rounded-lg transition-colors"
+              >
+                <Maximize2 :size="12" class="opacity-40" />
+              </button>
+            </div>
             <button
-              @click.stop="handleOpenEdit(memo)"
-              class="p-1.5 hover:bg-white/40 rounded-lg transition-colors"
-              title="编辑"
+              @click.stop="deleteStick(memo.id)"
+              class="p-1.5 hover:bg-rose-100/50 hover:text-rose-600 rounded-lg transition-colors"
             >
-              <Edit3 :size="12" class="opacity-40" />
-            </button>
-            <button
-              @click.stop="togglePinned(memo)"
-              class="p-1.5 hover:bg-white/40 rounded-lg transition-colors"
-              :title="memo.pinned === 1 ? '取消置顶' : '置顶'"
-            >
-              <PinOff v-if="memo.pinned === 1" :size="12" class="opacity-40" />
-              <Pin v-else :size="12" class="opacity-40" />
-            </button>
-            <button
-              @click.stop
-              class="p-1.5 hover:bg-white/40 rounded-lg transition-colors"
-            >
-              <Maximize2 :size="12" class="opacity-40" />
+              <X :size="12" class="opacity-40" />
             </button>
           </div>
-          <button
-            @click.stop="deleteStick(memo.id)"
-            class="p-1.5 hover:bg-rose-100/50 hover:text-rose-600 rounded-lg transition-colors"
-          >
-            <X :size="12" class="opacity-40" />
-          </button>
         </div>
       </div>
 
@@ -398,10 +409,38 @@ onMounted(() => {
           <Plus :size="24" :stroke-width="1" />
         </div>
         <span class="mono text-[9px] font-bold uppercase tracking-widest mt-2">
-          添加节点
+          添加便签
         </span>
       </button>
     </div>
+
+    <!-- Delete Confirmation Dialog -->
+    <Dialog v-model:open="showDeleteDialog">
+      <DialogContent class="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle class="text-lg font-semibold">确认删除</DialogTitle>
+          <DialogDescription class="text-sm text-neutral-500">
+            确定要删除这条便签吗？此操作无法撤销。
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter class="mt-4">
+          <Button
+            variant="ghost"
+            @click="showDeleteDialog = false"
+            class="flex-1"
+          >
+            取消
+          </Button>
+          <Button
+            variant="destructive"
+            @click="confirmDelete"
+            class="flex-1"
+          >
+            确认删除
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
 
     <!-- Note Modal (Create/Edit) - Teleported to body -->
     <Teleport to="body">
@@ -541,19 +580,12 @@ onMounted(() => {
   box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.1);
 }
 
-.line-clamp-5 {
+.memo-content {
   display: -webkit-box;
-  -webkit-line-clamp: 5;
+  -webkit-line-clamp: var(--line-clamp, 6);
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.line-clamp-[7] {
-  display: -webkit-box;
-  -webkit-line-clamp: 7;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
 }
 </style>
