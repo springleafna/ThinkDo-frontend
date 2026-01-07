@@ -61,6 +61,15 @@ const handleLogout = async () => {
     router.push('/auth')
   }
 }
+
+const handleNavigation = (viewId: string) => {
+  activeView.value = viewId
+
+  // 如果是"我的计划"菜单,跳转到独立路由页面
+  if (viewId === 'long-term') {
+    router.push('/plan')
+  }
+}
 </script>
 
 <template>
@@ -109,7 +118,7 @@ const handleLogout = async () => {
       <button
         v-for="item in navigation"
         :key="item.id"
-        @click="activeView = item.id"
+        @click="handleNavigation(item.id)"
         :class="[
           'w-full flex items-center gap-4 px-3 py-2.5 rounded-xl transition-all duration-300',
           activeView === item.id
