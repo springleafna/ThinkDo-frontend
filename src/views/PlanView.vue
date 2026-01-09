@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Plus,
-  Calendar,
+  Calendar as CalendarIcon,
   Tag,
   Target,
   Briefcase,
@@ -15,8 +15,6 @@ import {
   X,
   Palette,
   Check,
-  Circle,
-  CheckCircle2,
   Inbox,
   Activity,
   Archive
@@ -33,6 +31,25 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from '@/components/ui/collapsible'
 
 const router = useRouter()
 const isSidebarOpen = ref(true)
@@ -74,7 +91,10 @@ const statusFilter = ref<StatusFilter>('active')
 const showPlanModal = ref(false)
 const showCategoryModal = ref(false)
 const quickTaskInputs = ref<{ [key: string]: string }>({})
-const expandedPlans = ref<Set<string>>(new Set(['1']))
+const expandedPlans = ref<Record<string, boolean>>({ '1': true })
+
+// 检查计划是否展开
+const isPlanExpanded = (planId: string) => expandedPlans.value[planId] || false
 
 // 分类数据
 const categories = ref<Category[]>([
@@ -157,11 +177,7 @@ const completedCount = computed(() => plans.value.filter(p => p.completed).lengt
 
 // 方法
 const toggleExpand = (id: string) => {
-  if (expandedPlans.value.has(id)) {
-    expandedPlans.value.delete(id)
-  } else {
-    expandedPlans.value.add(id)
-  }
+  expandedPlans.value[id] = !expandedPlans.value[id]
 }
 
 const calculateProgress = (subTasks: SubTask[], planCompleted: boolean) => {
@@ -300,48 +316,31 @@ const getCategoryColor = (category: string) => {
             <!-- 左侧边栏 -->
             <aside class="lg:w-64 space-y-8 shrink-0">
               <!-- 状态筛选 -->
-              <div class="bg-stone-100/50 p-1 rounded-2xl flex flex-col gap-1">
-                <button
-                  @click="statusFilter = 'active'"
-                  :class="[
-                    'flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold transition-all',
-                    statusFilter === 'active'
-                      ? 'bg-white shadow-sm text-zinc-900'
-                      : 'text-neutral-400 hover:text-neutral-600'
-                  ]"
-                >
-                  <span class="flex items-center gap-2"><Activity :size="14"/> 进行中</span>
-                  <span :class="[
-                    'px-2 py-0.5 rounded-md text-[10px]',
-                    statusFilter === 'active' ? 'bg-zinc-100 text-zinc-900' : 'bg-neutral-200/50 text-neutral-400'
-                  ]">{{ activeCount }}</span>
-                </button>
-                <button
-                  @click="statusFilter = 'completed'"
-                  :class="[
-                    'flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold transition-all',
-                    statusFilter === 'completed'
-                      ? 'bg-white shadow-sm text-emerald-600'
-                      : 'text-neutral-400 hover:text-neutral-600'
-                  ]"
-                >
-                  <span class="flex items-center gap-2"><Archive :size="14"/> 已归档</span>
-                  <span :class="[
-                    'px-2 py-0.5 rounded-md text-[10px]',
-                    statusFilter === 'completed' ? 'bg-emerald-50 text-emerald-600' : 'bg-neutral-200/50 text-neutral-400'
-                  ]">{{ completedCount }}</span>
-                </button>
-                <button
-                  @click="statusFilter = 'all'"
-                  :class="[
-                    'flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold transition-all',
-                    statusFilter === 'all'
-                      ? 'bg-white shadow-sm text-neutral-900'
-                      : 'text-neutral-400 hover:text-neutral-600'
-                  ]"
-                >
-                  <span class="flex items-center gap-2"><Layers :size="14"/> 全部</span>
-                </button>
+              <div class="w-full">
+                <Tabs v-model="statusFilter" class="w-full">
+                  <TabsList class="bg-stone-100/50 p-1 rounded-2xl flex flex-col gap-1 h-auto items-stretch justify-start w-full">
+                    <TabsTrigger
+                      value="active"
+                      class="flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-zinc-900 text-neutral-400 hover:text-neutral-600 w-full"
+                    >
+                      <span class="flex items-center gap-2"><Activity :size="14"/> 进行中</span>
+                      <span class="px-2 py-0.5 rounded-md text-[10px] bg-zinc-100 text-zinc-900">{{ activeCount }}</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="completed"
+                      class="flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-emerald-600 text-neutral-400 hover:text-neutral-600 w-full"
+                    >
+                      <span class="flex items-center gap-2"><Archive :size="14"/> 已完成</span>
+                      <span class="px-2 py-0.5 rounded-md text-[10px] bg-emerald-50 text-emerald-600">{{ completedCount }}</span>
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="all"
+                      class="flex items-center px-4 py-2.5 rounded-xl text-xs font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-neutral-900 text-neutral-400 hover:text-neutral-600 w-full justify-start"
+                    >
+                      <span class="flex items-center gap-2"><Layers :size="14"/> 全部</span>
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
 
               <!-- 分类筛选 -->
@@ -396,12 +395,15 @@ const getCategoryColor = (category: string) => {
                 <div class="md:w-[38%] p-8 border-r border-black/[0.03] flex flex-col justify-between">
                   <div>
                     <div class="flex justify-between items-start mb-4">
-                      <span :class="[
-                        'px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest mono',
-                        plan.completed ? 'bg-emerald-100 text-emerald-700' : getCategoryColor(plan.category)
-                      ]">
+                      <Badge
+                        :class="[
+                          'px-3 py-1 text-[9px] font-bold uppercase tracking-widest mono',
+                          plan.completed ? 'bg-emerald-100 text-emerald-700' : getCategoryColor(plan.category)
+                        ]"
+                        :variant="plan.completed ? 'default' : 'secondary'"
+                      >
                         {{ plan.completed ? 'COMPLETED' : plan.category }}
-                      </span>
+                      </Badge>
                     </div>
 
                     <div class="flex items-start gap-4 mb-4">
@@ -429,17 +431,18 @@ const getCategoryColor = (category: string) => {
 
                     <!-- 标签 -->
                     <div class="flex flex-wrap gap-2 mb-4">
-                      <span
+                      <Badge
                         v-for="tag in plan.tags"
                         :key="tag"
-                        class="px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border border-black/[0.05] bg-white text-neutral-400 shadow-sm"
+                        variant="outline"
+                        class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest border-black/[0.05] bg-white text-neutral-400 shadow-sm"
                       >
                         #{{ tag }}
-                      </span>
+                      </Badge>
                     </div>
 
                     <div class="flex items-center gap-2 text-[10px] mono text-neutral-400 mb-6 uppercase tracking-tighter">
-                      <Calendar :size="12" />
+                      <CalendarIcon :size="12" />
                       <span>截止: {{ plan.deadline }}</span>
                     </div>
                   </div>
@@ -455,101 +458,44 @@ const getCategoryColor = (category: string) => {
                         plan.completed ? 'text-emerald-700' : 'text-neutral-900'
                       ]">{{ plan.progress }}%</span>
                     </div>
-                    <div class="h-2 w-full bg-stone-100 rounded-full overflow-hidden">
-                      <div
-                        :class="[
-                          'h-full transition-all duration-700 ease-out',
-                          plan.completed ? 'bg-emerald-500' : 'bg-zinc-900'
-                        ]"
-                        :style="{ width: `${plan.progress}%` }"
-                      ></div>
-                    </div>
+                    <Progress
+                      :value="plan.progress"
+                      :class="plan.completed ? 'bg-emerald-500' : 'bg-zinc-900'"
+                    />
                   </div>
                 </div>
 
                 <!-- 右侧:执行详情 (可展开) -->
                 <div class="flex-1 p-8 flex flex-col bg-stone-50/20">
-                  <button
-                    @click="toggleExpand(plan.id)"
-                    class="flex justify-between items-center w-full group/header mb-4"
-                  >
-                    <h4 class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 italic group-hover/header:text-neutral-900 transition-colors">
-                      分解执行节点
-                    </h4>
-                    <div class="flex items-center gap-2">
-                      <span class="text-[9px] mono text-neutral-300 uppercase tracking-widest">
-                        {{ expandedPlans.has(plan.id) ? '收起详情' : '展开详情' }}
-                      </span>
-                      <ChevronDown
-                        v-if="expandedPlans.has(plan.id)"
-                        :size="18"
-                        class="text-neutral-400"
-                      />
-                      <ChevronRight v-else :size="18" class="text-neutral-400" />
-                    </div>
-                  </button>
-
-                  <!-- 未展开时的预览信息 -->
+                  <!-- 没有子任务的情况：直接显示暂无子项 -->
                   <div
-                    v-if="!expandedPlans.has(plan.id)"
-                    class="flex-1 flex flex-col justify-center space-y-4"
+                    v-if="plan.subTasks.length === 0"
+                    class="flex-1 flex flex-col items-center justify-center border border-dashed border-black/5 rounded-[1.5rem] opacity-40"
                   >
+                    <Inbox :size="20" class="mb-1 text-neutral-300" />
+                    <p class="text-[9px] mono uppercase tracking-widest text-neutral-300">暂无子项</p>
+                  </div>
+
+                  <!-- 有子任务的情况 -->
+                  <template v-else>
                     <!-- 统计信息 -->
-                    <div class="flex items-center gap-6 text-sm">
+                    <div class="flex items-center gap-6 text-sm mb-4">
                       <div class="flex items-center gap-2">
-                        <CheckCircle2 :size="16" class="text-emerald-500" />
+                        <Checkbox checked class="text-emerald-500" />
                         <span class="text-neutral-600">已完成 {{ plan.subTasks.filter(st => st.completed).length }} 项</span>
                       </div>
                       <div class="flex items-center gap-2">
-                        <Circle :size="16" class="text-neutral-300" />
+                        <Checkbox class="text-neutral-300" />
                         <span class="text-neutral-600">待完成 {{ plan.subTasks.filter(st => !st.completed).length }} 项</span>
                       </div>
                     </div>
 
-                    <!-- 子任务预览列表 (只显示前3个) -->
-                    <div class="space-y-2">
-                      <div
-                        v-for="st in plan.subTasks.slice(0, 3)"
-                        :key="st.id"
-                        class="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white border border-black/[0.02] shadow-sm"
-                      >
-                        <CheckCircle2
-                          v-if="st.completed"
-                          :size="16"
-                          :class="[plan.completed ? 'text-emerald-400' : 'text-emerald-500', 'shrink-0']"
-                        />
-                        <Circle
-                          v-else
-                          :size="16"
-                          class="text-neutral-200 shrink-0"
-                        />
-                        <span :class="[
-                          'text-xs truncate flex-1',
-                          st.completed ? 'text-neutral-400 line-through' : 'text-neutral-600'
-                        ]">
-                          {{ st.title }}
-                        </span>
-                      </div>
-                      <div
-                        v-if="plan.subTasks.length > 3"
-                        class="text-center py-2 text-xs text-neutral-400 italic"
-                      >
-                        还有 {{ plan.subTasks.length - 3 }} 项子任务...
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- 可展开的子任务区域 -->
-                  <div
-                    :class="[
-                      'flex-1 overflow-hidden transition-all duration-500 ease-in-out',
-                      expandedPlans.has(plan.id) ? 'max-h-96 opacity-100 mb-6' : 'max-h-0 opacity-0'
-                    ]"
-                  >
-                    <div class="space-y-2">
-                      <div v-if="plan.subTasks.length > 0">
+                    <!-- 子任务列表 -->
+                    <Collapsible v-model:open="expandedPlans[plan.id]"">
+                      <!-- 未展开时显示前2项 -->
+                      <div class="space-y-3">
                         <div
-                          v-for="st in plan.subTasks"
+                          v-for="st in (isPlanExpanded(plan.id) ? plan.subTasks : plan.subTasks.slice(0, 2))"
                           :key="st.id"
                           @click="toggleSubTask(plan.id, st.id)"
                           :class="[
@@ -559,15 +505,9 @@ const getCategoryColor = (category: string) => {
                               : 'bg-white hover:bg-stone-50 border-black/[0.02] shadow-sm'
                           ]"
                         >
-                          <CheckCircle2
-                            v-if="st.completed"
-                            :size="18"
-                            :class="[plan.completed ? 'text-emerald-400' : 'text-emerald-500', 'shrink-0']"
-                          />
-                          <Circle
-                            v-else
-                            :size="18"
-                            class="text-neutral-200 group-hover/task:text-zinc-400 shrink-0"
+                          <Checkbox
+                            :checked="st.completed"
+                            class="shrink-0"
                           />
                           <span :class="[
                             'text-sm truncate',
@@ -577,28 +517,43 @@ const getCategoryColor = (category: string) => {
                           </span>
                         </div>
                       </div>
-                      <div
-                        v-else
-                        class="py-8 flex flex-col items-center justify-center border border-dashed border-black/5 rounded-[1.5rem] opacity-40"
-                      >
-                        <Inbox :size="20" class="mb-1 text-neutral-300" />
-                        <p class="text-[9px] mono uppercase tracking-widest text-neutral-300">暂无子项</p>
-                      </div>
-                    </div>
-                  </div>
+
+                      <!-- 展开/收起按钮 -->
+                      <CollapsibleTrigger as-child>
+                        <button
+                          v-if="plan.subTasks.length > 2"
+                          class="flex items-center gap-2 w-full mt-4 mb-4 text-xs text-neutral-400 hover:text-neutral-600 transition-colors group/header"
+                        >
+                          <span class="mono uppercase tracking-widest">
+                            {{ isPlanExpanded(plan.id) ? '收起' : `还有 ${plan.subTasks.length - 2} 项子任务...` }}
+                          </span>
+                          <ChevronDown
+                            v-if="isPlanExpanded(plan.id)"
+                            :size="16"
+                            class="transition-transform"
+                          />
+                          <ChevronRight
+                            v-else
+                            :size="16"
+                            class="transition-transform group-hover/header:translate-x-1"
+                          />
+                        </button>
+                      </CollapsibleTrigger>
+                    </Collapsible>
+                  </template>
 
                   <!-- 添加新任务输入 -->
                   <div class="mt-auto">
                     <div class="relative">
-                      <input
+                      <Input
                         v-model="quickTaskInputs[plan.id]"
                         type="text"
                         placeholder="添加执行节点..."
                         :disabled="plan.completed"
                         @keydown.enter="addSubTask(plan.id)"
                         :class="[
-                          'w-full pl-5 pr-12 py-3.5 bg-white border border-black/[0.05] rounded-2xl text-sm placeholder:text-neutral-300 focus:outline-none transition-all italic shadow-sm',
-                          plan.completed ? 'opacity-30 cursor-not-allowed' : 'focus:ring-2 focus:ring-black/5'
+                          'pl-5 pr-12 py-3.5 bg-white border border-black/[0.05] rounded-2xl text-sm placeholder:text-neutral-300 italic shadow-sm',
+                          plan.completed ? 'opacity-30 cursor-not-allowed' : ''
                         ]"
                       />
                       <button
@@ -649,47 +604,49 @@ const getCategoryColor = (category: string) => {
       <div class="space-y-6 py-4">
         <div class="space-y-2">
           <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">计划标题</label>
-          <input
+          <Input
             v-model="newPlan.title"
             type="text"
             placeholder="例如：掌握 Rust 编程语言"
-            class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-zinc-100 transition-all shadow-sm"
+            class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
           />
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
             <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">所属分类</label>
-            <select
-              v-model="newPlan.category"
-              class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-zinc-100 transition-all appearance-none shadow-sm"
-            >
-              <option
-                v-for="cat in categories.filter(c => c.name !== '全部')"
-                :key="cat.name"
-                :value="cat.name"
-              >
-                {{ cat.name }}
-              </option>
-            </select>
+            <Select v-model="newPlan.category">
+              <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="cat in categories.filter(c => c.name !== '全部')"
+                  :key="cat.name"
+                  :value="cat.name"
+                >
+                  {{ cat.name }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div class="space-y-2">
             <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止日期</label>
-            <input
+            <Input
               v-model="newPlan.deadline"
               type="date"
-              class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-zinc-100 transition-all shadow-sm"
+              class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
             />
           </div>
         </div>
 
         <div class="space-y-2">
           <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">标签 (逗号分隔)</label>
-          <input
+          <Input
             v-model="newPlan.tags"
             type="text"
             placeholder="DEVELOPMENT, CAREER..."
-            class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-zinc-100 transition-all shadow-sm uppercase"
+            class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm uppercase"
           />
         </div>
 
@@ -742,11 +699,11 @@ const getCategoryColor = (category: string) => {
       <div class="space-y-4 py-4">
         <div class="space-y-2">
           <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">分类名称</label>
-          <input
+          <Input
             v-model="newCatName"
             type="text"
             placeholder="例如：投资"
-            class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:outline-none focus:ring-4 focus:ring-zinc-100 transition-all shadow-sm"
+            class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
           />
         </div>
       </div>

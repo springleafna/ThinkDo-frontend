@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Sparkles,
@@ -65,9 +64,22 @@ const handleLogout = async () => {
 const handleNavigation = (viewId: string) => {
   activeView.value = viewId
 
-  // 如果是"我的计划"菜单,跳转到独立路由页面
-  if (viewId === 'long-term') {
-    router.push('/plan')
+  // 路由映射
+  const routeMap: Record<string, string> = {
+    'dashboard': '/dashboard',
+    'memo': '/memo',
+    'long-term': '/plan',
+    'ai-chat': '/dashboard',
+    'knowledge-base': '/dashboard',
+    'quadrant': '/dashboard',
+    'daily': '/dashboard',
+    'notes': '/dashboard',
+    'sticky': '/dashboard'
+  }
+
+  const route = routeMap[viewId]
+  if (route) {
+    router.push(route)
   }
 }
 </script>

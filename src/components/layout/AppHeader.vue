@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Bell, X } from 'lucide-vue-next'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 defineProps<{
   activeView: string
@@ -71,13 +72,8 @@ const notifications = [
     style="animation-delay: 0.1s"
   >
     <div>
-      <span class="mono text-[10px] uppercase tracking-[0.2em] opacity-40 mb-2 block">
-        System Operating Node
-      </span>
       <h1 class="text-3xl font-light tracking-tight flex items-center gap-2 text-neutral-900">
         {{ navigation[activeView] }}
-        <span class="text-zinc-300 font-light">/</span>
-        <span class="opacity-40 font-light">归档记录</span>
       </h1>
     </div>
     <div class="flex gap-6 items-center relative">
@@ -88,30 +84,23 @@ const notifications = [
         <p class="text-[9px] opacity-30 mono tracking-tighter">状态: 活跃运行中</p>
       </div>
       <div class="flex items-center gap-3">
-        <button
-          @click="showNotifications = !showNotifications"
-          :class="[
-            'relative p-2.5 bg-white border border-black/5 rounded-full shadow-sm transition-all hover:scale-105',
-            showNotifications
-              ? 'text-zinc-900 ring-4 ring-zinc-100 border-zinc-300'
-              : 'text-neutral-500 hover:text-neutral-900'
-          ]"
-        >
-          <Bell :size="18" />
-          <span class="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
-        </button>
-
-        <Transition
-          enter-active-class="transition-all duration-300"
-          enter-from-class="opacity-0 -translate-y-4"
-          enter-to-class="opacity-100 translate-y-0"
-          leave-active-class="transition-all duration-200"
-          leave-from-class="opacity-100 translate-y-0"
-          leave-to-class="opacity-0 -translate-y-4"
-        >
-          <div
-            v-if="showNotifications"
-            class="absolute top-full right-0 mt-4 w-80 bg-white rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-black/5 z-[100] overflow-hidden"
+        <Popover v-model:open="showNotifications">
+          <PopoverTrigger as-child>
+            <button
+              :class="[
+                'relative p-2.5 bg-white border border-black/5 rounded-full shadow-sm transition-all hover:scale-105',
+                showNotifications
+                  ? 'text-zinc-900 ring-4 ring-zinc-100 border-zinc-300'
+                  : 'text-neutral-500 hover:text-neutral-900'
+              ]"
+            >
+              <Bell :size="18" />
+              <span class="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            class="w-80 p-0 bg-white rounded-[2rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-black/5 z-[100] overflow-hidden"
+            align="end"
           >
             <div class="p-6 border-b border-black/5 flex justify-between items-center bg-stone-50/50">
               <h3 class="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-900">
@@ -158,8 +147,8 @@ const notifications = [
             >
               清空系统日志
             </button>
-          </div>
-        </Transition>
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   </header>
