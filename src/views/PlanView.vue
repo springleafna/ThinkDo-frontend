@@ -17,7 +17,8 @@ import {
   Check,
   Inbox,
   Activity,
-  Archive
+  Archive,
+  Edit3,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
@@ -92,6 +93,8 @@ const showPlanModal = ref(false)
 const showCategoryModal = ref(false)
 const quickTaskInputs = ref<{ [key: string]: string }>({})
 const expandedPlans = ref<Record<string, boolean>>({ '1': true })
+const editingSubTask = ref<{ planId: string; subTaskId: string } | null>(null)
+const editTaskInput = ref('')
 
 // 检查计划是否展开
 const isPlanExpanded = (planId: string) => expandedPlans.value[planId] || false
@@ -212,7 +215,7 @@ const toggleSubTask = (planId: string, subTaskId: string) => {
   plan.progress = calculateProgress(plan.subTasks, allCompleted)
 
   if (allCompleted) {
-    toast.success('🎉 太棒了！计划已完成！')
+    toast.success('太棒了！计划已完成！')
   }
 }
 
@@ -283,6 +286,42 @@ const getCategoryColor = (category: string) => {
     '职业': 'bg-rose-50 text-rose-600'
   }
   return colorMap[category] || 'bg-stone-100 text-stone-600'
+}
+
+// 编辑子任务
+const startEditingSubTask = (planId: string, subTaskId: string, currentTitle: string) => {
+  editingSubTask.value = { planId, subTaskId }
+  editTaskInput.value = currentTitle
+}
+
+const saveSubTaskEdit = () => {
+  if (!editingSubTask.value) return
+
+  const { planId, subTaskId } = editingSubTask.value
+  const plan = plans.value.find(p => p.id === planId)
+  if (!plan) return
+
+  const subTask = plan.subTasks.find(st => st.id === subTaskId)
+  if (!subTask) return
+
+  if (!editTaskInput.value.trim()) {
+    toast.error('子任务内容不能为空')
+    return
+  }
+
+  subTask.title = editTaskInput.value.trim()
+  editingSubTask.value = null
+  editTaskInput.value = ''
+  toast.success('子任务已更新')
+}
+
+const cancelSubTaskEdit = () => {
+  editingSubTask.value = null
+  editTaskInput.value = ''
+}
+
+const isEditingSubTask = (planId: string, subTaskId: string) => {
+  return editingSubTask.value?.planId === planId && editingSubTask.value?.subTaskId === subTaskId
 }
 </script>
 
@@ -481,40 +520,85 @@ const getCategoryColor = (category: string) => {
                     <!-- 统计信息 -->
                     <div class="flex items-center gap-6 text-sm mb-4">
                       <div class="flex items-center gap-2">
-                        <Checkbox checked class="text-emerald-500" />
                         <span class="text-neutral-600">已完成 {{ plan.subTasks.filter(st => st.completed).length }} 项</span>
                       </div>
                       <div class="flex items-center gap-2">
-                        <Checkbox class="text-neutral-300" />
                         <span class="text-neutral-600">待完成 {{ plan.subTasks.filter(st => !st.completed).length }} 项</span>
                       </div>
                     </div>
 
                     <!-- 子任务列表 -->
-                    <Collapsible v-model:open="expandedPlans[plan.id]"">
+                    <Collapsible v-model:open="expandedPlans[plan.id]">
                       <!-- 未展开时显示前2项 -->
                       <div class="space-y-3">
                         <div
                           v-for="st in (isPlanExpanded(plan.id) ? plan.subTasks : plan.subTasks.slice(0, 2))"
                           :key="st.id"
-                          @click="toggleSubTask(plan.id, st.id)"
                           :class="[
-                            'flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer group/task border',
+                            'flex items-center gap-4 p-4 rounded-2xl transition-all border group/task',
                             plan.completed
                               ? 'bg-emerald-50/50 border-transparent'
                               : 'bg-white hover:bg-stone-50 border-black/[0.02] shadow-sm'
                           ]"
                         >
                           <Checkbox
-                            :checked="st.completed"
+                            :modelValue="st.completed || plan.completed"
+                            @update:modelValue="toggleSubTask(plan.id, st.id)"
+                            :disabled="plan.completed || isEditingSubTask(plan.id, st.id)"
                             class="shrink-0"
                           />
-                          <span :class="[
-                            'text-sm truncate',
-                            st.completed ? 'text-neutral-400 line-through italic' : 'text-neutral-700 font-medium'
-                          ]">
-                            {{ st.title }}
-                          </span>
+                          <!-- 编辑模式 -->
+                          <div
+                            v-if="isEditingSubTask(plan.id, st.id)"
+                            class="flex items-center gap-2 flex-1"
+                          >
+                            <Input
+                              v-model="editTaskInput"
+                              @keydown.enter="saveSubTaskEdit"
+                              @keydown.escape="cancelSubTaskEdit"
+                              class="flex-1 h-8 text-sm px-3"
+                              autofocus
+                            />
+                            <button
+                              @click="saveSubTaskEdit"
+                              class="p-1.5 hover:bg-emerald-50 rounded-lg text-emerald-600 transition-colors"
+                              title="保存"
+                            >
+                              <Check :size="14" />
+                            </button>
+                            <button
+                              @click="cancelSubTaskEdit"
+                              class="p-1.5 hover:bg-red-50 rounded-lg text-red-500 transition-colors"
+                              title="取消"
+                            >
+                              <X :size="14" />
+                            </button>
+                          </div>
+                          <!-- 显示模式 -->
+                          <template v-else>
+                            <span
+                              @click="toggleSubTask(plan.id, st.id)"
+                              :class="[
+                                'text-sm truncate flex-1 cursor-pointer',
+                                (st.completed || plan.completed) ? 'text-neutral-400 line-through' : 'text-neutral-700 font-medium'
+                              ]"
+                            >
+                              {{ st.title }}
+                            </span>
+                            <button
+                              @click.stop="startEditingSubTask(plan.id, st.id, st.title)"
+                              :disabled="plan.completed"
+                              :class="[
+                                'p-1.5 rounded-lg transition-all opacity-0 group-hover/task:opacity-100',
+                                plan.completed
+                                  ? 'text-neutral-300 cursor-not-allowed'
+                                  : 'text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100'
+                              ]"
+                              title="编辑子任务"
+                            >
+                              <Edit3 :size="14" />
+                            </button>
+                          </template>
                         </div>
                       </div>
 
