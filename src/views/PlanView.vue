@@ -257,7 +257,7 @@ const handleAddPlan = () => {
   plans.value.unshift(plan)
   showPlanModal.value = false
   newPlan.value = { title: '', category: '技能', deadline: '', tags: '', color: 'bg-zinc-900' }
-  toast.success('✨ 愿景节点已创建！')
+  toast.success('愿景节点已创建！')
 }
 
 const handleAddCategory = () => {
@@ -478,14 +478,13 @@ const isEditingSubTask = (planId: string, subTaskId: string) => {
                         #{{ tag }}
                       </Badge>
                     </div>
-
-                    <div class="flex items-center gap-2 text-[10px] mono text-neutral-400 mb-6 uppercase tracking-tighter">
-                      <CalendarIcon :size="12" />
-                      <span>截止: {{ plan.deadline }}</span>
-                    </div>
                   </div>
 
                   <div class="space-y-3">
+                    <div class="flex items-center gap-2 text-[10px] mono text-neutral-400 uppercase tracking-tighter">
+                      <CalendarIcon :size="12" />
+                      <span>截止: {{ plan.deadline }}</span>
+                    </div>
                     <div class="flex justify-between items-end">
                       <span :class="[
                         'text-[10px] mono font-bold uppercase tracking-widest',

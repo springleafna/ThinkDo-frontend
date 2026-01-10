@@ -87,14 +87,29 @@ const handleNavigation = (viewId: string) => {
 <template>
   <aside
     :class="[
-      'transition-all duration-500 border-r border-black/5 bg-transparent flex flex-col z-40',
+      'transition-all duration-500 border-r border-black/5 bg-transparent flex flex-col z-40 relative',
       isOpen ? 'w-60' : 'w-16'
     ]"
   >
+    <!-- 折叠按钮 - 绝对定位在右侧居中 -->
+    <button
+      @click.stop="emit('toggle')"
+      :class="[
+        'absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 p-2 rounded-full shadow-lg border border-black/5 transition-all z-50',
+        isOpen
+          ? 'bg-white text-neutral-400 hover:text-neutral-900 hover:bg-black/5'
+          : 'bg-white text-neutral-400 hover:text-neutral-900 hover:bg-black/5'
+      ]"
+      :title="isOpen ? '折叠侧边栏' : '展开侧边栏'"
+    >
+      <PanelLeftClose v-if="isOpen" :size="16" />
+      <PanelLeftOpen v-else :size="16" />
+    </button>
+
     <div
       :class="[
         'py-6 flex items-center transition-all',
-        isOpen ? 'px-6 justify-between' : 'px-0 justify-center'
+        isOpen ? 'px-6 justify-center' : 'px-0 justify-center'
       ]"
     >
       <div class="flex items-center gap-3">
@@ -108,22 +123,6 @@ const handleNavigation = (viewId: string) => {
           ThinkDo
         </span>
       </div>
-      <button
-        v-if="isOpen"
-        @click="emit('toggle')"
-        class="p-1.5 hover:bg-black/5 rounded-lg text-neutral-400 hover:text-neutral-900 transition-all"
-      >
-        <PanelLeftClose :size="18" />
-      </button>
-    </div>
-
-    <div v-if="!isOpen" class="flex justify-center py-2">
-      <button
-        @click="emit('toggle')"
-        class="p-1.5 hover:bg-black/5 rounded-lg text-neutral-400 hover:text-neutral-900 transition-all"
-      >
-        <PanelLeftOpen :size="18" />
-      </button>
     </div>
 
     <nav class="flex-1 px-3 space-y-1 mt-6">
@@ -156,8 +155,8 @@ const handleNavigation = (viewId: string) => {
           <User :size="14" class="opacity-60" />
         </div>
         <div v-if="isOpen" class="flex-1 overflow-hidden">
-          <p class="text-[11px] font-medium truncate">{{ userStore.username || '未登录' }}</p>
-          <p class="mono text-[8px] opacity-40 uppercase tracking-tighter">在线连接</p>
+          <p class="text-[11px] font-medium truncate whitespace-nowrap">{{ userStore.username || '未登录' }}</p>
+          <p class="mono text-[8px] opacity-40 uppercase tracking-tighter whitespace-nowrap">在线连接</p>
         </div>
       </div>
       <button
@@ -169,7 +168,7 @@ const handleNavigation = (viewId: string) => {
         title="退出登录"
       >
         <LogOut :size="16" class="shrink-0" />
-        <span v-if="isOpen" class="text-[10px] font-bold uppercase tracking-widest">
+        <span v-if="isOpen" class="text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">
           终止会话
         </span>
       </button>
