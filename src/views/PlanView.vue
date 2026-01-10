@@ -32,7 +32,6 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -497,10 +496,18 @@ const isEditingSubTask = (planId: string, subTaskId: string) => {
                         plan.completed ? 'text-emerald-700' : 'text-neutral-900'
                       ]">{{ plan.progress }}%</span>
                     </div>
-                    <Progress
-                      :value="plan.progress"
-                      :class="plan.completed ? 'bg-emerald-500' : 'bg-zinc-900'"
-                    />
+                    <div :class="[
+                      'relative h-2 w-full overflow-hidden rounded-full',
+                      plan.completed ? 'bg-emerald-100' : 'bg-neutral-100'
+                    ]">
+                      <div
+                        :class="[
+                          'h-full transition-all duration-500 ease-out',
+                          plan.completed ? 'bg-emerald-500' : 'bg-zinc-900'
+                        ]"
+                        :style="{ width: `${plan.progress}%` }"
+                      />
+                    </div>
                   </div>
                 </div>
 
