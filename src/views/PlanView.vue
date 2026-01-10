@@ -20,6 +20,8 @@ import {
   Activity,
   Archive,
   Edit3,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
@@ -79,6 +81,17 @@ interface Plan {
   deadline: string
   tags: string[]
   color: string
+  priority: 'low' | 'medium' | 'high'
+}
+
+interface PlanEditForm {
+  id: string
+  title: string
+  category: string
+  deadline: string
+  tags: string
+  color: string
+  priority: 'low' | 'medium' | 'high'
 }
 
 interface Category {
@@ -93,10 +106,16 @@ const activeCategory = ref('全部')
 const statusFilter = ref<StatusFilter>('active')
 const showPlanModal = ref(false)
 const showCategoryModal = ref(false)
+const showEditPlanModal = ref(false)
+const showDeletePlanDialog = ref(false)
+const showDeleteSubTaskDialog = ref(false)
 const quickTaskInputs = ref<{ [key: string]: string }>({})
 const expandedPlans = ref<Record<string, boolean>>({ '1': true })
 const editingSubTask = ref<{ planId: string; subTaskId: string } | null>(null)
 const editTaskInput = ref('')
+const editingPlan = ref<PlanEditForm | null>(null)
+const deletingPlan = ref<Plan | null>(null)
+const deletingSubTask = ref<{ planId: string; subTaskId: string; subTaskTitle: string } | null>(null)
 
 // 检查计划是否展开
 const isPlanExpanded = (planId: string) => expandedPlans.value[planId] || false
@@ -126,7 +145,8 @@ const plans = ref<Plan[]>([
     ],
     deadline: '2025-06-01',
     tags: ['DEVELOPMENT', 'CAREER'],
-    color: 'bg-zinc-900'
+    color: 'bg-zinc-900',
+    priority: 'high'
   },
   {
     id: '2',
@@ -140,7 +160,8 @@ const plans = ref<Plan[]>([
     ],
     deadline: '2024-12-31',
     tags: ['HEALTH', 'FITNESS'],
-    color: 'bg-emerald-600'
+    color: 'bg-emerald-600',
+    priority: 'medium'
   }
 ])
 
@@ -150,7 +171,8 @@ const newPlan = ref({
   category: '技能',
   deadline: '',
   tags: '',
-  color: 'bg-zinc-900'
+  color: 'bg-zinc-900',
+  priority: 'medium' as 'low' | 'medium' | 'high'
 })
 
 const newCatName = ref('')
@@ -254,12 +276,13 @@ const handleAddPlan = () => {
     subTasks: [],
     deadline: newPlan.value.deadline || '未设置',
     tags: newPlan.value.tags.split(',').map(t => t.trim().toUpperCase()).filter(t => t),
-    color: newPlan.value.color
+    color: newPlan.value.color,
+    priority: newPlan.value.priority
   }
 
   plans.value.unshift(plan)
   showPlanModal.value = false
-  newPlan.value = { title: '', category: '技能', deadline: '', tags: '', color: 'bg-zinc-900' }
+  newPlan.value = { title: '', category: '技能', deadline: '', tags: '', color: 'bg-zinc-900', priority: 'medium' }
   toast.success('愿景节点已创建！')
 }
 
@@ -288,6 +311,24 @@ const getCategoryColor = (category: string) => {
     '职业': 'bg-rose-50 text-rose-600'
   }
   return colorMap[category] || 'bg-stone-100 text-stone-600'
+}
+
+const getPriorityColor = (priority: 'low' | 'medium' | 'high') => {
+  const colorMap: Record<string, string> = {
+    'low': 'bg-blue-50 text-blue-600 border-blue-200',
+    'medium': 'bg-amber-50 text-amber-600 border-amber-200',
+    'high': 'bg-red-50 text-red-600 border-red-200'
+  }
+  return colorMap[priority]
+}
+
+const getPriorityLabel = (priority: 'low' | 'medium' | 'high') => {
+  const labelMap: Record<string, string> = {
+    'low': '低',
+    'medium': '中',
+    'high': '高'
+  }
+  return labelMap[priority]
 }
 
 // 编辑子任务
@@ -324,6 +365,88 @@ const cancelSubTaskEdit = () => {
 
 const isEditingSubTask = (planId: string, subTaskId: string) => {
   return editingSubTask.value?.planId === planId && editingSubTask.value?.subTaskId === subTaskId
+}
+
+// 编辑计划
+const startEditPlan = (plan: Plan) => {
+  editingPlan.value = {
+    ...plan,
+    tags: plan.tags.join(', ')
+  }
+  showEditPlanModal.value = true
+}
+
+const handleEditPlan = () => {
+  if (!editingPlan.value) return
+
+  if (!editingPlan.value.title.trim()) {
+    toast.error('请输入计划标题')
+    return
+  }
+
+  const planIndex = plans.value.findIndex(p => p.id === editingPlan.value!.id)
+  if (planIndex === -1) return
+
+  const existingPlan = plans.value[planIndex]
+  if (!existingPlan) return
+
+  // 将字符串标签转换回数组
+  const tagsArray = editingPlan.value.tags
+    .split(',')
+    .map(t => t.trim().toUpperCase())
+    .filter(t => t)
+
+  plans.value[planIndex] = {
+    id: editingPlan.value.id,
+    title: editingPlan.value.title,
+    category: editingPlan.value.category,
+    progress: existingPlan.progress,
+    completed: existingPlan.completed,
+    subTasks: existingPlan.subTasks,
+    deadline: editingPlan.value.deadline,
+    tags: tagsArray,
+    color: editingPlan.value.color,
+    priority: editingPlan.value.priority
+  }
+
+  showEditPlanModal.value = false
+  editingPlan.value = null
+  toast.success('计划已更新')
+}
+
+// 删除计划
+const confirmDeletePlan = (plan: Plan) => {
+  deletingPlan.value = plan
+  showDeletePlanDialog.value = true
+}
+
+const handleDeletePlan = () => {
+  if (!deletingPlan.value) return
+
+  plans.value = plans.value.filter(p => p.id !== deletingPlan.value!.id)
+  showDeletePlanDialog.value = false
+  deletingPlan.value = null
+  toast.success('计划已删除')
+}
+
+// 删除子任务
+const confirmDeleteSubTask = (planId: string, subTask: SubTask) => {
+  deletingSubTask.value = { planId, subTaskId: subTask.id, subTaskTitle: subTask.title }
+  showDeleteSubTaskDialog.value = true
+}
+
+const handleDeleteSubTask = () => {
+  if (!deletingSubTask.value) return
+
+  const plan = plans.value.find(p => p.id === deletingSubTask.value!.planId)
+  if (!plan) return
+
+  plan.subTasks = plan.subTasks.filter(st => st.id !== deletingSubTask.value!.subTaskId)
+  plan.progress = calculateProgress(plan.subTasks, plan.completed)
+
+  showDeleteSubTaskDialog.value = false
+  deletingSubTask.value = null
+  toast.success('子任务已删除')
 }
 </script>
 
@@ -445,6 +568,34 @@ const isEditingSubTask = (planId: string, subTaskId: string) => {
                       >
                         {{ plan.completed ? 'COMPLETED' : plan.category }}
                       </Badge>
+                      <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          @click="startEditPlan(plan)"
+                          :disabled="plan.completed"
+                          :class="[
+                            'p-2 rounded-lg transition-all',
+                            plan.completed
+                              ? 'text-neutral-300 cursor-not-allowed'
+                              : 'text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100'
+                          ]"
+                          title="编辑计划"
+                        >
+                          <Edit3 :size="14" />
+                        </button>
+                        <button
+                          @click="confirmDeletePlan(plan)"
+                          :disabled="plan.completed"
+                          :class="[
+                            'p-2 rounded-lg transition-all',
+                            plan.completed
+                              ? 'text-neutral-300 cursor-not-allowed'
+                              : 'text-neutral-400 hover:text-red-600 hover:bg-red-50'
+                          ]"
+                          title="删除计划"
+                        >
+                          <Trash2 :size="14" />
+                        </button>
+                      </div>
                     </div>
 
                     <div class="flex items-start gap-4 mb-4">
@@ -484,9 +635,20 @@ const isEditingSubTask = (planId: string, subTaskId: string) => {
                   </div>
 
                   <div class="space-y-3">
-                    <div class="flex items-center gap-2 text-[10px] mono text-neutral-400 uppercase tracking-tighter">
-                      <CalendarIcon :size="12" />
-                      <span>截止: {{ plan.deadline }}</span>
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="flex items-center gap-2 text-[10px] mono text-neutral-400 uppercase tracking-tighter">
+                        <CalendarIcon :size="12" />
+                        <span>截止: {{ plan.deadline }}</span>
+                      </div>
+                      <Badge
+                        :class="[
+                          'px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider mono border',
+                          getPriorityColor(plan.priority)
+                        ]"
+                        variant="outline"
+                      >
+                        {{ getPriorityLabel(plan.priority) }}
+                      </Badge>
                     </div>
                     <div class="flex justify-between items-end">
                       <span :class="[
@@ -594,19 +756,34 @@ const isEditingSubTask = (planId: string, subTaskId: string) => {
                             >
                               {{ st.title }}
                             </span>
-                            <button
-                              @click.stop="startEditingSubTask(plan.id, st.id, st.title)"
-                              :disabled="plan.completed"
-                              :class="[
-                                'p-1.5 rounded-lg transition-all opacity-0 group-hover/task:opacity-100',
-                                plan.completed
-                                  ? 'text-neutral-300 cursor-not-allowed'
-                                  : 'text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100'
-                              ]"
-                              title="编辑子任务"
-                            >
-                              <Edit3 :size="14" />
-                            </button>
+                            <div class="flex items-center gap-1 opacity-0 group-hover/task:opacity-100 transition-opacity">
+                              <button
+                                @click.stop="startEditingSubTask(plan.id, st.id, st.title)"
+                                :disabled="plan.completed"
+                                :class="[
+                                  'p-1.5 rounded-lg transition-all',
+                                  plan.completed
+                                    ? 'text-neutral-300 cursor-not-allowed'
+                                    : 'text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100'
+                                ]"
+                                title="编辑子任务"
+                              >
+                                <Edit3 :size="14" />
+                              </button>
+                              <button
+                                @click.stop="confirmDeleteSubTask(plan.id, st)"
+                                :disabled="plan.completed"
+                                :class="[
+                                  'p-1.5 rounded-lg transition-all',
+                                  plan.completed
+                                    ? 'text-neutral-300 cursor-not-allowed'
+                                    : 'text-neutral-400 hover:text-red-600 hover:bg-red-50'
+                                ]"
+                                title="删除子任务"
+                              >
+                                <Trash2 :size="14" />
+                              </button>
+                            </div>
                           </template>
                         </div>
                       </div>
@@ -734,6 +911,20 @@ const isEditingSubTask = (planId: string, subTaskId: string) => {
         </div>
 
         <div class="space-y-2">
+          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">优先级</label>
+          <Select v-model="newPlan.priority">
+            <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">低优先级</SelectItem>
+              <SelectItem value="medium">中优先级</SelectItem>
+              <SelectItem value="high">高优先级</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div class="space-y-2">
           <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">标签 (逗号分隔)</label>
           <Input
             v-model="newPlan.tags"
@@ -810,6 +1001,188 @@ const isEditingSubTask = (planId: string, subTaskId: string) => {
           class="flex-1 bg-black text-white hover:bg-neutral-800"
         >
           确认添加
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+
+  <!-- 编辑计划对话框 -->
+  <Dialog v-model:open="showEditPlanModal">
+    <DialogContent class="sm:max-w-[600px]">
+      <DialogHeader>
+        <DialogTitle class="text-lg font-medium text-neutral-900">编辑计划</DialogTitle>
+        <DialogDescription class="text-[10px] mono uppercase tracking-widest text-neutral-400">
+          Edit Roadmap Node
+        </DialogDescription>
+      </DialogHeader>
+
+      <div v-if="editingPlan" class="space-y-6 py-4">
+        <div class="space-y-2">
+          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">计划标题</label>
+          <Input
+            v-model="editingPlan.title"
+            type="text"
+            placeholder="例如：掌握 Rust 编程语言"
+            class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">所属分类</label>
+            <Select v-model="editingPlan.category">
+              <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
+                  v-for="cat in categories.filter(c => c.name !== '全部')"
+                  :key="cat.name"
+                  :value="cat.name"
+                >
+                  {{ cat.name }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止日期</label>
+            <Input
+              v-model="editingPlan.deadline"
+              type="date"
+              class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
+            />
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">优先级</label>
+          <Select v-model="editingPlan.priority">
+            <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">低优先级</SelectItem>
+              <SelectItem value="medium">中优先级</SelectItem>
+              <SelectItem value="high">高优先级</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">标签 (逗号分隔)</label>
+          <Input
+            v-model="editingPlan.tags"
+            type="text"
+            placeholder="DEVELOPMENT, CAREER..."
+            class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm uppercase"
+          />
+        </div>
+
+        <div class="space-y-3">
+          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">主题色彩</label>
+          <div class="flex gap-3">
+            <button
+              v-for="color in colors"
+              :key="color.value"
+              type="button"
+              @click="editingPlan.color = color.value"
+              :class="[
+                'w-8 h-8 rounded-full transition-all flex items-center justify-center',
+                color.value,
+                editingPlan.color === color.value
+                  ? 'ring-2 ring-offset-2 ring-black/10 scale-110 shadow-lg'
+                  : 'hover:scale-105 opacity-60'
+              ]"
+            >
+              <Check v-if="editingPlan.color === color.value" :size="14" class="text-white" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="ghost" @click="showEditPlanModal = false" class="flex-1">
+          取消
+        </Button>
+        <Button
+          @click="handleEditPlan"
+          class="flex-1 bg-black text-white hover:bg-neutral-800 py-4 text-xs font-bold uppercase tracking-[0.2em]"
+        >
+          保存更改
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+
+  <!-- 删除计划确认对话框 -->
+  <Dialog v-model:open="showDeletePlanDialog">
+    <DialogContent class="sm:max-w-[400px]">
+      <DialogHeader>
+        <DialogTitle class="text-lg font-medium text-neutral-900 flex items-center gap-2">
+          <AlertTriangle :size="20" class="text-red-500" />
+          确认删除计划
+        </DialogTitle>
+        <DialogDescription class="text-sm text-neutral-500">
+          此操作无法撤销
+        </DialogDescription>
+      </DialogHeader>
+
+      <div v-if="deletingPlan" class="py-4">
+        <p class="text-neutral-700 mb-2">您确定要删除以下计划吗？</p>
+        <div class="p-4 bg-red-50 rounded-xl border border-red-100">
+          <p class="font-medium text-neutral-900">{{ deletingPlan.title }}</p>
+          <p class="text-xs text-neutral-500 mt-1">
+            {{ deletingPlan.subTasks.length }} 个子任务将会被同时删除
+          </p>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="ghost" @click="showDeletePlanDialog = false" class="flex-1">
+          取消
+        </Button>
+        <Button
+          @click="handleDeletePlan"
+          variant="destructive"
+          class="flex-1 bg-red-600 hover:bg-red-700 text-white"
+        >
+          确认删除
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+
+  <!-- 删除子任务确认对话框 -->
+  <Dialog v-model:open="showDeleteSubTaskDialog">
+    <DialogContent class="sm:max-w-[400px]">
+      <DialogHeader>
+        <DialogTitle class="text-lg font-medium text-neutral-900 flex items-center gap-2">
+          <AlertTriangle :size="20" class="text-red-500" />
+          确认删除子任务
+        </DialogTitle>
+        <DialogDescription class="text-sm text-neutral-500">
+          此操作无法撤销
+        </DialogDescription>
+      </DialogHeader>
+
+      <div v-if="deletingSubTask" class="py-4">
+        <p class="text-neutral-700 mb-2">您确定要删除以下子任务吗？</p>
+        <div class="p-4 bg-red-50 rounded-xl border border-red-100">
+          <p class="font-medium text-neutral-900">{{ deletingSubTask.subTaskTitle }}</p>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="ghost" @click="showDeleteSubTaskDialog = false" class="flex-1">
+          取消
+        </Button>
+        <Button
+          @click="handleDeleteSubTask"
+          variant="destructive"
+          class="flex-1 bg-red-600 hover:bg-red-700 text-white"
+        >
+          确认删除
         </Button>
       </DialogFooter>
     </DialogContent>
