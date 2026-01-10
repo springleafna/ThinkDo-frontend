@@ -22,6 +22,11 @@ import {
   Edit3,
   Trash2,
   AlertTriangle,
+  Repeat,
+  Clock,
+  Calendar,
+  Flag,
+  Zap
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
@@ -64,6 +69,20 @@ const toggleSidebar = () => {
   layoutStore.toggleSidebar()
 }
 
+// 重复配置接口
+interface RepeatConfig {
+  type: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
+  // 每日：间隔天数
+  dailyInterval?: number
+  // 每周：选中的星期几 (0-6, 0=周日)
+  weeklyDays?: number[]
+  // 每月：选中的日期 (1-31)
+  monthlyDays?: number[]
+  // 每年：选中的月份和日期
+  yearlyMonth?: number
+  yearlyDay?: number
+}
+
 // 类型定义
 interface SubTask {
   id: string
@@ -82,6 +101,7 @@ interface Plan {
   tags: string[]
   color: string
   priority: 'low' | 'medium' | 'high'
+  repeatConfig?: RepeatConfig
 }
 
 interface PlanEditForm {
@@ -92,6 +112,7 @@ interface PlanEditForm {
   tags: string
   color: string
   priority: 'low' | 'medium' | 'high'
+  repeatConfig?: RepeatConfig
 }
 
 interface Category {
@@ -161,7 +182,11 @@ const plans = ref<Plan[]>([
     deadline: '2024-12-31',
     tags: ['HEALTH', 'FITNESS'],
     color: 'bg-emerald-600',
-    priority: 'medium'
+    priority: 'medium',
+    repeatConfig: {
+      type: 'weekly',
+      weeklyDays: [1, 3, 5] // 周一、周三、周五
+    }
   }
 ])
 
@@ -172,7 +197,8 @@ const newPlan = ref({
   deadline: '',
   tags: '',
   color: 'bg-zinc-900',
-  priority: 'medium' as 'low' | 'medium' | 'high'
+  priority: 'medium' as 'low' | 'medium' | 'high',
+  repeatConfig: null as RepeatConfig | null
 })
 
 const newCatName = ref('')
@@ -277,12 +303,13 @@ const handleAddPlan = () => {
     deadline: newPlan.value.deadline || '未设置',
     tags: newPlan.value.tags.split(',').map(t => t.trim().toUpperCase()).filter(t => t),
     color: newPlan.value.color,
-    priority: newPlan.value.priority
+    priority: newPlan.value.priority,
+    repeatConfig: newPlan.value.repeatConfig
   }
 
   plans.value.unshift(plan)
   showPlanModal.value = false
-  newPlan.value = { title: '', category: '技能', deadline: '', tags: '', color: 'bg-zinc-900', priority: 'medium' }
+  newPlan.value = { title: '', category: '技能', deadline: '', tags: '', color: 'bg-zinc-900', priority: 'medium', repeatConfig: null }
   toast.success('愿景节点已创建！')
 }
 
@@ -314,21 +341,140 @@ const getCategoryColor = (category: string) => {
 }
 
 const getPriorityColor = (priority: 'low' | 'medium' | 'high') => {
-  const colorMap: Record<string, string> = {
-    'low': 'bg-blue-50 text-blue-600 border-blue-200',
-    'medium': 'bg-amber-50 text-amber-600 border-amber-200',
-    'high': 'bg-red-50 text-red-600 border-red-200'
+  const colorMap: Record<string, { bg: string, text: string, icon: any }> = {
+    'low': {
+      bg: 'bg-sky-100',
+      text: 'text-sky-700',
+      icon: Flag
+    },
+    'medium': {
+      bg: 'bg-amber-100',
+      text: 'text-amber-700',
+      icon: Zap
+    },
+    'high': {
+      bg: 'bg-rose-100',
+      text: 'text-rose-700',
+      icon: AlertTriangle
+    }
   }
   return colorMap[priority]
 }
 
 const getPriorityLabel = (priority: 'low' | 'medium' | 'high') => {
   const labelMap: Record<string, string> = {
-    'low': '低',
-    'medium': '中',
-    'high': '高'
+    'low': '低优先级',
+    'medium': '中优先级',
+    'high': '高优先级'
   }
   return labelMap[priority]
+}
+
+const getRepeatLabel = (repeatConfig: RepeatConfig | undefined) => {
+  if (!repeatConfig || !repeatConfig.type) return null
+
+  const { type, dailyInterval, weeklyDays, monthlyDays, yearlyMonth, yearlyDay } = repeatConfig
+
+  switch (type) {
+    case 'daily':
+      return dailyInterval && dailyInterval > 1 ? `每 ${dailyInterval} 天` : '每日'
+    case 'weekly':
+      if (weeklyDays && weeklyDays.length > 0) {
+        const dayNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+        const days = weeklyDays.map(d => dayNames[d]).join('、')
+        return `每周 ${days}`
+      }
+      return '每周'
+    case 'monthly':
+      if (monthlyDays && monthlyDays.length > 0) {
+        const days = monthlyDays.sort((a, b) => a - b).join('、')
+        return `每月 ${days} 号`
+      }
+      return '每月'
+    case 'yearly':
+      if (yearlyMonth && yearlyDay) {
+        return `每年 ${yearlyMonth} 月 ${yearlyDay} 日`
+      }
+      return '每年'
+    default:
+      return null
+  }
+}
+
+// 重复配置处理函数
+const handleRepeatTypeChange = (val: any) => {
+  if (val) {
+    newPlan.value.repeatConfig = { type: val }
+    if (val === 'daily') newPlan.value.repeatConfig.dailyInterval = 1
+    if (val === 'weekly') newPlan.value.repeatConfig.weeklyDays = []
+    if (val === 'monthly') newPlan.value.repeatConfig.monthlyDays = []
+    if (val === 'yearly') {
+      newPlan.value.repeatConfig.yearlyMonth = 1
+      newPlan.value.repeatConfig.yearlyDay = 1
+    }
+  } else {
+    newPlan.value.repeatConfig = null
+  }
+}
+
+const handleEditRepeatTypeChange = (val: any) => {
+  if (!editingPlan.value) return
+  if (val) {
+    editingPlan.value.repeatConfig = { type: val }
+    if (val === 'daily') editingPlan.value.repeatConfig.dailyInterval = 1
+    if (val === 'weekly') editingPlan.value.repeatConfig.weeklyDays = []
+    if (val === 'monthly') editingPlan.value.repeatConfig.monthlyDays = []
+    if (val === 'yearly') {
+      editingPlan.value.repeatConfig.yearlyMonth = 1
+      editingPlan.value.repeatConfig.yearlyDay = 1
+    }
+  } else {
+    editingPlan.value.repeatConfig = undefined
+  }
+}
+
+const toggleWeeklyDay = (dayIndex: number) => {
+  if (!newPlan.value.repeatConfig) return
+  if (!newPlan.value.repeatConfig.weeklyDays) newPlan.value.repeatConfig.weeklyDays = []
+  const days = newPlan.value.repeatConfig.weeklyDays
+  if (days.includes(dayIndex)) {
+    newPlan.value.repeatConfig.weeklyDays = days.filter(d => d !== dayIndex)
+  } else {
+    newPlan.value.repeatConfig.weeklyDays.push(dayIndex)
+  }
+}
+
+const toggleEditWeeklyDay = (dayIndex: number) => {
+  if (!editingPlan.value?.repeatConfig) return
+  if (!editingPlan.value.repeatConfig.weeklyDays) editingPlan.value.repeatConfig.weeklyDays = []
+  const days = editingPlan.value.repeatConfig.weeklyDays
+  if (days.includes(dayIndex)) {
+    editingPlan.value.repeatConfig.weeklyDays = days.filter(d => d !== dayIndex)
+  } else {
+    editingPlan.value.repeatConfig.weeklyDays.push(dayIndex)
+  }
+}
+
+const toggleMonthlyDay = (day: number) => {
+  if (!newPlan.value.repeatConfig) return
+  if (!newPlan.value.repeatConfig.monthlyDays) newPlan.value.repeatConfig.monthlyDays = []
+  const days = newPlan.value.repeatConfig.monthlyDays
+  if (days.includes(day)) {
+    newPlan.value.repeatConfig.monthlyDays = days.filter(d => d !== day)
+  } else {
+    newPlan.value.repeatConfig.monthlyDays.push(day)
+  }
+}
+
+const toggleEditMonthlyDay = (day: number) => {
+  if (!editingPlan.value?.repeatConfig) return
+  if (!editingPlan.value.repeatConfig.monthlyDays) editingPlan.value.repeatConfig.monthlyDays = []
+  const days = editingPlan.value.repeatConfig.monthlyDays
+  if (days.includes(day)) {
+    editingPlan.value.repeatConfig.monthlyDays = days.filter(d => d !== day)
+  } else {
+    editingPlan.value.repeatConfig.monthlyDays.push(day)
+  }
 }
 
 // 编辑子任务
@@ -371,7 +517,8 @@ const isEditingSubTask = (planId: string, subTaskId: string) => {
 const startEditPlan = (plan: Plan) => {
   editingPlan.value = {
     ...plan,
-    tags: plan.tags.join(', ')
+    tags: plan.tags.join(', '),
+    repeatConfig: plan.repeatConfig ? { ...plan.repeatConfig } : undefined
   }
   showEditPlanModal.value = true
 }
@@ -406,7 +553,8 @@ const handleEditPlan = () => {
     deadline: editingPlan.value.deadline,
     tags: tagsArray,
     color: editingPlan.value.color,
-    priority: editingPlan.value.priority
+    priority: editingPlan.value.priority,
+    repeatConfig: editingPlan.value.repeatConfig
   }
 
   showEditPlanModal.value = false
@@ -640,15 +788,32 @@ const handleDeleteSubTask = () => {
                         <CalendarIcon :size="12" />
                         <span>截止: {{ plan.deadline }}</span>
                       </div>
-                      <Badge
-                        :class="[
-                          'px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider mono border',
-                          getPriorityColor(plan.priority)
-                        ]"
-                        variant="outline"
-                      >
-                        {{ getPriorityLabel(plan.priority) }}
-                      </Badge>
+                      <div class="flex items-center gap-1.5">
+                        <!-- 重复标签 -->
+                        <Badge
+                          v-if="getRepeatLabel(plan.repeatConfig)"
+                          class="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium bg-sky-100 text-sky-700 hover:bg-sky-200 transition-colors"
+                        >
+                          <Repeat :size="11" class="shrink-0" />
+                          <span>{{ getRepeatLabel(plan.repeatConfig) }}</span>
+                        </Badge>
+
+                        <!-- 优先级标签 -->
+                        <Badge
+                          :class="[
+                            'flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium hover:opacity-80 transition-opacity',
+                            getPriorityColor(plan.priority).bg,
+                            getPriorityColor(plan.priority).text
+                          ]"
+                        >
+                          <component
+                            :is="getPriorityColor(plan.priority).icon"
+                            :size="11"
+                            class="shrink-0"
+                          />
+                          <span>{{ getPriorityLabel(plan.priority) }}</span>
+                        </Badge>
+                      </div>
                     </div>
                     <div class="flex justify-between items-end">
                       <span :class="[
@@ -924,6 +1089,130 @@ const handleDeleteSubTask = () => {
           </Select>
         </div>
 
+        <div class="space-y-3">
+          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">重复时间（可选）</label>
+
+          <!-- 重复类型选择 -->
+          <Select
+            :model-value="newPlan.repeatConfig?.type || null"
+            @update:model-value="handleRepeatTypeChange"
+          >
+            <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
+              <SelectValue placeholder="不重复" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem :value="null">不重复</SelectItem>
+              <SelectItem value="daily">每日</SelectItem>
+              <SelectItem value="weekly">每周</SelectItem>
+              <SelectItem value="monthly">每月</SelectItem>
+              <SelectItem value="yearly">每年</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <!-- 每日配置 -->
+          <div v-if="newPlan.repeatConfig?.type === 'daily'" class="pl-4 space-y-2">
+            <label class="text-xs text-neutral-500">间隔天数</label>
+            <div class="flex items-center gap-2">
+              <Input
+                :model-value="newPlan.repeatConfig?.dailyInterval || 1"
+                @update:model-value="(val) => {
+                  if (newPlan.repeatConfig) {
+                    newPlan.repeatConfig.dailyInterval = parseInt(val) || 1
+                  }
+                }"
+                type="number"
+                min="1"
+                class="w-24 px-3 py-2 bg-white border border-black/5 rounded-xl text-sm"
+              />
+              <span class="text-sm text-neutral-500">天</span>
+            </div>
+          </div>
+
+          <!-- 每周配置 -->
+          <div v-if="newPlan.repeatConfig?.type === 'weekly'" class="pl-4 space-y-2">
+            <label class="text-xs text-neutral-500">选择星期</label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="(day, idx) in ['日', '一', '二', '三', '四', '五', '六']"
+                :key="day"
+                type="button"
+                @click="toggleWeeklyDay(idx)"
+                :class="[
+                  'w-9 h-9 rounded-lg text-sm font-medium transition-all',
+                  newPlan.repeatConfig?.weeklyDays?.includes(idx)
+                    ? 'bg-indigo-500 text-white shadow-md'
+                    : 'bg-white border border-black/10 text-neutral-600 hover:border-indigo-300'
+                ]"
+              >
+                周{{ day }}
+              </button>
+            </div>
+            <p v-if="!newPlan.repeatConfig?.weeklyDays?.length" class="text-xs text-amber-600">请至少选择一天</p>
+          </div>
+
+          <!-- 每月配置 -->
+          <div v-if="newPlan.repeatConfig?.type === 'monthly'" class="pl-4 space-y-2">
+            <label class="text-xs text-neutral-500">选择日期</label>
+            <div class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+              <button
+                v-for="day in 31"
+                :key="day"
+                type="button"
+                @click="toggleMonthlyDay(day)"
+                :class="[
+                  'w-8 h-8 rounded-lg text-sm font-medium transition-all',
+                  newPlan.repeatConfig?.monthlyDays?.includes(day)
+                    ? 'bg-indigo-500 text-white shadow-md'
+                    : 'bg-white border border-black/10 text-neutral-600 hover:border-indigo-300'
+                ]"
+              >
+                {{ day }}
+              </button>
+            </div>
+            <p v-if="!newPlan.repeatConfig?.monthlyDays?.length" class="text-xs text-amber-600">请至少选择一天</p>
+          </div>
+
+          <!-- 每年配置 -->
+          <div v-if="newPlan.repeatConfig?.type === 'yearly'" class="pl-4 space-y-3">
+            <label class="text-xs text-neutral-500">选择月份和日期</label>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <label class="text-xs text-neutral-400">月份</label>
+                <Select
+                  :model-value="newPlan.repeatConfig?.yearlyMonth"
+                  @update:model-value="(val) => {
+                    if (newPlan.repeatConfig && val) newPlan.repeatConfig.yearlyMonth = Number(val)
+                  }"
+                >
+                  <SelectTrigger class="w-full px-3 py-2 bg-white border border-black/5 rounded-xl text-sm">
+                    <SelectValue placeholder="选择月" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="m in 12" :key="m" :value="String(m)">{{ m }}月</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs text-neutral-400">日期</label>
+                <Select
+                  :model-value="newPlan.repeatConfig?.yearlyDay"
+                  @update:model-value="(val) => {
+                    if (newPlan.repeatConfig && val) newPlan.repeatConfig.yearlyDay = Number(val)
+                  }"
+                >
+                  <SelectTrigger class="w-full px-3 py-2 bg-white border border-black/5 rounded-xl text-sm">
+                    <SelectValue placeholder="选择日" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="d in 31" :key="d" :value="String(d)">{{ d }}日</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p v-if="!newPlan.repeatConfig?.yearlyMonth || !newPlan.repeatConfig?.yearlyDay" class="text-xs text-amber-600">请选择月份和日期</p>
+          </div>
+        </div>
+
         <div class="space-y-2">
           <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">标签 (逗号分隔)</label>
           <Input
@@ -1067,6 +1356,130 @@ const handleDeleteSubTask = () => {
               <SelectItem value="high">高优先级</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        <div class="space-y-3">
+          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">重复时间（可选）</label>
+
+          <!-- 重复类型选择 -->
+          <Select
+            :model-value="editingPlan.repeatConfig?.type || null"
+            @update:model-value="handleEditRepeatTypeChange"
+          >
+            <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
+              <SelectValue placeholder="不重复" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem :value="null">不重复</SelectItem>
+              <SelectItem value="daily">每日</SelectItem>
+              <SelectItem value="weekly">每周</SelectItem>
+              <SelectItem value="monthly">每月</SelectItem>
+              <SelectItem value="yearly">每年</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <!-- 每日配置 -->
+          <div v-if="editingPlan.repeatConfig?.type === 'daily'" class="pl-4 space-y-2">
+            <label class="text-xs text-neutral-500">间隔天数</label>
+            <div class="flex items-center gap-2">
+              <Input
+                :model-value="editingPlan.repeatConfig?.dailyInterval || 1"
+                @update:model-value="(val) => {
+                  if (editingPlan.repeatConfig) {
+                    editingPlan.repeatConfig.dailyInterval = parseInt(val) || 1
+                  }
+                }"
+                type="number"
+                min="1"
+                class="w-24 px-3 py-2 bg-white border border-black/5 rounded-xl text-sm"
+              />
+              <span class="text-sm text-neutral-500">天</span>
+            </div>
+          </div>
+
+          <!-- 每周配置 -->
+          <div v-if="editingPlan.repeatConfig?.type === 'weekly'" class="pl-4 space-y-2">
+            <label class="text-xs text-neutral-500">选择星期</label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="(day, idx) in ['日', '一', '二', '三', '四', '五', '六']"
+                :key="day"
+                type="button"
+                @click="toggleEditWeeklyDay(idx)"
+                :class="[
+                  'w-9 h-9 rounded-lg text-sm font-medium transition-all',
+                  editingPlan.repeatConfig?.weeklyDays?.includes(idx)
+                    ? 'bg-indigo-500 text-white shadow-md'
+                    : 'bg-white border border-black/10 text-neutral-600 hover:border-indigo-300'
+                ]"
+              >
+                周{{ day }}
+              </button>
+            </div>
+            <p v-if="!editingPlan.repeatConfig?.weeklyDays?.length" class="text-xs text-amber-600">请至少选择一天</p>
+          </div>
+
+          <!-- 每月配置 -->
+          <div v-if="editingPlan.repeatConfig?.type === 'monthly'" class="pl-4 space-y-2">
+            <label class="text-xs text-neutral-500">选择日期</label>
+            <div class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+              <button
+                v-for="day in 31"
+                :key="day"
+                type="button"
+                @click="toggleEditMonthlyDay(day)"
+                :class="[
+                  'w-8 h-8 rounded-lg text-sm font-medium transition-all',
+                  editingPlan.repeatConfig?.monthlyDays?.includes(day)
+                    ? 'bg-indigo-500 text-white shadow-md'
+                    : 'bg-white border border-black/10 text-neutral-600 hover:border-indigo-300'
+                ]"
+              >
+                {{ day }}
+              </button>
+            </div>
+            <p v-if="!editingPlan.repeatConfig?.monthlyDays?.length" class="text-xs text-amber-600">请至少选择一天</p>
+          </div>
+
+          <!-- 每年配置 -->
+          <div v-if="editingPlan.repeatConfig?.type === 'yearly'" class="pl-4 space-y-3">
+            <label class="text-xs text-neutral-500">选择月份和日期</label>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <label class="text-xs text-neutral-400">月份</label>
+                <Select
+                  :model-value="String(editingPlan.repeatConfig?.yearlyMonth || '')"
+                  @update:model-value="(val) => {
+                    if (editingPlan.repeatConfig && val) editingPlan.repeatConfig.yearlyMonth = Number(val)
+                  }"
+                >
+                  <SelectTrigger class="w-full px-3 py-2 bg-white border border-black/5 rounded-xl text-sm">
+                    <SelectValue placeholder="选择月" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="m in 12" :key="m" :value="String(m)">{{ m }}月</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs text-neutral-400">日期</label>
+                <Select
+                  :model-value="String(editingPlan.repeatConfig?.yearlyDay || '')"
+                  @update:model-value="(val) => {
+                    if (editingPlan.repeatConfig && val) editingPlan.repeatConfig.yearlyDay = Number(val)
+                  }"
+                >
+                  <SelectTrigger class="w-full px-3 py-2 bg-white border border-black/5 rounded-xl text-sm">
+                    <SelectValue placeholder="选择日" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="d in 31" :key="d" :value="String(d)">{{ d }}日</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p v-if="!editingPlan.repeatConfig?.yearlyMonth || !editingPlan.repeatConfig?.yearlyDay" class="text-xs text-amber-600">请选择月份和日期</p>
+          </div>
         </div>
 
         <div class="space-y-2">
