@@ -169,7 +169,7 @@ const handleNavigation = (viewId: string) => {
       >
         <LogOut :size="16" class="shrink-0" />
         <span v-if="isOpen" class="text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">
-          终止会话
+          退出
         </span>
       </button>
     </div>

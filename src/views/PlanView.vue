@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useLayoutStore } from '@/stores/layout'
 import {
   Plus,
   Calendar as CalendarIcon,
@@ -52,11 +53,13 @@ import {
 } from '@/components/ui/collapsible'
 
 const router = useRouter()
-const isSidebarOpen = ref(true)
+const layoutStore = useLayoutStore()
 const activeView = ref('long-term')
 
+// 使用全局 store 的侧边栏状态和方法
+const isSidebarOpen = computed(() => layoutStore.isSidebarOpen)
 const toggleSidebar = () => {
-  isSidebarOpen.value = !isSidebarOpen.value
+  layoutStore.toggleSidebar()
 }
 
 // 类型定义
