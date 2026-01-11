@@ -783,12 +783,12 @@ const handleDeleteSubTask = () => {
                   </div>
 
                   <div class="space-y-3">
-                    <div class="flex items-center justify-between gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                       <div class="flex items-center gap-2 text-[10px] mono text-neutral-400 uppercase tracking-tighter">
                         <CalendarIcon :size="12" />
                         <span>截止: {{ plan.deadline }}</span>
                       </div>
-                      <div class="flex items-center gap-1.5">
+                      <div class="flex flex-wrap items-center gap-1.5">
                         <!-- 重复标签 -->
                         <Badge
                           v-if="getRepeatLabel(plan.repeatConfig)"
