@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLayoutStore } from '@/stores/layout'
 import {
@@ -29,6 +29,9 @@ import {
   Zap
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
+import { planApi, type Plan as PlanApi, type CreatePlanParams, type UpdatePlanParams } from '@/api/plan'
+import { planCategoryApi, type PlanCategory } from '@/api/planCategory'
+import { planStepApi, type PlanStep } from '@/api/planStep'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import {
@@ -92,6 +95,7 @@ interface SubTask {
 
 interface Plan {
   id: string
+  categoryId?: string
   title: string
   category: string
   progress: number
@@ -102,6 +106,7 @@ interface Plan {
   color: string
   priority: 'low' | 'medium' | 'high'
   repeatConfig?: RepeatConfig
+  quadrant?: 'urgent-important' | 'urgent-not-important' | 'not-urgent-important' | 'not-urgent-not-important' | null
 }
 
 interface PlanEditForm {
@@ -113,9 +118,11 @@ interface PlanEditForm {
   color: string
   priority: 'low' | 'medium' | 'high'
   repeatConfig?: RepeatConfig
+  quadrant?: 'urgent-important' | 'urgent-not-important' | 'not-urgent-important' | 'not-urgent-not-important' | null
 }
 
 interface Category {
+  id?: string
   name: string
   icon: any
 }
@@ -137,68 +144,256 @@ const editTaskInput = ref('')
 const editingPlan = ref<PlanEditForm | null>(null)
 const deletingPlan = ref<Plan | null>(null)
 const deletingSubTask = ref<{ planId: string; subTaskId: string; subTaskTitle: string } | null>(null)
+const loading = ref(false)
+const categoriesLoading = ref(false)
 
 // 检查计划是否展开
 const isPlanExpanded = (planId: string) => expandedPlans.value[planId] || false
 
+// 优先级映射函数
+const mapPriorityToApi = (priority: 'low' | 'medium' | 'high'): number => {
+  const map = { low: 1, medium: 2, high: 3 }
+  return map[priority]
+}
+
+const mapPriorityFromApi = (priority: number): 'low' | 'medium' | 'high' => {
+  const map: Record<number, 'low' | 'medium' | 'high'> = { 1: 'low', 2: 'medium', 3: 'high' }
+  return map[priority] || 'medium'
+}
+
+// 四象限映射函数
+const mapQuadrantToApi = (quadrant: string | null): number => {
+  const map: Record<string, number> = {
+    'urgent-important': 1,
+    'urgent-not-important': 3,
+    'not-urgent-important': 2,
+    'not-urgent-not-important': 4
+  }
+  return quadrant ? map[quadrant] || 0 : 0
+}
+
+const mapQuadrantFromApi = (quadrant: number): 'urgent-important' | 'urgent-not-important' | 'not-urgent-important' | 'not-urgent-not-important' | null => {
+  const map: Record<number, 'urgent-important' | 'urgent-not-important' | 'not-urgent-important' | 'not-urgent-not-important'> = {
+    1: 'urgent-important',
+    2: 'not-urgent-important',
+    3: 'urgent-not-important',
+    4: 'not-urgent-not-important'
+  }
+  return map[quadrant] || null
+}
+
+// 重复类型映射函数
+const mapRepeatTypeToApi = (type: string | null | undefined): number => {
+  const map: Record<string, number> = { 'daily': 1, 'weekly': 2, 'monthly': 3, 'yearly': 4 }
+  return type ? map[type] || 0 : 0
+}
+
+const mapRepeatTypeFromApi = (repeatType: number): 'daily' | 'weekly' | 'monthly' | 'yearly' | null => {
+  const map: Record<number, 'daily' | 'weekly' | 'monthly' | 'yearly'> = {
+    1: 'daily',
+    2: 'weekly',
+    3: 'monthly',
+    4: 'yearly'
+  }
+  return map[repeatType] || null
+}
+
+// 重复配置转换函数
+const convertRepeatConfigToApi = (repeatConfig: RepeatConfig | null): { repeatType: number; repeatConf?: string; repeatUntil?: string } => {
+  if (!repeatConfig || !repeatConfig.type) {
+    return { repeatType: 0 }
+  }
+
+  const repeatType = mapRepeatTypeToApi(repeatConfig.type)
+  let repeatConf: string | undefined
+
+  switch (repeatConfig.type) {
+    case 'daily':
+      if (repeatConfig.dailyInterval && repeatConfig.dailyInterval > 1) {
+        repeatConf = JSON.stringify({ interval: repeatConfig.dailyInterval })
+      }
+      break
+    case 'weekly':
+      if (repeatConfig.weeklyDays && repeatConfig.weeklyDays.length > 0) {
+        repeatConf = JSON.stringify({ days: repeatConfig.weeklyDays })
+      }
+      break
+    case 'monthly':
+      if (repeatConfig.monthlyDays && repeatConfig.monthlyDays.length > 0) {
+        repeatConf = JSON.stringify({ day: repeatConfig.monthlyDays[0] })
+      }
+      break
+    case 'yearly':
+      if (repeatConfig.yearlyMonth && repeatConfig.yearlyDay) {
+        repeatConf = JSON.stringify({ month: repeatConfig.yearlyMonth, day: repeatConfig.yearlyDay })
+      }
+      break
+  }
+
+  return { repeatType, repeatConf }
+}
+
+const convertRepeatConfigFromApi = (repeatType: number, repeatConf?: string): RepeatConfig | undefined => {
+  const type = mapRepeatTypeFromApi(repeatType)
+  if (!type) return undefined
+
+  const config: RepeatConfig = { type }
+
+  if (repeatConf) {
+    try {
+      const conf = JSON.parse(repeatConf)
+      if (type === 'daily' && conf.interval) {
+        config.dailyInterval = conf.interval
+      } else if (type === 'weekly' && conf.days) {
+        config.weeklyDays = conf.days
+      } else if (type === 'monthly' && conf.day) {
+        config.monthlyDays = [conf.day]
+      } else if (type === 'yearly' && conf.month && conf.day) {
+        config.yearlyMonth = conf.month
+        config.yearlyDay = conf.day
+      }
+    } catch (e) {
+      console.error('解析重复配置失败', e)
+    }
+  } else {
+    // 设置默认值
+    if (type === 'daily') config.dailyInterval = 1
+    if (type === 'weekly') config.weeklyDays = []
+    if (type === 'monthly') config.monthlyDays = []
+    if (type === 'yearly') { config.yearlyMonth = 1; config.yearlyDay = 1 }
+  }
+
+  return config
+}
+
+// 加载数据函数
+const loadCategories = async () => {
+  try {
+    categoriesLoading.value = true
+    const data = await planCategoryApi.getList()
+
+    // 从后端数据转换为前端分类数据
+    const categoryMap: Record<string, any> = {
+      '技能': Cpu,
+      '生活': Heart,
+      '项目': Briefcase,
+      '职业': Target
+    }
+
+    const backendCategories: Category[] = data.map((cat: PlanCategory) => ({
+      id: String(cat.id),
+      name: cat.name,
+      icon: categoryMap[cat.name] || Layers
+    }))
+
+    // 保留"全部"选项
+    categories.value = [
+      { name: '全部', icon: Layers },
+      ...backendCategories
+    ]
+
+    // 更新默认分类
+    if (backendCategories.length > 0) {
+      newPlan.value.category = backendCategories[0].name
+    }
+  } catch (error) {
+    console.error('加载分类失败', error)
+    toast.error('加载分类失败')
+  } finally {
+    categoriesLoading.value = false
+  }
+}
+
+const loadPlans = async () => {
+  try {
+    loading.value = true
+    const data = await planApi.getList()
+
+    // 从后端数据转换为前端计划数据
+    const categoryMap: Record<string, string> = {}
+
+    // 构建分类ID到名称的映射
+    categories.value.forEach(cat => {
+      if (cat.id && cat.name) {
+        categoryMap[cat.id] = cat.name
+      }
+    })
+
+    const backendPlans: Plan[] = await Promise.all(data.map(async (planApi: PlanApi) => {
+      // 获取子任务
+      let subTasks: SubTask[] = []
+      try {
+        const steps = await planStepApi.getListByPlanId(planApi.id)
+        subTasks = steps.map((step: PlanStep) => ({
+          id: String(step.id),
+          title: step.title,
+          completed: step.status === 1
+        }))
+      } catch (e) {
+        console.error('加载子任务失败', e)
+      }
+
+      // 获取分类名称
+      const categoryName = planApi.categoryName || categoryMap[String(planApi.categoryId)] || '未分类'
+
+      return {
+        id: String(planApi.id),
+        categoryId: planApi.categoryId ? String(planApi.categoryId) : undefined,
+        title: planApi.title,
+        category: categoryName,
+        progress: calculateProgressFromSteps(subTasks, planApi.status === 1),
+        completed: planApi.status === 1,
+        subTasks,
+        deadline: planApi.dueDate || '未设置',
+        tags: planApi.tags ? planApi.tags.split(',').map(t => t.trim()).filter(t => t) : [],
+        color: 'bg-zinc-900', // 默认颜色
+        priority: mapPriorityFromApi(planApi.priority),
+        repeatConfig: convertRepeatConfigFromApi(planApi.repeatType, planApi.repeatConf),
+        quadrant: mapQuadrantFromApi(planApi.quadrant)
+      }
+    }))
+
+    plans.value = backendPlans
+  } catch (error) {
+    console.error('加载计划失败', error)
+    toast.error('加载计划失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const calculateProgressFromSteps = (subTasks: SubTask[], planCompleted: boolean): number => {
+  if (subTasks.length === 0) {
+    return planCompleted ? 100 : 0
+  }
+  const completedCount = subTasks.filter(st => st.completed).length
+  return Math.round((completedCount / subTasks.length) * 100)
+}
+
+// 初始化加载数据
+onMounted(() => {
+  loadCategories()
+  loadPlans()
+})
+
 // 分类数据
 const categories = ref<Category[]>([
-  { name: '全部', icon: Layers },
-  { name: '技能', icon: Cpu },
-  { name: '生活', icon: Heart },
-  { name: '项目', icon: Briefcase },
-  { name: '职业', icon: Target }
+  { name: '全部', icon: Layers }
 ])
 
 // 计划数据
-const plans = ref<Plan[]>([
-  {
-    id: '1',
-    title: '全栈架构师进阶',
-    category: '技能',
-    progress: 66,
-    completed: false,
-    subTasks: [
-      { id: 's1', title: '深入理解 Vue 3 Composition API', completed: true },
-      { id: 's2', title: 'Rust 基础语法与所有权模型', completed: true },
-      { id: 's3', title: '分布式系统共识算法研究', completed: false },
-      { id: 's4', title: 'WebAssembly 性能优化实战', completed: false }
-    ],
-    deadline: '2025-06-01',
-    tags: ['DEVELOPMENT', 'CAREER'],
-    color: 'bg-zinc-900',
-    priority: 'high'
-  },
-  {
-    id: '2',
-    title: '身体健康重塑计划',
-    category: '生活',
-    progress: 50,
-    completed: false,
-    subTasks: [
-      { id: 's6', title: '每周三次力量训练', completed: true },
-      { id: 's7', title: '每日饮食摄入记录', completed: false }
-    ],
-    deadline: '2024-12-31',
-    tags: ['HEALTH', 'FITNESS'],
-    color: 'bg-emerald-600',
-    priority: 'medium',
-    repeatConfig: {
-      type: 'weekly',
-      weeklyDays: [1, 3, 5] // 周一、周三、周五
-    }
-  }
-])
+const plans = ref<Plan[]>([])
 
 // 新建计划表单
 const newPlan = ref({
   title: '',
-  category: '技能',
+  category: '技能', // 默认值，会在加载数据后更新
   deadline: '',
   tags: '',
   color: 'bg-zinc-900',
   priority: 'medium' as 'low' | 'medium' | 'high',
-  repeatConfig: null as RepeatConfig | null
+  repeatConfig: null as RepeatConfig | null,
+  quadrant: null as 'urgent-important' | 'urgent-not-important' | 'not-urgent-important' | 'not-urgent-not-important' | null
 })
 
 const newCatName = ref('')
@@ -241,93 +436,132 @@ const calculateProgress = (subTasks: SubTask[], planCompleted: boolean) => {
   return Math.round((completedCount / subTasks.length) * 100)
 }
 
-const togglePlanCompletion = (planId: string) => {
-  const plan = plans.value.find(p => p.id === planId)
-  if (!plan) return
+const togglePlanCompletion = async (planId: string) => {
+  try {
+    await planApi.toggleStatus(parseInt(planId))
 
-  plan.completed = !plan.completed
-  if (plan.completed) {
-    plan.subTasks = plan.subTasks.map(st => ({ ...st, completed: true }))
-  }
-  plan.progress = calculateProgress(plan.subTasks, plan.completed)
-}
+    // 重新加载计划列表
+    await loadPlans()
 
-const toggleSubTask = (planId: string, subTaskId: string) => {
-  const plan = plans.value.find(p => p.id === planId)
-  if (!plan) return
-
-  const subTask = plan.subTasks.find(st => st.id === subTaskId)
-  if (!subTask) return
-
-  subTask.completed = !subTask.completed
-  const allCompleted = plan.subTasks.length > 0 && plan.subTasks.every(st => st.completed)
-  plan.completed = allCompleted
-  plan.progress = calculateProgress(plan.subTasks, allCompleted)
-
-  if (allCompleted) {
-    toast.success('太棒了！计划已完成！')
+    const plan = plans.value.find(p => p.id === planId)
+    if (plan && plan.completed) {
+      toast.success('太棒了！计划已完成！')
+    }
+  } catch (error) {
+    console.error('切换计划状态失败', error)
+    toast.error('切换计划状态失败')
   }
 }
 
-const addSubTask = (planId: string) => {
+const toggleSubTask = async (planId: string, subTaskId: string) => {
+  try {
+    await planStepApi.toggleStatus(parseInt(subTaskId))
+
+    // 重新加载计划列表
+    await loadPlans()
+
+    const plan = plans.value.find(p => p.id === planId)
+    if (plan && plan.completed) {
+      toast.success('太棒了！计划已完成！')
+    }
+  } catch (error) {
+    console.error('切换子任务状态失败', error)
+    toast.error('切换子任务状态失败')
+  }
+}
+
+const addSubTask = async (planId: string) => {
   const title = quickTaskInputs.value[planId]
   if (!title?.trim()) return
 
   const plan = plans.value.find(p => p.id === planId)
   if (!plan || plan.completed) return
 
-  plan.subTasks.push({
-    id: Date.now().toString(),
-    title: title.trim(),
-    completed: false
-  })
+  try {
+    await planStepApi.create({
+      planId: parseInt(planId),
+      title: title.trim()
+    })
+    toast.success('子任务已添加')
 
-  plan.progress = calculateProgress(plan.subTasks, plan.completed)
-  quickTaskInputs.value[planId] = ''
-  toast.success('子任务已添加')
+    // 重新加载计划列表
+    await loadPlans()
+
+    quickTaskInputs.value[planId] = ''
+  } catch (error) {
+    console.error('添加子任务失败', error)
+    toast.error('添加子任务失败')
+  }
 }
 
-const handleAddPlan = () => {
+const handleAddPlan = async () => {
   if (!newPlan.value.title.trim()) {
     toast.error('请输入计划标题')
     return
   }
 
-  const plan: Plan = {
-    id: Date.now().toString(),
-    title: newPlan.value.title,
-    category: newPlan.value.category,
-    progress: 0,
-    completed: false,
-    subTasks: [],
-    deadline: newPlan.value.deadline || '未设置',
-    tags: newPlan.value.tags.split(',').map(t => t.trim().toUpperCase()).filter(t => t),
-    color: newPlan.value.color,
-    priority: newPlan.value.priority,
-    repeatConfig: newPlan.value.repeatConfig
-  }
+  try {
+    // 查找分类ID
+    const category = categories.value.find(c => c.name === newPlan.value.category)
+    const categoryId = category?.id ? parseInt(category.id) : undefined
 
-  plans.value.unshift(plan)
-  showPlanModal.value = false
-  newPlan.value = { title: '', category: '技能', deadline: '', tags: '', color: 'bg-zinc-900', priority: 'medium', repeatConfig: null }
-  toast.success('愿景节点已创建！')
+    // 转换重复配置
+    const { repeatType, repeatConf } = convertRepeatConfigToApi(newPlan.value.repeatConfig)
+
+    const params: CreatePlanParams = {
+      categoryId,
+      title: newPlan.value.title,
+      priority: mapPriorityToApi(newPlan.value.priority),
+      quadrant: mapQuadrantToApi(newPlan.value.quadrant),
+      tags: newPlan.value.tags || undefined,
+      dueDate: newPlan.value.deadline || undefined,
+      repeatType,
+      repeatConf
+    }
+
+    const planId = await planApi.create(params)
+    toast.success('愿景节点已创建！')
+
+    // 重新加载计划列表
+    await loadPlans()
+
+    showPlanModal.value = false
+    const firstCategory = categories.value.find(c => c.name !== '全部')
+    newPlan.value = {
+      title: '',
+      category: firstCategory?.name || '技能',
+      deadline: '',
+      tags: '',
+      color: 'bg-zinc-900',
+      priority: 'medium',
+      repeatConfig: null,
+      quadrant: null
+    }
+  } catch (error) {
+    console.error('创建计划失败', error)
+    toast.error('创建计划失败')
+  }
 }
 
-const handleAddCategory = () => {
+const handleAddCategory = async () => {
   if (!newCatName.value.trim()) {
     toast.error('请输入分类名称')
     return
   }
 
-  if (categories.value.find(c => c.name === newCatName.value)) {
-    toast.error('分类已存在')
-    return
-  }
+  try {
+    await planCategoryApi.create({ name: newCatName.value.trim() })
+    toast.success('分类已添加')
 
-  categories.value.push({ name: newCatName.value, icon: Layers })
-  showCategoryModal.value = false
-  newCatName.value = ''
-  toast.success('分类已添加')
+    // 重新加载分类列表
+    await loadCategories()
+
+    showCategoryModal.value = false
+    newCatName.value = ''
+  } catch (error) {
+    console.error('创建分类失败', error)
+    toast.error('创建分类失败')
+  }
 }
 
 const getCategoryColor = (category: string) => {
@@ -399,6 +633,44 @@ const getRepeatLabel = (repeatConfig: RepeatConfig | undefined) => {
     default:
       return null
   }
+}
+
+// 四象限配置
+const getQuadrantConfig = (quadrant: string | undefined | null) => {
+  if (!quadrant) return null
+
+  const configMap: Record<string, { label: string, bg: string, text: string, icon: any, description: string }> = {
+    'urgent-important': {
+      label: '紧急重要',
+      bg: 'bg-red-100',
+      text: 'text-red-700',
+      icon: AlertTriangle,
+      description: '立即处理'
+    },
+    'urgent-not-important': {
+      label: '紧急不重要',
+      bg: 'bg-orange-100',
+      text: 'text-orange-700',
+      icon: Clock,
+      description: '快速处理'
+    },
+    'not-urgent-important': {
+      label: '重要不紧急',
+      bg: 'bg-blue-100',
+      text: 'text-blue-700',
+      icon: Target,
+      description: '计划安排'
+    },
+    'not-urgent-not-important': {
+      label: '不紧急不重要',
+      bg: 'bg-gray-100',
+      text: 'text-gray-700',
+      icon: Archive,
+      description: '授权/删除'
+    }
+  }
+
+  return configMap[quadrant] || null
 }
 
 // 重复配置处理函数
@@ -483,25 +755,32 @@ const startEditingSubTask = (planId: string, subTaskId: string, currentTitle: st
   editTaskInput.value = currentTitle
 }
 
-const saveSubTaskEdit = () => {
+const saveSubTaskEdit = async () => {
   if (!editingSubTask.value) return
 
   const { planId, subTaskId } = editingSubTask.value
-  const plan = plans.value.find(p => p.id === planId)
-  if (!plan) return
-
-  const subTask = plan.subTasks.find(st => st.id === subTaskId)
-  if (!subTask) return
 
   if (!editTaskInput.value.trim()) {
     toast.error('子任务内容不能为空')
     return
   }
 
-  subTask.title = editTaskInput.value.trim()
-  editingSubTask.value = null
-  editTaskInput.value = ''
-  toast.success('子任务已更新')
+  try {
+    await planStepApi.update({
+      id: parseInt(subTaskId),
+      title: editTaskInput.value.trim()
+    })
+    toast.success('子任务已更新')
+
+    // 重新加载计划列表
+    await loadPlans()
+
+    editingSubTask.value = null
+    editTaskInput.value = ''
+  } catch (error) {
+    console.error('更新子任务失败', error)
+    toast.error('更新子任务失败')
+  }
 }
 
 const cancelSubTaskEdit = () => {
@@ -518,12 +797,13 @@ const startEditPlan = (plan: Plan) => {
   editingPlan.value = {
     ...plan,
     tags: plan.tags.join(', '),
-    repeatConfig: plan.repeatConfig ? { ...plan.repeatConfig } : undefined
+    repeatConfig: plan.repeatConfig ? { ...plan.repeatConfig } : undefined,
+    quadrant: plan.quadrant || null
   }
   showEditPlanModal.value = true
 }
 
-const handleEditPlan = () => {
+const handleEditPlan = async () => {
   if (!editingPlan.value) return
 
   if (!editingPlan.value.title.trim()) {
@@ -531,35 +811,38 @@ const handleEditPlan = () => {
     return
   }
 
-  const planIndex = plans.value.findIndex(p => p.id === editingPlan.value!.id)
-  if (planIndex === -1) return
+  try {
+    // 查找分类ID
+    const category = categories.value.find(c => c.name === editingPlan.value.category)
+    const categoryId = category?.id ? parseInt(category.id) : undefined
 
-  const existingPlan = plans.value[planIndex]
-  if (!existingPlan) return
+    // 转换重复配置
+    const { repeatType, repeatConf } = convertRepeatConfigToApi(editingPlan.value.repeatConfig)
 
-  // 将字符串标签转换回数组
-  const tagsArray = editingPlan.value.tags
-    .split(',')
-    .map(t => t.trim().toUpperCase())
-    .filter(t => t)
+    const params: UpdatePlanParams = {
+      id: parseInt(editingPlan.value.id),
+      categoryId,
+      title: editingPlan.value.title,
+      priority: mapPriorityToApi(editingPlan.value.priority),
+      quadrant: mapQuadrantToApi(editingPlan.value.quadrant),
+      tags: editingPlan.value.tags || undefined,
+      dueDate: editingPlan.value.deadline || undefined,
+      repeatType,
+      repeatConf
+    }
 
-  plans.value[planIndex] = {
-    id: editingPlan.value.id,
-    title: editingPlan.value.title,
-    category: editingPlan.value.category,
-    progress: existingPlan.progress,
-    completed: existingPlan.completed,
-    subTasks: existingPlan.subTasks,
-    deadline: editingPlan.value.deadline,
-    tags: tagsArray,
-    color: editingPlan.value.color,
-    priority: editingPlan.value.priority,
-    repeatConfig: editingPlan.value.repeatConfig
+    await planApi.update(params)
+    toast.success('计划已更新')
+
+    // 重新加载计划列表
+    await loadPlans()
+
+    showEditPlanModal.value = false
+    editingPlan.value = null
+  } catch (error) {
+    console.error('更新计划失败', error)
+    toast.error('更新计划失败')
   }
-
-  showEditPlanModal.value = false
-  editingPlan.value = null
-  toast.success('计划已更新')
 }
 
 // 删除计划
@@ -568,13 +851,22 @@ const confirmDeletePlan = (plan: Plan) => {
   showDeletePlanDialog.value = true
 }
 
-const handleDeletePlan = () => {
+const handleDeletePlan = async () => {
   if (!deletingPlan.value) return
 
-  plans.value = plans.value.filter(p => p.id !== deletingPlan.value!.id)
-  showDeletePlanDialog.value = false
-  deletingPlan.value = null
-  toast.success('计划已删除')
+  try {
+    await planApi.delete(parseInt(deletingPlan.value.id))
+    toast.success('计划已删除')
+
+    // 重新加载计划列表
+    await loadPlans()
+
+    showDeletePlanDialog.value = false
+    deletingPlan.value = null
+  } catch (error) {
+    console.error('删除计划失败', error)
+    toast.error('删除计划失败')
+  }
 }
 
 // 删除子任务
@@ -583,18 +875,22 @@ const confirmDeleteSubTask = (planId: string, subTask: SubTask) => {
   showDeleteSubTaskDialog.value = true
 }
 
-const handleDeleteSubTask = () => {
+const handleDeleteSubTask = async () => {
   if (!deletingSubTask.value) return
 
-  const plan = plans.value.find(p => p.id === deletingSubTask.value!.planId)
-  if (!plan) return
+  try {
+    await planStepApi.delete(parseInt(deletingSubTask.value.subTaskId))
+    toast.success('子任务已删除')
 
-  plan.subTasks = plan.subTasks.filter(st => st.id !== deletingSubTask.value!.subTaskId)
-  plan.progress = calculateProgress(plan.subTasks, plan.completed)
+    // 重新加载计划列表
+    await loadPlans()
 
-  showDeleteSubTaskDialog.value = false
-  deletingSubTask.value = null
-  toast.success('子任务已删除')
+    showDeleteSubTaskDialog.value = false
+    deletingSubTask.value = null
+  } catch (error) {
+    console.error('删除子任务失败', error)
+    toast.error('删除子任务失败')
+  }
 }
 </script>
 
@@ -796,6 +1092,23 @@ const handleDeleteSubTask = () => {
                         >
                           <Repeat :size="11" class="shrink-0" />
                           <span>{{ getRepeatLabel(plan.repeatConfig) }}</span>
+                        </Badge>
+
+                        <!-- 四象限标签 -->
+                        <Badge
+                          v-if="plan.quadrant"
+                          :class="[
+                            'flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium hover:opacity-80 transition-opacity',
+                            getQuadrantConfig(plan.quadrant)?.bg,
+                            getQuadrantConfig(plan.quadrant)?.text
+                          ]"
+                        >
+                          <component
+                            :is="getQuadrantConfig(plan.quadrant)?.icon"
+                            :size="11"
+                            class="shrink-0"
+                          />
+                          <span>{{ getQuadrantConfig(plan.quadrant)?.label }}</span>
                         </Badge>
 
                         <!-- 优先级标签 -->
@@ -1089,6 +1402,22 @@ const handleDeleteSubTask = () => {
           </Select>
         </div>
 
+        <div class="space-y-2">
+          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">任务四象限（可选）</label>
+          <Select v-model="newPlan.quadrant">
+            <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
+              <SelectValue placeholder="无（默认）" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem :value="null">无（默认）</SelectItem>
+              <SelectItem value="urgent-important">紧急重要 - 立即处理</SelectItem>
+              <SelectItem value="urgent-not-important">紧急不重要 - 快速处理</SelectItem>
+              <SelectItem value="not-urgent-important">重要不紧急 - 计划安排</SelectItem>
+              <SelectItem value="not-urgent-not-important">不紧急不重要 - 授权/删除</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         <div class="space-y-3">
           <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">重复时间（可选）</label>
 
@@ -1354,6 +1683,22 @@ const handleDeleteSubTask = () => {
               <SelectItem value="low">低优先级</SelectItem>
               <SelectItem value="medium">中优先级</SelectItem>
               <SelectItem value="high">高优先级</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div class="space-y-2">
+          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">任务四象限（可选）</label>
+          <Select v-model="editingPlan.quadrant">
+            <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
+              <SelectValue placeholder="无（默认）" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem :value="null">无（默认）</SelectItem>
+              <SelectItem value="urgent-important">紧急重要 - 立即处理</SelectItem>
+              <SelectItem value="urgent-not-important">紧急不重要 - 快速处理</SelectItem>
+              <SelectItem value="not-urgent-important">重要不紧急 - 计划安排</SelectItem>
+              <SelectItem value="not-urgent-not-important">不紧急不重要 - 授权/删除</SelectItem>
             </SelectContent>
           </Select>
         </div>
