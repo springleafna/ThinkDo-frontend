@@ -8,8 +8,8 @@ export interface CreatePlanParams {
   priority?: number
   quadrant?: number
   tags?: string
-  startDate?: string
-  dueDate?: string
+  startTime?: string
+  dueTime?: string
   repeatType?: number
   repeatConf?: string
   repeatUntil?: string
@@ -24,8 +24,8 @@ export interface UpdatePlanParams {
   priority?: number
   quadrant?: number
   tags?: string
-  startDate?: string
-  dueDate?: string
+  startTime?: string
+  dueTime?: string
   repeatType?: number
   repeatConf?: string
   repeatUntil?: string
@@ -42,8 +42,8 @@ export interface Plan {
   priority: number
   quadrant: number
   tags?: string
-  startDate?: string
-  dueDate?: string
+  startTime?: string
+  dueTime?: string
   repeatType: number
   repeatConf?: string
   repeatUntil?: string
@@ -62,10 +62,10 @@ export interface PlanQueryParams {
   tags?: string
   status?: number
   repeatType?: number
-  startDateFrom?: string
-  startDateTo?: string
-  dueDateFrom?: string
-  dueDateTo?: string
+  startTimeFrom?: string
+  startTimeTo?: string
+  dueTimeFrom?: string
+  dueTimeTo?: string
 }
 
 // 计划相关 API

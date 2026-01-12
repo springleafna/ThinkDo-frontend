@@ -101,7 +101,8 @@ interface Plan {
   progress: number
   completed: boolean
   subTasks: SubTask[]
-  deadline: string
+  startTime?: string
+  dueTime?: string
   tags: string[]
   color: string
   priority: 'low' | 'medium' | 'high'
@@ -113,7 +114,8 @@ interface PlanEditForm {
   id: string
   title: string
   category: string
-  deadline: string
+  startTime?: string
+  dueTime?: string
   tags: string
   color: string
   priority: 'low' | 'medium' | 'high'
@@ -293,9 +295,7 @@ const loadCategories = async () => {
     ]
 
     // 更新默认分类
-    if (backendCategories.length > 0) {
-      newPlan.value.category = backendCategories[0].name
-    }
+    newPlan.value.category = 'uncategorized'
   } catch (error) {
     console.error('加载分类失败', error)
     toast.error('加载分类失败')
@@ -315,7 +315,7 @@ const loadPlans = async () => {
     // 构建分类ID到名称的映射
     categories.value.forEach(cat => {
       if (cat.id && cat.name) {
-        categoryMap[cat.id] = cat.name
+        categoryMap[String(cat.id)] = cat.name
       }
     })
 
@@ -333,8 +333,8 @@ const loadPlans = async () => {
         console.error('加载子任务失败', e)
       }
 
-      // 获取分类名称
-      const categoryName = planApi.categoryName || categoryMap[String(planApi.categoryId)] || '未分类'
+      // 获取分类名称（如果没有分类，使用 "uncategorized"）
+      const categoryName = planApi.categoryName || categoryMap[String(planApi.categoryId)] || 'uncategorized'
 
       return {
         id: String(planApi.id),
@@ -344,7 +344,8 @@ const loadPlans = async () => {
         progress: calculateProgressFromSteps(subTasks, planApi.status === 1),
         completed: planApi.status === 1,
         subTasks,
-        deadline: planApi.dueDate || '未设置',
+        startTime: planApi.startTime || undefined,
+        dueTime: planApi.dueTime || undefined,
         tags: planApi.tags ? planApi.tags.split(',').map(t => t.trim()).filter(t => t) : [],
         color: 'bg-zinc-900', // 默认颜色
         priority: mapPriorityFromApi(planApi.priority),
@@ -387,8 +388,9 @@ const plans = ref<Plan[]>([])
 // 新建计划表单
 const newPlan = ref({
   title: '',
-  category: '技能', // 默认值，会在加载数据后更新
-  deadline: '',
+  category: 'uncategorized', // 默认为"uncategorized"（未分类）
+  startTime: '',
+  dueTime: '',
   tags: '',
   color: 'bg-zinc-900',
   priority: 'medium' as 'low' | 'medium' | 'high',
@@ -501,9 +503,11 @@ const handleAddPlan = async () => {
   }
 
   try {
-    // 查找分类ID
-    const category = categories.value.find(c => c.name === newPlan.value.category)
-    const categoryId = category?.id ? parseInt(category.id) : undefined
+    // 查找分类ID（"uncategorized" 表示未分类）
+    const category = categories.value.find(c => c.name === newPlan.value.category && c.name !== '全部')
+    const categoryId = (newPlan.value.category && newPlan.value.category !== 'uncategorized' && category?.id)
+      ? parseInt(category.id)
+      : undefined
 
     // 转换重复配置
     const { repeatType, repeatConf } = convertRepeatConfigToApi(newPlan.value.repeatConfig)
@@ -514,7 +518,8 @@ const handleAddPlan = async () => {
       priority: mapPriorityToApi(newPlan.value.priority),
       quadrant: mapQuadrantToApi(newPlan.value.quadrant),
       tags: newPlan.value.tags || undefined,
-      dueDate: newPlan.value.deadline || undefined,
+      startTime: newPlan.value.startTime || undefined,
+      dueTime: newPlan.value.dueTime || undefined,
       repeatType,
       repeatConf
     }
@@ -526,11 +531,11 @@ const handleAddPlan = async () => {
     await loadPlans()
 
     showPlanModal.value = false
-    const firstCategory = categories.value.find(c => c.name !== '全部')
     newPlan.value = {
       title: '',
-      category: firstCategory?.name || '技能',
-      deadline: '',
+      category: 'uncategorized',
+      startTime: '',
+      dueTime: '',
       tags: '',
       color: 'bg-zinc-900',
       priority: 'medium',
@@ -566,6 +571,7 @@ const handleAddCategory = async () => {
 
 const getCategoryColor = (category: string) => {
   const colorMap: Record<string, string> = {
+    '未分类': 'bg-stone-100 text-stone-600',
     '技能': 'bg-zinc-100 text-zinc-900',
     '生活': 'bg-emerald-50 text-emerald-600',
     '项目': 'bg-stone-100 text-stone-600',
@@ -592,7 +598,7 @@ const getPriorityColor = (priority: 'low' | 'medium' | 'high') => {
       icon: AlertTriangle
     }
   }
-  return colorMap[priority]
+  return colorMap[priority] || colorMap['medium']
 }
 
 const getPriorityLabel = (priority: 'low' | 'medium' | 'high') => {
@@ -632,6 +638,22 @@ const getRepeatLabel = (repeatConfig: RepeatConfig | undefined) => {
       return '每年'
     default:
       return null
+  }
+}
+
+// 格式化时间显示
+const formatDateTime = (dateTimeStr?: string) => {
+  if (!dateTimeStr) return '未设置'
+  try {
+    const date = new Date(dateTimeStr)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day} ${hours}:${minutes}`
+  } catch (e) {
+    return dateTimeStr
   }
 }
 
@@ -812,21 +834,24 @@ const handleEditPlan = async () => {
   }
 
   try {
-    // 查找分类ID
-    const category = categories.value.find(c => c.name === editingPlan.value.category)
-    const categoryId = category?.id ? parseInt(category.id) : undefined
+    // 查找分类ID（"uncategorized" 表示未分类）
+    const category = categories.value.find(c => c.name === editingPlan.value.category && c.name !== '全部')
+    const categoryId = (editingPlan.value.category && editingPlan.value.category !== 'uncategorized' && category?.id)
+      ? parseInt(category.id)
+      : undefined
 
     // 转换重复配置
-    const { repeatType, repeatConf } = convertRepeatConfigToApi(editingPlan.value.repeatConfig)
+    const { repeatType, repeatConf } = convertRepeatConfigToApi(editingPlan.value.repeatConfig || null)
 
     const params: UpdatePlanParams = {
       id: parseInt(editingPlan.value.id),
       categoryId,
       title: editingPlan.value.title,
       priority: mapPriorityToApi(editingPlan.value.priority),
-      quadrant: mapQuadrantToApi(editingPlan.value.quadrant),
+      quadrant: mapQuadrantToApi(editingPlan.value.quadrant || null),
       tags: editingPlan.value.tags || undefined,
-      dueDate: editingPlan.value.deadline || undefined,
+      startTime: editingPlan.value.startTime || undefined,
+      dueTime: editingPlan.value.dueTime || undefined,
       repeatType,
       repeatConf
     }
@@ -1006,11 +1031,11 @@ const handleDeleteSubTask = async () => {
                       <Badge
                         :class="[
                           'px-3 py-1 text-[9px] font-bold uppercase tracking-widest mono',
-                          plan.completed ? 'bg-emerald-100 text-emerald-700' : getCategoryColor(plan.category)
+                          plan.completed ? 'bg-emerald-100 text-emerald-700' : getCategoryColor(plan.category === 'uncategorized' ? '未分类' : plan.category)
                         ]"
                         :variant="plan.completed ? 'default' : 'secondary'"
                       >
-                        {{ plan.completed ? 'COMPLETED' : plan.category }}
+                        {{ plan.completed ? 'COMPLETED' : (plan.category === 'uncategorized' ? '未分类' : plan.category) }}
                       </Badge>
                       <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
@@ -1080,9 +1105,17 @@ const handleDeleteSubTask = async () => {
 
                   <div class="space-y-3">
                     <div class="flex flex-wrap items-center gap-2">
-                      <div class="flex items-center gap-2 text-[10px] mono text-neutral-400 uppercase tracking-tighter">
+                      <div v-if="plan.startTime" class="flex items-center gap-2 text-[10px] mono text-neutral-400 uppercase tracking-tighter">
                         <CalendarIcon :size="12" />
-                        <span>截止: {{ plan.deadline }}</span>
+                        <span>开始: {{ formatDateTime(plan.startTime) }}</span>
+                      </div>
+                      <div v-if="plan.dueTime" class="flex items-center gap-2 text-[10px] mono text-neutral-400 uppercase tracking-tighter">
+                        <CalendarIcon :size="12" />
+                        <span>截止: {{ formatDateTime(plan.dueTime) }}</span>
+                      </div>
+                      <div v-if="!plan.startTime && !plan.dueTime" class="flex items-center gap-2 text-[10px] mono text-neutral-400 uppercase tracking-tighter">
+                        <CalendarIcon :size="12" />
+                        <span>时间未设置</span>
                       </div>
                       <div class="flex flex-wrap items-center gap-1.5">
                         <!-- 重复标签 -->
@@ -1362,12 +1395,13 @@ const handleDeleteSubTask = async () => {
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">所属分类</label>
+            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">所属分类（可选）</label>
             <Select v-model="newPlan.category">
               <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
-                <SelectValue />
+                <SelectValue placeholder="未分类" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="uncategorized">未分类</SelectItem>
                 <SelectItem
                   v-for="cat in categories.filter(c => c.name !== '全部')"
                   :key="cat.name"
@@ -1379,10 +1413,21 @@ const handleDeleteSubTask = async () => {
             </Select>
           </div>
           <div class="space-y-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止日期</label>
+            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">开始时间（可选）</label>
             <Input
-              v-model="newPlan.deadline"
-              type="date"
+              v-model="newPlan.startTime"
+              type="datetime-local"
+              class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止时间（可选）</label>
+            <Input
+              v-model="newPlan.dueTime"
+              type="datetime-local"
               class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
             />
           </div>
@@ -1446,7 +1491,7 @@ const handleDeleteSubTask = async () => {
                 :model-value="newPlan.repeatConfig?.dailyInterval || 1"
                 @update:model-value="(val) => {
                   if (newPlan.repeatConfig) {
-                    newPlan.repeatConfig.dailyInterval = parseInt(val) || 1
+                    newPlan.repeatConfig.dailyInterval = parseInt(String(val)) || 1
                   }
                 }"
                 type="number"
@@ -1647,12 +1692,13 @@ const handleDeleteSubTask = async () => {
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">所属分类</label>
+            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">所属分类（可选）</label>
             <Select v-model="editingPlan.category">
               <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
-                <SelectValue />
+                <SelectValue placeholder="未分类" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="uncategorized">未分类</SelectItem>
                 <SelectItem
                   v-for="cat in categories.filter(c => c.name !== '全部')"
                   :key="cat.name"
@@ -1664,10 +1710,21 @@ const handleDeleteSubTask = async () => {
             </Select>
           </div>
           <div class="space-y-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止日期</label>
+            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">开始时间（可选）</label>
             <Input
-              v-model="editingPlan.deadline"
-              type="date"
+              v-model="editingPlan.startTime"
+              type="datetime-local"
+              class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
+            />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止时间（可选）</label>
+            <Input
+              v-model="editingPlan.dueTime"
+              type="datetime-local"
               class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
             />
           </div>
@@ -1731,7 +1788,7 @@ const handleDeleteSubTask = async () => {
                 :model-value="editingPlan.repeatConfig?.dailyInterval || 1"
                 @update:model-value="(val) => {
                   if (editingPlan.repeatConfig) {
-                    editingPlan.repeatConfig.dailyInterval = parseInt(val) || 1
+                    editingPlan.repeatConfig.dailyInterval = parseInt(String(val)) || 1
                   }
                 }"
                 type="number"
