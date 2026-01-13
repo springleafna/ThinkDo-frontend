@@ -1104,7 +1104,7 @@ const handleDeleteSubTask = async () => {
                   </div>
 
                   <div class="space-y-3">
-                    <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex flex-wrap items-center gap-5">
                       <div v-if="plan.startTime" class="flex items-center gap-2 text-[10px] mono text-neutral-400 uppercase tracking-tighter">
                         <CalendarIcon :size="12" />
                         <span>开始: {{ formatDateTime(plan.startTime) }}</span>
@@ -1395,7 +1395,7 @@ const handleDeleteSubTask = async () => {
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">所属分类（可选）</label>
+            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">所属分类</label>
             <Select v-model="newPlan.category">
               <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
                 <SelectValue placeholder="未分类" />
@@ -1413,6 +1413,22 @@ const handleDeleteSubTask = async () => {
             </Select>
           </div>
           <div class="space-y-2">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">优先级</label>
+            <Select v-model="newPlan.priority">
+              <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">低优先级</SelectItem>
+                <SelectItem value="medium">中优先级</SelectItem>
+                <SelectItem value="high">高优先级</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-2">
             <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">开始时间（可选）</label>
             <Input
               v-model="newPlan.startTime"
@@ -1420,9 +1436,6 @@ const handleDeleteSubTask = async () => {
               class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
             />
           </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
             <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止时间（可选）</label>
             <Input
@@ -1431,20 +1444,6 @@ const handleDeleteSubTask = async () => {
               class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
             />
           </div>
-        </div>
-
-        <div class="space-y-2">
-          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">优先级</label>
-          <Select v-model="newPlan.priority">
-            <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">低优先级</SelectItem>
-              <SelectItem value="medium">中优先级</SelectItem>
-              <SelectItem value="high">高优先级</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         <div class="space-y-2">
@@ -1710,6 +1709,22 @@ const handleDeleteSubTask = async () => {
             </Select>
           </div>
           <div class="space-y-2">
+            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">优先级</label>
+            <Select v-model="editingPlan.priority">
+              <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">低优先级</SelectItem>
+                <SelectItem value="medium">中优先级</SelectItem>
+                <SelectItem value="high">高优先级</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="space-y-2">
             <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">开始时间（可选）</label>
             <Input
               v-model="editingPlan.startTime"
@@ -1717,9 +1732,6 @@ const handleDeleteSubTask = async () => {
               class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
             />
           </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
             <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止时间（可选）</label>
             <Input
@@ -1728,20 +1740,6 @@ const handleDeleteSubTask = async () => {
               class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
             />
           </div>
-        </div>
-
-        <div class="space-y-2">
-          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">优先级</label>
-          <Select v-model="editingPlan.priority">
-            <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="low">低优先级</SelectItem>
-              <SelectItem value="medium">中优先级</SelectItem>
-              <SelectItem value="high">高优先级</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         <div class="space-y-2">
