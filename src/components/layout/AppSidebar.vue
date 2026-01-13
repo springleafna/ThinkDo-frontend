@@ -71,7 +71,7 @@ const handleNavigation = (viewId: string) => {
     'long-term': '/plan',
     'ai-chat': '/dashboard',
     'knowledge-base': '/dashboard',
-    'quadrant': '/dashboard',
+    'quadrant': '/quadrant',
     'daily': '/dashboard',
     'notes': '/dashboard',
     'sticky': '/dashboard'

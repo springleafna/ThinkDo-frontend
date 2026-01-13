@@ -32,6 +32,12 @@ const router = createRouter({
       name: 'plan',
       component: () => import('@/views/PlanView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/quadrant',
+      name: 'quadrant',
+      component: () => import('@/views/QuadrantView.vue'),
+      meta: { requiresAuth: true }
     }
   ],
 })
