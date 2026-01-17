@@ -71,7 +71,7 @@ const onStart = () => {
 
     <!-- Hero Section -->
     <section class="max-w-7xl mx-auto px-8 pt-20 pb-32 text-center">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] font-bold uppercase tracking-widest mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-600 text-[12px] font-bold uppercase tracking-widest mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
         <Zap :size="14" />
         新一代个人生产力控制台
       </div>
@@ -79,7 +79,7 @@ const onStart = () => {
         将深邃思考<br /><span class="italic font-medium text-indigo-600">转化为</span>卓越行动
       </h1>
       <p class="max-w-2xl mx-auto text-lg text-neutral-400 font-light leading-relaxed mb-12 section-reveal" style="animation-delay: 0.3s">
-        ThinkDo 是一个为长期主义者设计的生产力中枢。在这里，愿景不仅是空想，而是通过科学的执行层与 AI 智库辅助，一步步化为现实。
+        ThinkDo 是一个为长期主义者设计的知识管理平台。在这里，愿景不只是空想，而是通过科学的执行与 AI 的智能辅助，一步步将计划化为现实。
       </p>
       <div class="flex flex-col sm:flex-row items-center justify-center gap-6 section-reveal" style="animation-delay: 0.4s">
         <button

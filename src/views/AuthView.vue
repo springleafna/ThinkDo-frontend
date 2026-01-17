@@ -137,7 +137,7 @@ const switchMode = (newMode: AuthMode) => {
     <div class="w-full max-w-md section-reveal">
       <button
         @click="onBackToLanding"
-        class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-neutral-400 hover:text-neutral-900 mb-8 transition-colors group"
+        class="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-neutral-400 hover:text-neutral-900 mb-8 transition-colors group"
       >
         <ChevronLeft :size="14" class="group-hover:-translate-x-1 transition-transform" />
         返回首页
@@ -147,8 +147,7 @@ const switchMode = (newMode: AuthMode) => {
         <div class="bg-[#1c1917] text-white p-4 rounded-2xl shadow-xl shadow-black/10 mb-6 transform hover:scale-110 transition-transform">
           <Sparkles :size="32" />
         </div>
-        <h1 class="text-3xl font-light tracking-tight text-neutral-900">ThinkDo 控制台</h1>
-        <p class="text-sm text-neutral-400 mt-2 italic">智性智慧与战略执行的交汇点</p>
+        <h1 class="text-3xl font-light tracking-tight text-neutral-900">ThinkDo 认证中心</h1>
       </div>
 
       <div class="woven-border bg-white p-10 rounded-[2.5rem] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] border border-black/5 relative overflow-hidden">
@@ -183,7 +182,7 @@ const switchMode = (newMode: AuthMode) => {
 
         <form @submit="handleSubmit" class="space-y-6">
           <div class="space-y-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">用户名</label>
+            <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">用户名</label>
             <div class="relative flex items-center">
               <User class="absolute left-5 text-neutral-300" :size="16" />
               <input
@@ -198,16 +197,16 @@ const switchMode = (newMode: AuthMode) => {
                 ]"
               />
             </div>
-            <p class="text-[10px] text-red-500 ml-1 min-h-[14px]">{{ errors.username || '' }}</p>
+            <p class="text-[12px] text-red-500 ml-1 min-h-[14px]">{{ errors.username || '' }}</p>
           </div>
 
           <div class="space-y-2">
             <div class="flex justify-between items-center px-1">
-              <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400">安全密钥</label>
+              <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400">安全密钥</label>
               <button
                 v-if="mode === 'login'"
                 type="button"
-                class="text-[9px] font-bold text-indigo-600 hover:underline uppercase tracking-tighter"
+                class="text-[11px] font-bold text-indigo-600 hover:underline uppercase tracking-tighter"
               >
                 忘记密钥？
               </button>
@@ -233,7 +232,7 @@ const switchMode = (newMode: AuthMode) => {
             v-if="mode === 'register'"
             class="space-y-2 animate-in fade-in slide-in-from-top-2"
           >
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">确认密钥</label>
+            <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">确认密钥</label>
             <div class="relative flex items-center">
               <Lock class="absolute left-5 text-neutral-300" :size="16" />
               <input
@@ -261,7 +260,7 @@ const switchMode = (newMode: AuthMode) => {
           >
             <div v-if="isLoading" class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
             <template v-else>
-              {{ mode === 'login' ? '启动核心节点' : '创建归档档案' }}
+              {{ mode === 'login' ? '登录' : '注册' }}
               <ArrowRight :size="16" />
             </template>
           </button>
@@ -287,10 +286,6 @@ const switchMode = (newMode: AuthMode) => {
           </div>
         </div>
       </div>
-
-      <p class="mt-8 text-center text-[10px] mono opacity-30 uppercase tracking-[0.1em]">
-        端到端加密 • 安全节点环境 v1.0.4
-      </p>
     </div>
   </div>
 </template>

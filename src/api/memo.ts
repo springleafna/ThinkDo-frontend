@@ -87,5 +87,13 @@ export const memoApi = {
    */
   togglePinned(id: number) {
     return request.put<void>(`/plan/memo/togglePinned/${id}`)
+  },
+
+  /**
+   * 获取最新修改的两个便签
+   * GET /plan/memo/latest
+   */
+  getLatestMemos() {
+    return request.get<Memo[]>('/plan/memo/latest')
   }
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useLayoutStore } from '@/stores/layout'
 import {
   Plus,
   Maximize2,
@@ -15,6 +16,8 @@ import {
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { memoApi, type Memo, type CreateMemoParams, type UpdateMemoParams } from '@/api/memo'
+import AppSidebar from '@/components/layout/AppSidebar.vue'
+import AppHeader from '@/components/layout/AppHeader.vue'
 import {
   Dialog,
   DialogContent,
@@ -24,6 +27,15 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+
+const layoutStore = useLayoutStore()
+const activeView = ref('sticky')
+
+// 使用全局 store 的侧边栏状态和方法
+const isSidebarOpen = computed(() => layoutStore.isSidebarOpen)
+const toggleSidebar = () => {
+  layoutStore.toggleSidebar()
+}
 
 interface MemoWithColor extends Memo {
   color: string
@@ -285,7 +297,14 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="max-w-7xl mx-auto space-y-10 pb-12 section-reveal">
+  <div class="flex h-screen w-full overflow-hidden relative bg-[#fcfaf7]">
+    <AppSidebar v-model:active-view="activeView" :is-open="isSidebarOpen" @toggle="toggleSidebar" />
+
+    <main class="flex-1 flex flex-col min-w-0 z-10">
+      <AppHeader :active-view="activeView" />
+
+      <div class="flex-1 overflow-y-auto p-8 md:p-12 pt-8 custom-scrollbar relative z-10">
+        <div class="max-w-7xl mx-auto space-y-10 pb-12 section-reveal">
     <div class="flex items-center justify-between">
       <div>
         <p class="text-sm text-neutral-400 mt-1 italic">
@@ -294,10 +313,10 @@ onMounted(() => {
       </div>
       <button
         @click="handleOpenCreate"
-        class="flex items-center gap-3 px-6 py-2.5 bg-black text-white rounded-full text-xs font-medium hover:bg-neutral-800 shadow-xl shadow-black/20 transition-all hover:scale-105"
-      >
+        class="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-2xl text-[12px] font-bold tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10"
+        >
         <Plus :size="16" />
-        <span>新建灵感</span>
+        <span>新建便签</span>
       </button>
     </div>
 
@@ -337,7 +356,7 @@ onMounted(() => {
               >
                 <Pin :size="12" class="fill-current" />
               </button>
-              <span class="mono text-[9px] opacity-40 uppercase tracking-tighter">{{
+              <span class="mono text-[12px] opacity-40 uppercase tracking-tighter">{{
                 memo.tag || ''
               }}</span>
             </div>
@@ -358,7 +377,7 @@ onMounted(() => {
 
         <div class="px-6 pb-4 pt-2 shrink-0">
           <div class="flex justify-between items-center mb-3">
-            <p class="text-[9px] mono opacity-30 uppercase tracking-tighter shrink-0">
+            <p class="text-[10px] mono opacity-30 uppercase tracking-tighter shrink-0">
               {{ formatTime(memo.updatedAt) }}
             </p>
           </div>
@@ -408,7 +427,7 @@ onMounted(() => {
         >
           <Plus :size="24" :stroke-width="1" />
         </div>
-        <span class="mono text-[9px] font-bold uppercase tracking-widest mt-2">
+        <span class="mono text-[12px] font-bold uppercase tracking-widest mt-2">
           添加便签
         </span>
       </button>
@@ -456,9 +475,6 @@ onMounted(() => {
               <h3 class="text-lg font-medium text-neutral-900">
                 {{ editId ? '编辑灵感节点' : '记录瞬间灵感' }}
               </h3>
-              <p class="text-[10px] mono uppercase tracking-widest text-neutral-400">
-                {{ editId ? 'Update Existing Fragment' : 'Capture Thought Fragment' }}
-              </p>
             </div>
             <button
               @click="showModal = false"
@@ -470,7 +486,7 @@ onMounted(() => {
 
           <form @submit="handleSubmit" class="pt-6 space-y-6">
             <div class="space-y-2">
-              <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1"
+              <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1"
                 >便签标题</label
               >
               <input
@@ -483,7 +499,7 @@ onMounted(() => {
             </div>
 
             <div class="space-y-2">
-              <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1"
+              <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1"
                 >内容描述</label
               >
               <textarea
@@ -496,21 +512,20 @@ onMounted(() => {
 
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-2">
-                <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1"
+                <label class="text-[12px] font-bold tracking-widest text-neutral-400 ml-1"
                   >标签</label
                 >
                 <div class="relative flex items-center">
-                  <span class="absolute left-5 text-neutral-300 mono text-xs">#</span>
                   <input
                     v-model="form.tag"
                     type="text"
                     placeholder="IDEA..."
-                    class="w-full pl-9 pr-5 py-3 bg-stone-50 border border-black/5 rounded-xl text-xs font-bold uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
+                    class="w-full pl-4 pr-5 py-3 bg-stone-50 border border-black/5 rounded-xl text-xs font-bold tracking-widest focus:outline-none focus:ring-4 focus:ring-indigo-100 transition-all"
                   />
                 </div>
               </div>
               <div class="space-y-3">
-                <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1"
+                <label class="text-[12px] font-bold tracking-widest text-neutral-400 ml-1"
                   >底色</label
                 >
                 <div class="flex justify-between px-1">
@@ -546,6 +561,9 @@ onMounted(() => {
         </div>
       </div>
     </Teleport>
+        </div>
+      </div>
+    </main>
   </div>
 </template>
 
@@ -587,5 +605,22 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   word-break: break-word;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
 }
 </style>

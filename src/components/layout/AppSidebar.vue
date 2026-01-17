@@ -39,7 +39,7 @@ const navigation = [
   { id: 'long-term', label: '我的计划', icon: Target },
   { id: 'daily', label: '每日清单', icon: CalendarCheck },
   { id: 'notes', label: '思维笔记', icon: BookText },
-  { id: 'sticky', label: '快捷便签', icon: StickyNote }
+  { id: 'sticky', label: '灵感便签', icon: StickyNote }
 ]
 
 const handleLogout = async () => {
@@ -67,14 +67,13 @@ const handleNavigation = (viewId: string) => {
   // 路由映射
   const routeMap: Record<string, string> = {
     'dashboard': '/dashboard',
-    'memo': '/memo',
+    'sticky': '/memo',
     'long-term': '/plan',
     'ai-chat': '/dashboard',
     'knowledge-base': '/dashboard',
     'quadrant': '/quadrant',
     'daily': '/dashboard',
-    'notes': '/dashboard',
-    'sticky': '/dashboard'
+    'notes': '/dashboard'
   }
 
   const route = routeMap[viewId]

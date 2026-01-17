@@ -936,7 +936,7 @@ const handleDeleteSubTask = async () => {
             <div class="flex items-center gap-3">
               <button
                 @click="showPlanModal = true"
-                class="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-2xl text-[12px] font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10"
+                class="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-2xl text-[12px] font-bold tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10"
               >
                 <Plus :size="16" />
                 <span>新建计划</span>

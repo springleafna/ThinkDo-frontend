@@ -38,7 +38,7 @@ const navigation: Record<string, string> = {
   'long-term': '我的计划',
   daily: '每日清单',
   notes: '思维笔记',
-  sticky: '快捷便签'
+  sticky: '灵感便签'
 }
 
 const notifications = [
