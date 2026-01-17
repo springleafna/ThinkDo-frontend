@@ -81,7 +81,6 @@ const notifications = [
         <p class="mono text-xs font-medium uppercase tracking-widest text-neutral-900">
           {{ time }}
         </p>
-        <p class="text-[9px] opacity-30 mono tracking-tighter">状态: 活跃运行中</p>
       </div>
       <div class="flex items-center gap-3">
         <Popover v-model:open="showNotifications">
@@ -103,8 +102,8 @@ const notifications = [
             align="end"
           >
             <div class="p-6 border-b border-black/5 flex justify-between items-center bg-stone-50/50">
-              <h3 class="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-900">
-                归档通知中心
+              <h3 class="text-[14px] font-bold uppercase tracking-[0.2em] text-neutral-900">
+                通知中心
               </h3>
               <button
                 @click="showNotifications = false"
@@ -133,17 +132,17 @@ const notifications = [
                   <p class="text-xs font-bold text-neutral-900 group-hover:text-zinc-700 transition-colors">
                     {{ n.title }}
                   </p>
-                  <p class="text-[11px] text-neutral-500 mt-1.5 leading-relaxed">
+                  <p class="text-[13px] text-neutral-500 mt-1.5 leading-relaxed">
                     {{ n.desc }}
                   </p>
-                  <p class="text-[9px] mono opacity-30 mt-3 uppercase tracking-tighter">
+                  <p class="text-[11px] mono opacity-30 mt-3 uppercase tracking-tighter">
                     {{ n.time }}
                   </p>
                 </div>
               </div>
             </div>
             <button
-              class="w-full py-5 text-[10px] font-bold uppercase tracking-widest text-neutral-400 hover:text-zinc-900 hover:bg-stone-50 transition-all border-t border-black/5"
+              class="w-full py-5 text-[12px] font-bold uppercase tracking-widest text-neutral-400 hover:text-zinc-900 hover:bg-stone-50 transition-all border-t border-black/5"
             >
               清空系统日志
             </button>

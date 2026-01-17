@@ -155,7 +155,7 @@ const handleNavigation = (viewId: string) => {
           <User :size="14" class="opacity-60" />
         </div>
         <div v-if="isOpen" class="flex-1 overflow-hidden">
-          <p class="text-[11px] font-medium truncate whitespace-nowrap">{{ userStore.username || '未登录' }}</p>
+          <p class="text-[13px] font-medium truncate whitespace-nowrap">{{ userStore.username || '未登录' }}</p>
           <p class="mono text-[8px] opacity-40 uppercase tracking-tighter whitespace-nowrap">在线连接</p>
         </div>
       </div>
@@ -168,7 +168,7 @@ const handleNavigation = (viewId: string) => {
         title="退出登录"
       >
         <LogOut :size="16" class="shrink-0" />
-        <span v-if="isOpen" class="text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">
+        <span v-if="isOpen" class="text-[12px] font-bold uppercase tracking-widest whitespace-nowrap">
           退出
         </span>
       </button>

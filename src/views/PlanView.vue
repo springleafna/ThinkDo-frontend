@@ -936,10 +936,10 @@ const handleDeleteSubTask = async () => {
             <div class="flex items-center gap-3">
               <button
                 @click="showPlanModal = true"
-                class="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10"
+                class="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-2xl text-[12px] font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10"
               >
                 <Plus :size="16" />
-                <span>新建愿景节点</span>
+                <span>新建计划</span>
               </button>
             </div>
           </div>
@@ -979,7 +979,7 @@ const handleDeleteSubTask = async () => {
               <!-- 分类筛选 -->
               <div class="space-y-4">
                 <div class="flex justify-between items-center px-2">
-                  <h3 class="text-[10px] font-bold uppercase tracking-[0.2em] opacity-40">分类过滤</h3>
+                  <h3 class="text-[12px] font-bold uppercase tracking-[0.2em] opacity-40">分类过滤</h3>
                   <button
                     @click="showCategoryModal = true"
                     class="p-1 hover:bg-black/5 rounded-md text-neutral-400"
@@ -1030,12 +1030,12 @@ const handleDeleteSubTask = async () => {
                     <div class="flex justify-between items-start mb-4">
                       <Badge
                         :class="[
-                          'px-3 py-1 text-[9px] font-bold uppercase tracking-widest mono',
+                          'px-3 py-1 text-[14px] font-bold uppercase tracking-widest mono',
                           plan.completed ? 'bg-emerald-100 text-emerald-700' : getCategoryColor(plan.category === 'uncategorized' ? '未分类' : plan.category)
                         ]"
                         :variant="plan.completed ? 'default' : 'secondary'"
                       >
-                        {{ plan.completed ? 'COMPLETED' : (plan.category === 'uncategorized' ? '未分类' : plan.category) }}
+                        {{ plan.completed ? '已完成' : (plan.category === 'uncategorized' ? '未分类' : plan.category) }}
                       </Badge>
                       <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
@@ -1096,7 +1096,7 @@ const handleDeleteSubTask = async () => {
                         v-for="tag in plan.tags"
                         :key="tag"
                         variant="outline"
-                        class="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest border-black/[0.05] bg-white text-neutral-400 shadow-sm"
+                        class="px-3 py-1.5 text-[12px] font-bold uppercase tracking-widest border-black/[0.05] bg-white text-neutral-400 shadow-sm"
                       >
                         #{{ tag }}
                       </Badge>
@@ -1105,23 +1105,23 @@ const handleDeleteSubTask = async () => {
 
                   <div class="space-y-3">
                     <div class="flex flex-wrap items-center gap-5">
-                      <div v-if="plan.startTime" class="flex items-center gap-2 text-[10px] mono text-neutral-400 uppercase tracking-tighter">
-                        <CalendarIcon :size="12" />
+                      <div v-if="plan.startTime" class="flex items-center gap-2 text-[12px] mono text-neutral-400 uppercase tracking-tighter">
+                        <CalendarIcon :size="16" />
                         <span>开始: {{ formatDateTime(plan.startTime) }}</span>
                       </div>
-                      <div v-if="plan.dueTime" class="flex items-center gap-2 text-[10px] mono text-neutral-400 uppercase tracking-tighter">
-                        <CalendarIcon :size="12" />
+                      <div v-if="plan.dueTime" class="flex items-center gap-2 text-[12px] mono text-neutral-400 uppercase tracking-tighter">
+                        <CalendarIcon :size="16" />
                         <span>截止: {{ formatDateTime(plan.dueTime) }}</span>
                       </div>
-                      <div v-if="!plan.startTime && !plan.dueTime" class="flex items-center gap-2 text-[10px] mono text-neutral-400 uppercase tracking-tighter">
-                        <CalendarIcon :size="12" />
+                      <div v-if="!plan.startTime && !plan.dueTime" class="flex items-center gap-2 text-[12px] mono text-neutral-400 uppercase tracking-tighter">
+                        <CalendarIcon :size="16" />
                         <span>时间未设置</span>
                       </div>
                       <div class="flex flex-wrap items-center gap-1.5">
                         <!-- 重复标签 -->
                         <Badge
                           v-if="getRepeatLabel(plan.repeatConfig)"
-                          class="flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium bg-sky-100 text-sky-700 hover:bg-sky-200 transition-colors"
+                          class="flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium bg-sky-100 text-sky-700 hover:bg-sky-200 transition-colors"
                         >
                           <Repeat :size="11" class="shrink-0" />
                           <span>{{ getRepeatLabel(plan.repeatConfig) }}</span>
@@ -1131,7 +1131,7 @@ const handleDeleteSubTask = async () => {
                         <Badge
                           v-if="plan.quadrant"
                           :class="[
-                            'flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium hover:opacity-80 transition-opacity',
+                            'flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium hover:opacity-80 transition-opacity',
                             getQuadrantConfig(plan.quadrant)?.bg,
                             getQuadrantConfig(plan.quadrant)?.text
                           ]"
@@ -1147,7 +1147,7 @@ const handleDeleteSubTask = async () => {
                         <!-- 优先级标签 -->
                         <Badge
                           :class="[
-                            'flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium hover:opacity-80 transition-opacity',
+                            'flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium hover:opacity-80 transition-opacity',
                             getPriorityColor(plan.priority).bg,
                             getPriorityColor(plan.priority).text
                           ]"
@@ -1163,9 +1163,9 @@ const handleDeleteSubTask = async () => {
                     </div>
                     <div class="flex justify-between items-end">
                       <span :class="[
-                        'text-[10px] mono font-bold uppercase tracking-widest',
+                        'text-[12px] mono font-bold uppercase tracking-widest',
                         plan.completed ? 'text-emerald-600' : 'text-neutral-400'
-                      ]">归档进度</span>
+                      ]">完成进度</span>
                       <span :class="[
                         'text-sm font-medium',
                         plan.completed ? 'text-emerald-700' : 'text-neutral-900'
@@ -1192,9 +1192,9 @@ const handleDeleteSubTask = async () => {
                   <div
                     v-if="plan.subTasks.length === 0"
                     class="flex-1 flex flex-col items-center justify-center border border-dashed border-black/5 rounded-[1.5rem] opacity-40"
-                  >
-                    <Inbox :size="20" class="mb-1 text-neutral-300" />
-                    <p class="text-[9px] mono uppercase tracking-widest text-neutral-300">暂无子项</p>
+                  > 
+                    <Inbox :size="40" class="mb-1 text-neutral-500" />
+                    <p class="text-[14px] mono uppercase tracking-widest text-neutral-550">暂无子任务</p>
                   </div>
 
                   <!-- 有子任务的情况 -->
@@ -1329,7 +1329,7 @@ const handleDeleteSubTask = async () => {
                       <Input
                         v-model="quickTaskInputs[plan.id]"
                         type="text"
-                        placeholder="添加执行节点..."
+                        placeholder="添加子任务..."
                         :disabled="plan.completed"
                         @keydown.enter="addSubTask(plan.id)"
                         :class="[
@@ -1361,8 +1361,8 @@ const handleDeleteSubTask = async () => {
                 <div class="w-10 h-10 rounded-full bg-stone-50 flex items-center justify-center mb-2 group-hover:scale-110 group-hover:bg-zinc-100 group-hover:text-zinc-900 transition-all shadow-sm">
                   <Plus :size="20" :stroke-width="1" />
                 </div>
-                <span class="text-[10px] mono font-bold uppercase tracking-[0.2em] text-neutral-300 group-hover:text-neutral-900 transition-colors">
-                  初始化新愿景节点
+                <span class="text-[12px] mono font-bold uppercase tracking-[0.2em] text-neutral-300 group-hover:text-neutral-900 transition-colors">
+                  新建计划
                 </span>
               </button>
             </main>
@@ -1376,15 +1376,12 @@ const handleDeleteSubTask = async () => {
   <Dialog v-model:open="showPlanModal">
     <DialogContent class="sm:max-w-[600px]">
       <DialogHeader>
-        <DialogTitle class="text-lg font-medium text-neutral-900">新建愿景计划</DialogTitle>
-        <DialogDescription class="text-[10px] mono uppercase tracking-widest text-neutral-400">
-          Initialize New Roadmap Node
-        </DialogDescription>
+        <DialogTitle class="text-lg font-medium text-neutral-900">新建计划</DialogTitle>
       </DialogHeader>
 
       <div class="space-y-6 py-4">
         <div class="space-y-2">
-          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">计划标题</label>
+          <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">计划标题</label>
           <Input
             v-model="newPlan.title"
             type="text"
@@ -1395,7 +1392,7 @@ const handleDeleteSubTask = async () => {
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">所属分类</label>
+            <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">所属分类</label>
             <Select v-model="newPlan.category">
               <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
                 <SelectValue placeholder="未分类" />
@@ -1413,7 +1410,7 @@ const handleDeleteSubTask = async () => {
             </Select>
           </div>
           <div class="space-y-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">优先级</label>
+            <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">优先级</label>
             <Select v-model="newPlan.priority">
               <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
                 <SelectValue />
@@ -1429,7 +1426,7 @@ const handleDeleteSubTask = async () => {
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">开始时间（可选）</label>
+            <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">开始时间（可选）</label>
             <Input
               v-model="newPlan.startTime"
               type="datetime-local"
@@ -1437,7 +1434,7 @@ const handleDeleteSubTask = async () => {
             />
           </div>
           <div class="space-y-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止时间（可选）</label>
+            <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止时间（可选）</label>
             <Input
               v-model="newPlan.dueTime"
               type="datetime-local"
@@ -1447,7 +1444,7 @@ const handleDeleteSubTask = async () => {
         </div>
 
         <div class="space-y-2">
-          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">任务四象限（可选）</label>
+          <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">任务四象限（可选）</label>
           <Select v-model="newPlan.quadrant">
             <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
               <SelectValue placeholder="无（默认）" />
@@ -1463,7 +1460,7 @@ const handleDeleteSubTask = async () => {
         </div>
 
         <div class="space-y-3">
-          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">重复时间（可选）</label>
+          <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">重复时间（可选）</label>
 
           <!-- 重复类型选择 -->
           <Select
@@ -1587,34 +1584,13 @@ const handleDeleteSubTask = async () => {
         </div>
 
         <div class="space-y-2">
-          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">标签 (逗号分隔)</label>
+          <label class="text-[12px] font-bold tracking-widest text-neutral-400 ml-1">标签 (逗号分隔)</label>
           <Input
             v-model="newPlan.tags"
             type="text"
-            placeholder="DEVELOPMENT, CAREER..."
-            class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm uppercase"
+            placeholder="学习, 生活..."
+            class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
           />
-        </div>
-
-        <div class="space-y-3">
-          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">主题色彩</label>
-          <div class="flex gap-3">
-            <button
-              v-for="color in colors"
-              :key="color.value"
-              type="button"
-              @click="newPlan.color = color.value"
-              :class="[
-                'w-8 h-8 rounded-full transition-all flex items-center justify-center',
-                color.value,
-                newPlan.color === color.value
-                  ? 'ring-2 ring-offset-2 ring-black/10 scale-110 shadow-lg'
-                  : 'hover:scale-105 opacity-60'
-              ]"
-            >
-              <Check v-if="newPlan.color === color.value" :size="14" class="text-white" />
-            </button>
-          </div>
         </div>
       </div>
 
@@ -1626,7 +1602,7 @@ const handleDeleteSubTask = async () => {
           @click="handleAddPlan"
           class="flex-1 bg-black text-white hover:bg-neutral-800 py-4 text-xs font-bold uppercase tracking-[0.2em]"
         >
-          启动愿景节点
+          创建
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -1673,14 +1649,11 @@ const handleDeleteSubTask = async () => {
     <DialogContent class="sm:max-w-[600px]">
       <DialogHeader>
         <DialogTitle class="text-lg font-medium text-neutral-900">编辑计划</DialogTitle>
-        <DialogDescription class="text-[10px] mono uppercase tracking-widest text-neutral-400">
-          Edit Roadmap Node
-        </DialogDescription>
       </DialogHeader>
 
       <div v-if="editingPlan" class="space-y-6 py-4">
         <div class="space-y-2">
-          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">计划标题</label>
+          <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">计划标题</label>
           <Input
             v-model="editingPlan.title"
             type="text"
@@ -1691,7 +1664,7 @@ const handleDeleteSubTask = async () => {
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">所属分类（可选）</label>
+            <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">所属分类（可选）</label>
             <Select v-model="editingPlan.category">
               <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
                 <SelectValue placeholder="未分类" />
@@ -1709,7 +1682,7 @@ const handleDeleteSubTask = async () => {
             </Select>
           </div>
           <div class="space-y-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">优先级</label>
+            <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">优先级</label>
             <Select v-model="editingPlan.priority">
               <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
                 <SelectValue />
@@ -1725,7 +1698,7 @@ const handleDeleteSubTask = async () => {
 
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">开始时间（可选）</label>
+            <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">开始时间（可选）</label>
             <Input
               v-model="editingPlan.startTime"
               type="datetime-local"
@@ -1733,7 +1706,7 @@ const handleDeleteSubTask = async () => {
             />
           </div>
           <div class="space-y-2">
-            <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止时间（可选）</label>
+            <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止时间（可选）</label>
             <Input
               v-model="editingPlan.dueTime"
               type="datetime-local"
@@ -1743,7 +1716,7 @@ const handleDeleteSubTask = async () => {
         </div>
 
         <div class="space-y-2">
-          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">任务四象限（可选）</label>
+          <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">任务四象限（可选）</label>
           <Select v-model="editingPlan.quadrant">
             <SelectTrigger class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm focus:ring-4 focus:ring-zinc-100 shadow-sm">
               <SelectValue placeholder="无（默认）" />
@@ -1759,7 +1732,7 @@ const handleDeleteSubTask = async () => {
         </div>
 
         <div class="space-y-3">
-          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">重复时间（可选）</label>
+          <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">重复时间（可选）</label>
 
           <!-- 重复类型选择 -->
           <Select
@@ -1883,34 +1856,13 @@ const handleDeleteSubTask = async () => {
         </div>
 
         <div class="space-y-2">
-          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">标签 (逗号分隔)</label>
+          <label class="text-[12px] font-bold tracking-widest text-neutral-400 ml-1">标签 (逗号分隔)</label>
           <Input
             v-model="editingPlan.tags"
             type="text"
-            placeholder="DEVELOPMENT, CAREER..."
-            class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm uppercase"
+            placeholder="学习, 生活..."
+            class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
           />
-        </div>
-
-        <div class="space-y-3">
-          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">主题色彩</label>
-          <div class="flex gap-3">
-            <button
-              v-for="color in colors"
-              :key="color.value"
-              type="button"
-              @click="editingPlan.color = color.value"
-              :class="[
-                'w-8 h-8 rounded-full transition-all flex items-center justify-center',
-                color.value,
-                editingPlan.color === color.value
-                  ? 'ring-2 ring-offset-2 ring-black/10 scale-110 shadow-lg'
-                  : 'hover:scale-105 opacity-60'
-              ]"
-            >
-              <Check v-if="editingPlan.color === color.value" :size="14" class="text-white" />
-            </button>
-          </div>
         </div>
       </div>
 
