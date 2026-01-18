@@ -116,5 +116,22 @@ export const planApi = {
    */
   toggleStatus(id: number) {
     return request.put<void>(`/plan/plan/toggleStatus/${id}`)
+  },
+
+  /**
+   * 获取四象限计划列表
+   * GET /plan/plan/quadrant
+   */
+  getQuadrantPlans() {
+    return request.get<PlanQuadrantResp>('/plan/plan/quadrant')
   }
+}
+
+// 四象限计划响应
+export interface PlanQuadrantResp {
+  importantUrgent: Plan[]
+  importantNotUrgent: Plan[]
+  urgentNotImportant: Plan[]
+  notImportantNotUrgent: Plan[]
+  unclassified: Plan[]
 }

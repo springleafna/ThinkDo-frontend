@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useLayoutStore } from '@/stores/layout'
+import { planApi, type Plan } from '@/api/plan'
 import {
   Plus,
   Check,
@@ -22,13 +23,6 @@ const toggleSidebar = () => {
   layoutStore.toggleSidebar()
 }
 
-// 任务接口
-interface QuadrantTask {
-  id: number
-  text: string
-  done: boolean
-}
-
 // 象限数据接口
 interface QuadrantData {
   id: string
@@ -37,11 +31,11 @@ interface QuadrantData {
   description: string
   icon: any
   color: string
-  tasks: QuadrantTask[]
+  tasks: Plan[]
 }
 
-// 象限数据
-const data = ref<QuadrantData[]>([
+// 象限配置
+const quadrantConfigs = [
   {
     id: 'q1',
     title: '重要且紧急',
@@ -49,10 +43,7 @@ const data = ref<QuadrantData[]>([
     description: '立即处理，危机管理。',
     icon: Zap,
     color: 'bg-rose-50 border-rose-200 text-rose-900',
-    tasks: [
-      { id: 1, text: '提交 Q4 季度财务报表', done: false },
-      { id: 2, text: '修复核心交易系统的 P0 级 Bug', done: true }
-    ]
+    key: 'importantUrgent' as keyof QuadrantData
   },
   {
     id: 'q2',
@@ -61,10 +52,7 @@ const data = ref<QuadrantData[]>([
     description: '长期规划，自我提升。',
     icon: Calendar,
     color: 'bg-indigo-50 border-indigo-200 text-indigo-900',
-    tasks: [
-      { id: 3, text: '精读《系统架构：复杂系统的设计》', done: false },
-      { id: 4, text: '更新个人作品集网站', done: false }
-    ]
+    key: 'importantNotUrgent' as keyof QuadrantData
   },
   {
     id: 'q3',
@@ -73,10 +61,7 @@ const data = ref<QuadrantData[]>([
     description: '琐碎事务，尽量授权。',
     icon: Users,
     color: 'bg-amber-50 border-amber-200 text-amber-900',
-    tasks: [
-      { id: 5, text: '回复周五团建的确认邮件', done: true },
-      { id: 6, text: '整理下周会议的录音材料', done: false }
-    ]
+    key: 'urgentNotImportant' as keyof QuadrantData
   },
   {
     id: 'q4',
@@ -85,31 +70,71 @@ const data = ref<QuadrantData[]>([
     description: '消遣娱乐，断舍离。',
     icon: Trash,
     color: 'bg-stone-50 border-stone-200 text-stone-900',
-    tasks: [
-      { id: 7, text: '浏览社交媒体的热搜信息', done: false },
-      { id: 8, text: '整理旧相册里的无关截图', done: true }
-    ]
+    key: 'notImportantNotUrgent' as keyof QuadrantData
   }
-])
+]
+
+// 象限数据
+const data = ref<QuadrantData[]>([])
+const loading = ref(false)
+
+// 获取四象限数据
+const fetchQuadrantData = async () => {
+  try {
+    loading.value = true
+    const response = await planApi.getQuadrantPlans()
+
+    // 将 API 数据转换为象限数据格式
+    data.value = quadrantConfigs.map(config => ({
+      ...config,
+      tasks: response[config.key] || []
+    }))
+  } catch (error) {
+    console.error('获取四象限数据失败:', error)
+  } finally {
+    loading.value = false
+  }
+}
 
 // 切换任务状态
-const toggleTask = (qId: string, taskId: number) => {
+const toggleTask = async (qId: string, taskId: number) => {
   const quadrant = data.value.find(q => q.id === qId)
   if (quadrant) {
     const task = quadrant.tasks.find(t => t.id === taskId)
     if (task) {
-      task.done = !task.done
+      // 乐观更新 UI
+      task.status = task.status === 1 ? 0 : 1
+      try {
+        // 调用 API 切换状态
+        await planApi.toggleStatus(taskId)
+      } catch (error) {
+        // 如果失败，恢复原状态
+        task.status = task.status === 1 ? 0 : 1
+        console.error('切换任务状态失败:', error)
+      }
     }
   }
 }
 
 // 删除任务
-const deleteTask = (qId: string, taskId: number) => {
+const deleteTask = async (qId: string, taskId: number) => {
   const quadrant = data.value.find(q => q.id === qId)
   if (quadrant) {
-    quadrant.tasks = quadrant.tasks.filter(t => t.id !== taskId)
+    try {
+      await planApi.delete(taskId)
+      quadrant.tasks = quadrant.tasks.filter(t => t.id !== taskId)
+    } catch (error) {
+      console.error('删除任务失败:', error)
+    }
   }
 }
+
+// 限制显示的任务数量
+const MAX_DISPLAY_TASKS = 2
+
+onMounted(() => {
+  fetchQuadrantData()
+})
 </script>
 
 <template>
@@ -146,51 +171,111 @@ const deleteTask = (qId: string, taskId: number) => {
                 {{ quadrant.description }}
               </p>
 
-              <div class="flex-1 space-y-3 overflow-y-auto custom-scrollbar pr-2">
-                <div
-                  v-for="task in quadrant.tasks"
-                  :key="task.id"
-                  class="flex items-center group gap-4 p-4 bg-white/40 rounded-2xl border border-transparent hover:border-black/5 transition-all"
-                >
-                  <button
-                    @click="toggleTask(quadrant.id, task.id)"
-                    :class="[
-                      'w-5 h-5 rounded-lg border flex items-center justify-center transition-all duration-300',
-                      task.done ? 'bg-black border-black' : 'bg-white/50 border-black/10 hover:border-black/30'
-                    ]"
+              <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 max-h-[130px]">
+                <div class="space-y-3">
+                  <div
+                    v-for="task in quadrant.tasks.slice(0, MAX_DISPLAY_TASKS)"
+                    :key="task.id"
+                    class="flex items-center group gap-4 p-4 bg-white/40 rounded-2xl border border-transparent hover:border-black/5 transition-all"
                   >
-                    <Check
-                      :size="12"
-                      :class="['text-white transition-transform', task.done ? 'scale-100' : 'scale-0']"
-                    />
-                  </button>
-                  <span
-                    :class="[
-                      'flex-1 text-sm font-medium',
-                      task.done ? 'opacity-30 line-through' : 'text-neutral-900'
-                    ]"
-                  >
-                    {{ task.text }}
-                  </span>
-                  <button
-                    @click="deleteTask(quadrant.id, task.id)"
-                    class="opacity-0 group-hover:opacity-40 hover:opacity-100 hover:text-rose-600 transition-all"
-                  >
-                    <Trash2 :size="14" />
-                  </button>
+                    <button
+                      @click="toggleTask(quadrant.id, task.id)"
+                      :class="[
+                        'w-5 h-5 rounded-lg border flex items-center justify-center transition-all duration-300',
+                        task.status === 1 ? 'bg-black border-black' : 'bg-white/50 border-black/10 hover:border-black/30'
+                      ]"
+                    >
+                      <Check
+                        :size="12"
+                        :class="['text-white transition-transform', task.status === 1 ? 'scale-100' : 'scale-0']"
+                      />
+                    </button>
+                    <div class="flex-1 min-w-0">
+                      <span
+                        :class="[
+                          'text-sm font-medium block truncate',
+                          task.status === 1 ? 'opacity-30 line-through' : 'text-neutral-900'
+                        ]"
+                      >
+                        {{ task.title }}
+                      </span>
+                      <span
+                        v-if="task.dueTime"
+                        class="text-[10px] opacity-40 truncate block"
+                      >
+                        {{ new Date(task.dueTime).toLocaleDateString() }}
+                      </span>
+                    </div>
+                    <button
+                      @click="deleteTask(quadrant.id, task.id)"
+                      class="opacity-0 group-hover:opacity-40 hover:opacity-100 hover:text-rose-600 transition-all flex-shrink-0"
+                    >
+                      <Trash2 :size="14" />
+                    </button>
+                  </div>
                 </div>
+
+                <!-- 更多任务，可滚动查看 -->
+                <div
+                  v-if="quadrant.tasks.length > MAX_DISPLAY_TASKS"
+                  class="mt-3"
+                >
+                  <div class="space-y-3">
+                    <div
+                      v-for="task in quadrant.tasks.slice(MAX_DISPLAY_TASKS)"
+                      :key="task.id"
+                      class="flex items-center group gap-4 p-4 bg-white/30 rounded-2xl border border-transparent hover:border-black/5 transition-all"
+                    >
+                      <button
+                        @click="toggleTask(quadrant.id, task.id)"
+                        :class="[
+                          'w-5 h-5 rounded-lg border flex items-center justify-center transition-all duration-300',
+                          task.status === 1 ? 'bg-black border-black' : 'bg-white/50 border-black/10 hover:border-black/30'
+                        ]"
+                      >
+                        <Check
+                          :size="12"
+                          :class="['text-white transition-transform', task.status === 1 ? 'scale-100' : 'scale-0']"
+                        />
+                      </button>
+                      <div class="flex-1 min-w-0">
+                        <span
+                          :class="[
+                            'text-sm font-medium block truncate',
+                            task.status === 1 ? 'opacity-30 line-through' : 'text-neutral-900'
+                          ]"
+                        >
+                          {{ task.title }}
+                        </span>
+                        <span
+                          v-if="task.dueTime"
+                          class="text-[10px] opacity-40 truncate block"
+                        >
+                          {{ new Date(task.dueTime).toLocaleDateString() }}
+                        </span>
+                      </div>
+                      <button
+                        @click="deleteTask(quadrant.id, task.id)"
+                        class="opacity-0 group-hover:opacity-40 hover:opacity-100 hover:text-rose-600 transition-all flex-shrink-0"
+                      >
+                        <Trash2 :size="14" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 <div
                   v-if="quadrant.tasks.length === 0"
-                  class="h-20 flex items-center justify-center border-2 border-dashed border-black/5 rounded-2xl text-[10px] mono opacity-20 uppercase tracking-widest"
+                  class="h-20 flex items-center justify-center border-2 border-dashed border-black/5 rounded-2xl text-[14px] mono opacity-20 uppercase tracking-widest"
                 >
-                  No active segments
+                  暂无计划
                 </div>
               </div>
 
               <div class="mt-6 pt-4 border-t border-black/5">
                 <input
                   type="text"
-                  placeholder="Append new objective..."
+                  placeholder="添加计划"
                   class="w-full bg-transparent text-sm italic focus:outline-none opacity-40 focus:opacity-100 transition-opacity"
                 />
               </div>
