@@ -73,7 +73,7 @@ const handleNavigation = (viewId: string) => {
     'knowledge-base': '/dashboard',
     'quadrant': '/quadrant',
     'daily': '/dashboard',
-    'notes': '/dashboard'
+    'notes': '/notes'
   }
 
   const route = routeMap[viewId]

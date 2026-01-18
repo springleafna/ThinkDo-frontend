@@ -38,6 +38,18 @@ const router = createRouter({
       name: 'quadrant',
       component: () => import('@/views/QuadrantView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/notes',
+      name: 'notes',
+      component: () => import('@/views/NotesView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/notes/:id',
+      name: 'note-detail',
+      component: () => import('@/views/NoteDetailView.vue'),
+      meta: { requiresAuth: true }
     }
   ],
 })
