@@ -32,7 +32,7 @@ onUnmounted(() => {
 
 const navigation: Record<string, string> = {
   dashboard: '中控控制台',
-  'ai-chat': 'AI 智库',
+  'ai-chat': 'AI 对话',
   'knowledge-base': '知识库',
   quadrant: '四象限分析',
   'long-term': '我的计划',

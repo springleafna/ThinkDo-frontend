@@ -50,6 +50,12 @@ const router = createRouter({
       name: 'note-detail',
       component: () => import('@/views/NoteDetailView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/ai-chat',
+      name: 'ai-chat',
+      component: () => import('@/views/AIChatView.vue'),
+      meta: { requiresAuth: true }
     }
   ],
 })
