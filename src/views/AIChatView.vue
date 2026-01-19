@@ -39,7 +39,6 @@ const toggleSidebar = () => {
 }
 
 const scrollRef = ref<HTMLElement>()
-const chatHistoryOpen = ref(true)
 const currentSessionId = ref<string>('')
 const chatSessions = ref<ChatSession[]>([])
 const showDeleteDialog = ref(false)
@@ -278,100 +277,94 @@ const formatTime = (date: Date) => {
 </script>
 
 <template>
-  <div class="flex h-screen w-full overflow-hidden relative bg-[#fcfaf7]">
+  <div class="flex h-screen w-full overflow-hidden bg-[#fcfaf7]">
     <AppSidebar v-model:active-view="activeView" :is-open="isSidebarOpen" @toggle="toggleSidebar" />
 
-    <!-- 对话历史侧边栏 -->
-    <aside
-      v-if="chatHistoryOpen"
-      class="absolute top-30 bottom-6 w-72 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl border border-black/5 flex flex-col z-20 overflow-hidden transition-all duration-300"
-      :class="isSidebarOpen ? 'left-72' : 'left-20'"
-    >
-      <div class="p-4 border-b border-black/5">
-        <Button
-          @click="createNewSession"
-          class="w-full gap-2"
-          variant="default"
-        >
-          <Plus :size="16" />
-          新对话
-        </Button>
-      </div>
-
-      <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1">
-        <div
-          v-for="session in chatSessions"
-          :key="session.id"
-          @click="switchSession(session.id)"
-          class="group relative rounded-lg p-3 cursor-pointer transition-all hover:bg-stone-50"
-          :class="currentSessionId === session.id ? 'bg-stone-100' : ''"
-        >
-          <div class="flex items-start gap-3">
-            <MessageSquare :size="16" class="mt-0.5 shrink-0 text-neutral-400" />
-            <div class="flex-1 min-w-0">
-              <p
-                class="text-sm font-medium truncate"
-                :class="currentSessionId === session.id ? 'text-neutral-900' : 'text-neutral-700'"
-              >
-                {{ session.title }}
-              </p>
-              <p class="text-[11px] text-neutral-400 mt-1 flex items-center gap-1">
-                <Clock :size="10" />
-                {{ formatTime(session.updatedAt) }}
-              </p>
-            </div>
-            <button
-              @click.stop="openDeleteDialog(session.id)"
-              class="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-              title="删除对话"
-            >
-              <Trash2 :size="14" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <main class="flex-1 flex flex-col min-w-0 z-10">
+    <!-- 主内容区域 -->
+    <main class="flex-1 flex flex-col min-w-0">
+      <!-- 顶栏 -->
       <AppHeader :active-view="activeView" />
 
-      <div class="flex-1 overflow-y-auto p-6 custom-scrollbar relative z-10" :class="chatHistoryOpen ? (isSidebarOpen ? 'pl-80' : 'pl-40') : ''">
-        <div class="max-w-4xl mx-auto h-full flex flex-col gap-4">
-          <!-- 顶部工具栏 -->
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <Button
-                @click="chatHistoryOpen = !chatHistoryOpen"
-                variant="ghost"
-                size="icon"
-                class="h-9 w-9"
-                title="对话历史"
-              >
-                <MessageSquare :size="18" />
-              </Button>
-              <div>
-                <h2 class="text-lg font-semibold text-neutral-900">AI 智库</h2>
-                <p class="text-xs text-neutral-500">智能助手 · 随时待命</p>
-              </div>
-            </div>
-            <Button
-              @click="clearChat"
-              variant="ghost"
-              size="sm"
-              class="text-neutral-500 hover:text-rose-600"
-            >
-              <Trash2 :size="16" class="mr-2" />
-              清空对话
-            </Button>
+      <!-- 顶部工具栏 -->
+      <div class="px-2 pt-8 bg-white/50 backdrop-blur-sm">
+        <div class="flex items-center justify-between" style="padding-left: 96px; padding-right: 96px;">
+          <div style="margin-left: 0px;">
+            <h2 class="text-lg font-semibold text-neutral-900">AI 智库</h2>
+            <p class="text-xs text-neutral-500">智能助手 · 随时待命</p>
           </div>
+          <Button
+            @click="clearChat"
+            variant="ghost"
+            size="sm"
+            class="text-neutral-500 hover:text-rose-600"
+          >
+            <Trash2 :size="16" class="mr-2" />
+            清空对话
+          </Button>
+        </div>
+      </div>
 
-          <!-- 聊天区域 -->
-          <Card class="flex-1 flex flex-col overflow-hidden border-black/5">
-            <CardContent class="flex-1 flex flex-col p-0">
+      <!-- 内容区域：对话列表 + 聊天区域 -->
+      <div class="flex-1 flex overflow-hidden px-24 pb-12 pt-2">
+        <!-- 左侧对话列表 -->
+        <aside class="w-64 mr-10">
+          <Card class="h-full bg-white/90 backdrop-blur-md border-black/5 shadow-xl">
+            <CardContent class="p-0 h-full flex flex-col">
+              <div class="p-4 border-b border-black/5">
+                <Button
+                  @click="createNewSession"
+                  class="w-full gap-2"
+                  variant="default"
+                >
+                  <Plus :size="16" />
+                  新对话
+                </Button>
+              </div>
+
+              <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1">
+                <div
+                  v-for="session in chatSessions"
+                  :key="session.id"
+                  @click="switchSession(session.id)"
+                  class="group relative rounded-lg p-3 cursor-pointer transition-all hover:bg-stone-50"
+                  :class="currentSessionId === session.id ? 'bg-stone-100' : ''"
+                >
+                  <div class="flex items-start gap-3">
+                    <MessageSquare :size="16" class="mt-0.5 shrink-0 text-neutral-400" />
+                    <div class="flex-1 min-w-0">
+                      <p
+                        class="text-sm font-medium truncate"
+                        :class="currentSessionId === session.id ? 'text-neutral-900' : 'text-neutral-700'"
+                      >
+                        {{ session.title }}
+                      </p>
+                      <p class="text-[11px] text-neutral-400 mt-1 flex items-center gap-1">
+                        <Clock :size="10" />
+                        {{ formatTime(session.updatedAt) }}
+                      </p>
+                    </div>
+                    <button
+                      @click.stop="openDeleteDialog(session.id)"
+                      class="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                      title="删除对话"
+                    >
+                      <Trash2 :size="14" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </aside>
+
+        <!-- 右侧聊天区域 -->
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <Card class="flex-1 flex flex-col overflow-hidden border-black/5 bg-white/90 backdrop-blur-md shadow-xl rounded-2xl">
+            <CardContent class="flex-1 flex flex-col p-0 rounded-2xl overflow-hidden">
               <!-- 消息列表 -->
               <div
                 ref="scrollRef"
-                class="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar"
+                class="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar"
               >
                 <div
                   v-for="(msg, i) in messages"
@@ -429,7 +422,7 @@ const formatTime = (date: Date) => {
               </div>
 
               <!-- 输入区域 -->
-              <div class="p-4 border-t border-black/5 bg-stone-50/30">
+              <div class="p-3 bg-stone-50/30">
                 <div class="relative">
                   <textarea
                     v-model="input"
