@@ -1016,6 +1016,16 @@ const handleDeleteSubTask = async () => {
 
             <!-- 右侧计划列表 -->
             <main class="flex-1 flex flex-col gap-6">
+              <!-- 暂无计划提示 -->
+              <div
+                v-if="filteredPlans.length === 0"
+                class="border-2 border-dashed border-black/[0.05] rounded-[2.5rem] flex flex-col items-center justify-center p-16 bg-white"
+              >
+                <Inbox :size="64" class="mb-4 text-neutral-300" />
+                <p class="text-[16px] mono font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">暂无计划</p>
+                <p class="text-[14px] text-neutral-300">该分类下还没有计划，点击右上方按钮创建新计划</p>
+              </div>
+
               <div
                 v-for="(plan, idx) in filteredPlans"
                 :key="plan.id"
