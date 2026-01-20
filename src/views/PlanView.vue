@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLayoutStore } from '@/stores/layout'
 import {
@@ -307,7 +307,21 @@ const loadCategories = async () => {
 const loadPlans = async () => {
   try {
     loading.value = true
-    const data = await planApi.getList()
+
+    // 根据选中的分类获取数据
+    let data
+    if (activeCategory.value === '全部') {
+      data = await planApi.getList({ type: 0 })
+    } else {
+      // 找到选中分类的ID
+      const selectedCategory = categories.value.find(c => c.name === activeCategory.value)
+      if (selectedCategory?.id) {
+        data = await planApi.getListByCategoryId(parseInt(selectedCategory.id))
+      } else {
+        // 如果是"未分类"，使用查询参数
+        data = await planApi.getList({ categoryId: 0, type: 0 })
+      }
+    }
 
     // 从后端数据转换为前端计划数据
     const categoryMap: Record<string, string> = {}
@@ -377,6 +391,11 @@ onMounted(() => {
   loadPlans()
 })
 
+// 监听分类变化，重新加载计划
+watch(activeCategory, () => {
+  loadPlans()
+})
+
 // 分类数据
 const categories = ref<Category[]>([
   { name: '全部', icon: Layers }
@@ -412,13 +431,12 @@ const colors = [
 // 计算属性
 const filteredPlans = computed(() => {
   return plans.value.filter(plan => {
-    const matchesCategory = activeCategory.value === '全部' || plan.category === activeCategory.value
     const matchesStatus = statusFilter.value === 'all'
       ? true
       : statusFilter.value === 'completed'
         ? plan.completed
         : !plan.completed
-    return matchesCategory && matchesStatus
+    return matchesStatus
   })
 })
 
@@ -1335,7 +1353,7 @@ const handleDeleteSubTask = async () => {
                   </template>
 
                   <!-- 添加新任务输入 -->
-                  <div class="mt-auto">
+                  <div class="mt-auto pt-3">
                     <div class="relative">
                       <Input
                         v-model="quickTaskInputs[plan.id]"

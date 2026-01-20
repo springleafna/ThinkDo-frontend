@@ -164,5 +164,13 @@ export const planApi = {
    */
   createQuadrant(data: CreateQuadrantPlanParams) {
     return request.post<number>('/plan/plan/createQuadrant', data)
+  },
+
+  /**
+   * 根据分类ID获取计划列表
+   * GET /plan/plan/list/category/{categoryId}
+   */
+  getListByCategoryId(categoryId: number) {
+    return request.get<Plan[]>(`/plan/plan/list/category/${categoryId}`)
   }
 }
