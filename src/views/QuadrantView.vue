@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useLayoutStore } from '@/stores/layout'
-import { planApi, type Plan } from '@/api/plan'
+import { planApi, type PlanQuadrantInfo } from '@/api/plan'
+import { toast } from 'vue-sonner'
 import {
   Plus,
   Check,
@@ -31,7 +32,15 @@ interface QuadrantData {
   description: string
   icon: any
   color: string
-  tasks: Plan[]
+  tasks: PlanQuadrantInfo[]
+}
+
+// 象限值映射
+const quadrantValueMap: Record<string, number> = {
+  q1: 1, // 重要且紧急
+  q2: 2, // 重要不紧急
+  q3: 3, // 紧急不重要
+  q4: 4  // 不重要不紧急
 }
 
 // 象限配置
@@ -123,9 +132,36 @@ const deleteTask = async (qId: string, taskId: number) => {
     try {
       await planApi.delete(taskId)
       quadrant.tasks = quadrant.tasks.filter(t => t.id !== taskId)
+      toast.success('计划已删除')
     } catch (error) {
       console.error('删除任务失败:', error)
+      toast.error('删除失败')
     }
+  }
+}
+
+// 添加任务
+const addTask = async (qId: string, event: Event) => {
+  const input = event.target as HTMLInputElement
+  const title = input.value.trim()
+
+  if (!title) return
+
+  const quadrant = quadrantValueMap[qId]
+  if (!quadrant) {
+    toast.error('无效的象限')
+    return
+  }
+
+  try {
+    await planApi.createQuadrant({ title, quadrant })
+    toast.success('计划已创建')
+    input.value = ''
+    // 重新加载数据
+    await fetchQuadrantData()
+  } catch (error) {
+    console.error('创建任务失败:', error)
+    toast.error('创建失败')
   }
 }
 
@@ -277,6 +313,7 @@ onMounted(() => {
                   type="text"
                   placeholder="添加计划"
                   class="w-full bg-transparent text-sm italic focus:outline-none opacity-40 focus:opacity-100 transition-opacity"
+                  @keydown.enter="addTask(quadrant.id, $event)"
                 />
               </div>
             </div>

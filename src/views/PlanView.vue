@@ -521,11 +521,12 @@ const handleAddPlan = async () => {
       startTime: newPlan.value.startTime || undefined,
       dueTime: newPlan.value.dueTime || undefined,
       repeatType,
-      repeatConf
+      repeatConf,
+      type: 0
     }
 
     const planId = await planApi.create(params)
-    toast.success('愿景节点已创建！')
+    toast.success('计划已创建！')
 
     // 重新加载计划列表
     await loadPlans()

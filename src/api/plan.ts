@@ -13,6 +13,7 @@ export interface CreatePlanParams {
   repeatType?: number
   repeatConf?: string
   repeatUntil?: string
+  type?: number
 }
 
 // 更新计划请求参数
@@ -30,6 +31,7 @@ export interface UpdatePlanParams {
   repeatConf?: string
   repeatUntil?: string
   status?: number
+  type?: number
 }
 
 // 计划信息
@@ -51,6 +53,7 @@ export interface Plan {
   completedAt?: string
   createdAt: string
   updatedAt: string
+  type?: number
 }
 
 // 计划查询参数
@@ -66,6 +69,35 @@ export interface PlanQueryParams {
   startTimeTo?: string
   dueTimeFrom?: string
   dueTimeTo?: string
+}
+
+// 创建四象限计划请求参数
+export interface CreateQuadrantPlanParams {
+  title: string
+  quadrant: number
+}
+
+// 四象限计划信息
+export interface PlanQuadrantInfo {
+  id: number
+  type: number
+  title: string
+  description?: string
+  quadrant: number
+  startTime?: string
+  dueTime?: string
+  repeatType: number
+  repeatConf?: string
+  repeatUntil?: string
+  status: number
+}
+
+// 四象限计划响应
+export interface PlanQuadrantResp {
+  importantUrgent: PlanQuadrantInfo[]
+  importantNotUrgent: PlanQuadrantInfo[]
+  urgentNotImportant: PlanQuadrantInfo[]
+  notImportantNotUrgent: PlanQuadrantInfo[]
 }
 
 // 计划相关 API
@@ -124,14 +156,13 @@ export const planApi = {
    */
   getQuadrantPlans() {
     return request.get<PlanQuadrantResp>('/plan/plan/quadrant')
-  }
-}
+  },
 
-// 四象限计划响应
-export interface PlanQuadrantResp {
-  importantUrgent: Plan[]
-  importantNotUrgent: Plan[]
-  urgentNotImportant: Plan[]
-  notImportantNotUrgent: Plan[]
-  unclassified: Plan[]
+  /**
+   * 创建四象限计划
+   * POST /plan/plan/createQuadrant
+   */
+  createQuadrant(data: CreateQuadrantPlanParams) {
+    return request.post<number>('/plan/plan/createQuadrant', data)
+  }
 }
