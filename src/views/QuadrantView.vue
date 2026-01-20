@@ -182,11 +182,11 @@ onMounted(() => {
 
       <div class="flex-1 overflow-y-auto p-8 md:p-12 pt-8 custom-scrollbar relative z-10">
         <div class="max-w-7xl mx-auto space-y-10 pb-12 section-reveal">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[600px]">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div
               v-for="quadrant in data"
               :key="quadrant.id"
-              :class="['woven-border rounded-[2.5rem] p-8 flex flex-col card-hover shadow-sm', quadrant.color]"
+              :class="['woven-border rounded-[2.5rem] p-8 flex flex-col card-hover shadow-sm h-[380px]', quadrant.color]"
             >
               <div class="flex justify-between items-start mb-6">
                 <div class="flex items-center gap-4">
@@ -207,7 +207,7 @@ onMounted(() => {
                 {{ quadrant.description }}
               </p>
 
-              <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 max-h-[130px]">
+              <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0">
                 <div class="space-y-3">
                   <div
                     v-for="task in quadrant.tasks.slice(0, MAX_DISPLAY_TASKS)"
