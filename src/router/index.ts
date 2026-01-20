@@ -56,6 +56,12 @@ const router = createRouter({
       name: 'ai-chat',
       component: () => import('@/views/AIChatView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/daily',
+      name: 'daily',
+      component: () => import('@/views/DailyTaskView.vue'),
+      meta: { requiresAuth: true }
     }
   ],
 })

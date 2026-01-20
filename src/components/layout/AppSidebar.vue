@@ -72,7 +72,7 @@ const handleNavigation = (viewId: string) => {
     'ai-chat': '/ai-chat',
     'knowledge-base': '/dashboard',
     'quadrant': '/quadrant',
-    'daily': '/dashboard',
+    'daily': '/daily',
     'notes': '/notes'
   }
 
