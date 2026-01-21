@@ -10,6 +10,16 @@ export interface CreatePlanExecutionParams {
   executeDate: string
 }
 
+// 更新每日计划请求参数
+export interface UpdatePlanExecutionParams {
+  id: number
+  title?: string
+  priority?: number
+  startTime?: string
+  dueTime?: string
+  tags?: string
+}
+
 // 每日清单信息
 export interface PlanExecution {
   id: number
@@ -32,6 +42,11 @@ export const planExecutionApi = {
   // 创建每日计划
   create(params: CreatePlanExecutionParams): Promise<number> {
     return request.post('/plan/execution/create', params)
+  },
+
+  // 更新每日计划
+  update(params: UpdatePlanExecutionParams): Promise<void> {
+    return request.put('/plan/execution/update', params)
   },
 
   // 删除每日清单
