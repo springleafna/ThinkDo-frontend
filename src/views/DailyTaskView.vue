@@ -125,12 +125,22 @@ const loadTodayTasks = async () => {
 
 // 方法
 const toggleTaskCompletion = async (taskId: string) => {
+  const task = tasks.value.find(t => t.id === taskId)
+  if (!task) return
+
+  // 立即更新本地状态
+  const originalCompleted = task.completed
+  task.completed = !task.completed
+
   try {
     await planExecutionApi.toggleStatus(parseInt(taskId))
-    await loadTodayTasks()
-    toast.success('任务已完成')
+    if (task.completed) {
+      toast.success('任务已完成')
+    }
   } catch (error) {
     console.error('切换任务状态失败', error)
+    // 如果失败，恢复原状态
+    task.completed = originalCompleted
     toast.error('切换任务状态失败')
   }
 }

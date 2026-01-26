@@ -75,7 +75,7 @@ const toggleSidebar = () => {
 // 重复配置接口
 interface RepeatConfig {
   type: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
-  // 每日：间隔天数
+  // 每日：周期天数
   dailyInterval?: number
   // 每周：选中的星期几 (0-6, 0=周日)
   weeklyDays?: number[]
@@ -211,7 +211,7 @@ const convertRepeatConfigToApi = (repeatConfig: RepeatConfig | null): { repeatTy
 
   switch (repeatConfig.type) {
     case 'daily':
-      if (repeatConfig.dailyInterval && repeatConfig.dailyInterval > 1) {
+      if (repeatConfig.dailyInterval && repeatConfig.dailyInterval >= 1) {
         repeatConf = JSON.stringify({ interval: repeatConfig.dailyInterval })
       }
       break
@@ -1510,7 +1510,7 @@ const handleDeleteSubTask = async () => {
 
           <!-- 每日配置 -->
           <div v-if="newPlan.repeatConfig?.type === 'daily'" class="pl-4 space-y-2">
-            <label class="text-xs text-neutral-500">间隔天数</label>
+            <label class="text-xs text-neutral-500">周期天数</label>
             <div class="flex items-center gap-2">
               <Input
                 :model-value="newPlan.repeatConfig?.dailyInterval || 1"
@@ -1782,7 +1782,7 @@ const handleDeleteSubTask = async () => {
 
           <!-- 每日配置 -->
           <div v-if="editingPlan.repeatConfig?.type === 'daily'" class="pl-4 space-y-2">
-            <label class="text-xs text-neutral-500">间隔天数</label>
+            <label class="text-xs text-neutral-500">周期天数</label>
             <div class="flex items-center gap-2">
               <Input
                 :model-value="editingPlan.repeatConfig?.dailyInterval || 1"
