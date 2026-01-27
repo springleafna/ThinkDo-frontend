@@ -23,7 +23,6 @@ export interface UpdatePlanExecutionParams {
 // 每日清单信息
 export interface PlanExecution {
   id: number
-  planId: number
   planTitle: string
   planType: number
   executeDate: string

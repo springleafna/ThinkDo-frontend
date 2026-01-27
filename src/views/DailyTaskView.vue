@@ -263,12 +263,25 @@ const handleEditTask = async () => {
     const today = new Date()
     const executeDate = today.toISOString().split('T')[0]
 
+    // 处理时间格式：如果已经是 ISO 格式直接使用，否则拼接日期和时间
+    const startTime = editingTask.value.startTime
+      ? (editingTask.value.startTime.includes('T')
+          ? editingTask.value.startTime
+          : new Date(`${executeDate}T${editingTask.value.startTime}`).toISOString())
+      : undefined
+
+    const dueTime = editingTask.value.dueTime
+      ? (editingTask.value.dueTime.includes('T')
+          ? editingTask.value.dueTime
+          : new Date(`${executeDate}T${editingTask.value.dueTime}`).toISOString())
+      : undefined
+
     const params: UpdatePlanExecutionParams = {
       id: parseInt(editingTask.value.id),
       title: editingTask.value.title,
       priority: mapPriorityToApi(editingTask.value.priority),
-      startTime: editingTask.value.startTime ? new Date(`${executeDate}T${editingTask.value.startTime}`).toISOString() : undefined,
-      dueTime: editingTask.value.dueTime ? new Date(`${executeDate}T${editingTask.value.dueTime}`).toISOString() : undefined,
+      startTime,
+      dueTime,
       tags: editingTask.value.tags.length > 0 ? editingTask.value.tags.join(', ') : undefined
     }
 
