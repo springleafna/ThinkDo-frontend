@@ -190,16 +190,19 @@ const handleAddTask = async () => {
   }
 
   try {
-    // 获取今天的日期
+    // 获取今天的日期（本地格式）
     const today = new Date()
-    const executeDate = today.toISOString().split('T')[0]
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    const executeDate = `${year}-${month}-${day}`
 
     const params: CreatePlanExecutionParams = {
       title: newTask.value.title,
       priority: mapPriorityToApi(newTask.value.priority),
       executeDate,
-      startTime: newTask.value.startTime ? new Date(`${executeDate}T${newTask.value.startTime}`).toISOString() : undefined,
-      dueTime: newTask.value.dueTime ? new Date(`${executeDate}T${newTask.value.dueTime}`).toISOString() : undefined,
+      startTime: newTask.value.startTime ? `${executeDate}T${newTask.value.startTime}:00` : undefined,
+      dueTime: newTask.value.dueTime ? `${executeDate}T${newTask.value.dueTime}:00` : undefined,
       tags: newTask.value.tags || undefined
     }
 
@@ -259,29 +262,30 @@ const handleEditTask = async () => {
   }
 
   try {
-    // 获取今天的日期
+    // 获取今天的日期（本地格式）
     const today = new Date()
-    const executeDate = today.toISOString().split('T')[0]
+    const year = today.getFullYear()
+    const month = String(today.getMonth() + 1).padStart(2, '0')
+    const day = String(today.getDate()).padStart(2, '0')
+    const executeDate = `${year}-${month}-${day}`
 
-    // 处理时间格式：如果已经是 ISO 格式直接使用，否则拼接日期和时间
-    const startTime = editingTask.value.startTime
-      ? (editingTask.value.startTime.includes('T')
-          ? editingTask.value.startTime
-          : new Date(`${executeDate}T${editingTask.value.startTime}`).toISOString())
-      : undefined
-
-    const dueTime = editingTask.value.dueTime
-      ? (editingTask.value.dueTime.includes('T')
-          ? editingTask.value.dueTime
-          : new Date(`${executeDate}T${editingTask.value.dueTime}`).toISOString())
-      : undefined
+    // 处理时间格式：统一转换为本地时间的 ISO 格式（不带时区）
+    const formatLocalTime = (timeStr?: string): string | undefined => {
+      if (!timeStr) return undefined
+      // 如果已经是完整的日期时间格式，保持不变
+      if (timeStr.includes('T') && timeStr.includes(':')) {
+        return timeStr
+      }
+      // 否则拼接日期和 HH:mm 格式的时间
+      return `${executeDate}T${timeStr}:00`
+    }
 
     const params: UpdatePlanExecutionParams = {
       id: parseInt(editingTask.value.id),
       title: editingTask.value.title,
       priority: mapPriorityToApi(editingTask.value.priority),
-      startTime,
-      dueTime,
+      startTime: formatLocalTime(editingTask.value.startTime),
+      dueTime: formatLocalTime(editingTask.value.dueTime),
       tags: editingTask.value.tags.length > 0 ? editingTask.value.tags.join(', ') : undefined
     }
 
@@ -356,7 +360,13 @@ const formatTime = (dateTimeStr?: string) => {
 const formatTimeForInput = (dateTimeStr?: string): string => {
   if (!dateTimeStr) return ''
   try {
+    // 如果已经是 HH:mm 格式，直接返回
+    if (dateTimeStr.match(/^\d{2}:\d{2}$/)) {
+      return dateTimeStr
+    }
+    // 处理 ISO 格式的时间字符串
     const date = new Date(dateTimeStr)
+    if (isNaN(date.getTime())) return ''
     const hours = String(date.getHours()).padStart(2, '0')
     const minutes = String(date.getMinutes()).padStart(2, '0')
     return `${hours}:${minutes}`
@@ -562,6 +572,9 @@ onMounted(() => {
     <DialogContent class="sm:max-w-[500px]">
       <DialogHeader>
         <DialogTitle class="text-lg font-medium text-neutral-900">新建任务</DialogTitle>
+        <DialogDescription class="text-sm text-neutral-500">
+          创建一个新的每日清单任务
+        </DialogDescription>
       </DialogHeader>
 
       <div class="space-y-6 py-4">
@@ -639,6 +652,9 @@ onMounted(() => {
     <DialogContent class="sm:max-w-[500px]">
       <DialogHeader>
         <DialogTitle class="text-lg font-medium text-neutral-900">编辑任务</DialogTitle>
+        <DialogDescription class="text-sm text-neutral-500">
+          修改任务的详细信息
+        </DialogDescription>
       </DialogHeader>
 
       <div v-if="editingTask" class="space-y-6 py-4">

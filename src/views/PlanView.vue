@@ -707,7 +707,7 @@ const getQuadrantConfig = (quadrant: string | undefined | null) => {
       bg: 'bg-gray-100',
       text: 'text-gray-700',
       icon: Archive,
-      description: '授权/删除'
+      description: '暂不处理'
     }
   }
 
@@ -1406,6 +1406,9 @@ const handleDeleteSubTask = async () => {
     <DialogContent class="sm:max-w-[600px]">
       <DialogHeader>
         <DialogTitle class="text-lg font-medium text-neutral-900">新建计划</DialogTitle>
+        <DialogDescription class="text-sm text-neutral-500">
+          创建一个新的长期计划
+        </DialogDescription>
       </DialogHeader>
 
       <div class="space-y-6 py-4">
@@ -1483,7 +1486,7 @@ const handleDeleteSubTask = async () => {
               <SelectItem value="urgent-important">紧急重要 - 立即处理</SelectItem>
               <SelectItem value="urgent-not-important">紧急不重要 - 快速处理</SelectItem>
               <SelectItem value="not-urgent-important">重要不紧急 - 计划安排</SelectItem>
-              <SelectItem value="not-urgent-not-important">不紧急不重要 - 授权/删除</SelectItem>
+              <SelectItem value="not-urgent-not-important">不紧急不重要 - 暂不处理</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -1649,7 +1652,7 @@ const handleDeleteSubTask = async () => {
 
       <div class="space-y-4 py-4">
         <div class="space-y-2">
-          <label class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 ml-1">分类名称</label>
+          <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">分类名称</label>
           <Input
             v-model="newCatName"
             type="text"
@@ -1678,6 +1681,9 @@ const handleDeleteSubTask = async () => {
     <DialogContent class="sm:max-w-[600px]">
       <DialogHeader>
         <DialogTitle class="text-lg font-medium text-neutral-900">编辑计划</DialogTitle>
+        <DialogDescription class="text-sm text-neutral-500">
+          修改计划的详细信息
+        </DialogDescription>
       </DialogHeader>
 
       <div v-if="editingPlan" class="space-y-6 py-4">
@@ -1755,7 +1761,7 @@ const handleDeleteSubTask = async () => {
               <SelectItem value="urgent-important">紧急重要 - 立即处理</SelectItem>
               <SelectItem value="urgent-not-important">紧急不重要 - 快速处理</SelectItem>
               <SelectItem value="not-urgent-important">重要不紧急 - 计划安排</SelectItem>
-              <SelectItem value="not-urgent-not-important">不紧急不重要 - 授权/删除</SelectItem>
+              <SelectItem value="not-urgent-not-important">不紧急不重要 - 暂不处理</SelectItem>
             </SelectContent>
           </Select>
         </div>
