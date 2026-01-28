@@ -107,21 +107,24 @@ const handleNavigation = (viewId: string) => {
 
     <div
       :class="[
-        'py-6 flex items-center transition-all',
-        isOpen ? 'px-6 justify-center' : 'px-0 justify-center'
+        'py-6 flex items-center min-h-[64px] transition-all duration-300',
+        isOpen ? 'px-6 justify-start' : 'pl-[15px] justify-start'
       ]"
     >
-      <div class="flex items-center gap-3">
-        <div class="bg-[#18181b] text-white p-2 rounded-xl shadow-lg shadow-black/5 shrink-0">
-          <Sparkles :size="18" />
-        </div>
-        <span
-          v-if="isOpen"
-          class="font-medium text-xl tracking-tight text-neutral-900 whitespace-nowrap overflow-hidden"
-        >
-          ThinkDo
-        </span>
+      <div class="bg-[#18181b] text-white p-2 rounded-xl shadow-lg shadow-black/5 shrink-0 transition-all duration-300 z-10 relative">
+        <Sparkles :size="18" />
       </div>
+
+      <span
+        :class="[
+          'font-medium text-xl tracking-tight text-neutral-900 whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out',
+          isOpen 
+            ? 'w-auto opacity-100 ml-3 translate-x-0' 
+            : 'w-0 opacity-0 ml-0 -translate-x-4'
+        ]"
+      >
+        ThinkDo
+      </span>
     </div>
 
     <nav class="flex-1 px-3 space-y-1 mt-6">
@@ -130,7 +133,11 @@ const handleNavigation = (viewId: string) => {
         :key="item.id"
         @click="handleNavigation(item.id)"
         :class="[
-          'w-full flex items-center gap-4 px-3 py-2.5 rounded-xl transition-all duration-300',
+          'w-full flex items-center transition-all duration-300 min-h-[44px] rounded-xl',
+          'justify-start',
+          
+          isOpen ? 'px-3' : 'pl-[11px]',
+
           activeView === item.id
             ? 'bg-zinc-100 text-zinc-900 font-bold border border-zinc-200/50 shadow-sm'
             : 'text-neutral-400 hover:text-neutral-900 hover:bg-black/5'
@@ -140,37 +147,74 @@ const handleNavigation = (viewId: string) => {
         <component
           :is="item.icon"
           :size="18"
-          :class="[activeView === item.id ? 'opacity-100' : 'opacity-40', 'shrink-0']"
+          :class="[
+            'transition-all duration-300 shrink-0', 
+            activeView === item.id ? 'opacity-100' : 'opacity-40'
+          ]"
         />
-        <span v-if="isOpen" class="text-sm tracking-tight whitespace-nowrap">
+        
+        <span 
+          :class="[
+            'whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out',
+            isOpen 
+              ? 'w-auto opacity-100 ml-3 translate-x-0' 
+              : 'w-0 opacity-0 ml-0 -translate-x-2'
+          ]"
+        >
           {{ item.label }}
         </span>
       </button>
     </nav>
 
-    <div class="p-4 border-t border-black/5 flex flex-col gap-2">
-      <div :class="['flex items-center gap-3 px-2 py-2', !isOpen ? 'justify-center' : '']">
-        <div class="w-8 h-8 rounded-full border border-black/10 flex items-center justify-center bg-white shadow-sm shrink-0">
+    <!-- 底部用户区域 -->
+    <div class="p-3 border-t border-black/5 flex flex-col gap-1">
+      
+      <!-- 用户信息 -->
+      <div 
+        :class="[
+          'flex items-center gap-3 px-2 py-2 rounded-xl transition-all duration-300 hover:bg-black/5',
+          'cursor-pointer' 
+        ]"
+      >
+        <div class="w-8 h-8 rounded-full border border-black/10 flex items-center justify-center bg-white shadow-sm shrink-0 transition-transform duration-300">
           <User :size="14" class="opacity-60" />
         </div>
-        <div v-if="isOpen" class="flex-1 overflow-hidden">
+        
+        <div 
+          :class="[
+            'flex-1 overflow-hidden transition-all duration-300 ease-in-out flex flex-col',
+            isOpen ? 'w-auto opacity-100 translate-x-0' : 'w-0 opacity-0 -translate-x-2'
+          ]"
+        >
           <p class="text-[13px] font-medium truncate whitespace-nowrap">{{ userStore.username || '未登录' }}</p>
           <p class="mono text-[8px] opacity-40 uppercase tracking-tighter whitespace-nowrap">在线连接</p>
         </div>
       </div>
+
+      <!-- 退出按钮 -->
       <button
         @click="handleLogout"
         :class="[
-          'flex items-center gap-3 px-2 py-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all',
-          !isOpen ? 'justify-center' : ''
+          'flex items-center gap-3 px-2 py-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all duration-300 group',
+          'justify-start'
         ]"
         title="退出登录"
       >
-        <LogOut :size="16" class="shrink-0" />
-        <span v-if="isOpen" class="text-[12px] font-bold uppercase tracking-widest whitespace-nowrap">
+
+        <div class="w-8 h-8 flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110">
+          <LogOut :size="16" />
+        </div>
+        
+        <span 
+          :class="[
+            'text-[12px] font-bold uppercase tracking-widest whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out',
+            isOpen ? 'w-auto opacity-100 translate-x-0' : 'w-0 opacity-0 -translate-x-2'
+          ]"
+        >
           退出
         </span>
       </button>
+
     </div>
   </aside>
 </template>
