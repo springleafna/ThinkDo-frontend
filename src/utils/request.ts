@@ -1,5 +1,7 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
 import { toast } from 'vue-sonner'
+import { useUserStore } from '@/stores/user'
+import router from '@/router'
 
 export interface RequestConfig extends AxiosRequestConfig {
   showErrorMessage?: boolean
@@ -37,12 +39,31 @@ service.interceptors.request.use(
   }
 )
 
+// 处理 401 未登录的函数
+const handleUnauthorized = () => {
+  toast.error('登录已过期，请重新登录')
+  localStorage.removeItem('token')
+
+  // 清除用户状态
+  const userStore = useUserStore()
+  userStore.logout()
+
+  // 跳转到登录页
+  router.push('/auth')
+}
+
 service.interceptors.response.use(
   (response: AxiosResponse) => {
     const { data, config } = response
 
     if (config.responseType === 'blob') {
       return response
+    }
+
+    // 处理后端返回的业务状态码 401
+    if (data.code === 401) {
+      handleUnauthorized()
+      return Promise.reject(new Error('未登录'))
     }
 
     if (data.code === 0 || data.success === true) {
@@ -65,10 +86,8 @@ service.interceptors.response.use(
           message = data.message || '请求参数错误'
           break
         case 401:
-          message = '登录已过期，请重新登录'
-          localStorage.removeItem('token')
-          window.location.href = '/login'
-          break
+          handleUnauthorized()
+          return Promise.reject(error)
         case 403:
           message = '没有权限访问'
           break
