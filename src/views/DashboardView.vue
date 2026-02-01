@@ -145,8 +145,17 @@ const dailyTasks = ref([
   { time: '16:30', task: '健身房', done: false }
 ])
 
+// 思维笔记接口
+interface InsightNote {
+  id: number
+  title: string
+  tag?: string
+  content: string
+  updatedAt: string
+}
+
 // 思维笔记静态数据
-const insightNotes = ref([
+const insightNotes = ref<InsightNote[]>([
   {
     id: 1,
     title: '关于"编织美学"的交互实验结论',
@@ -180,7 +189,10 @@ const addNewTask = () => {
 
 // 切换任务完成状态
 const toggleTask = (index: number) => {
-  dailyTasks.value[index].done = !dailyTasks.value[index].done
+  const task = dailyTasks.value[index]
+  if (task) {
+    task.done = !task.done
+  }
 }
 
 // 导航到计划页面

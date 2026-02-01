@@ -112,7 +112,12 @@ const confirmDeleteSession = () => {
     chatSessions.value = chatSessions.value.filter(s => s.id !== deleteSessionId.value)
     if (currentSessionId.value === deleteSessionId.value) {
       if (chatSessions.value.length > 0) {
-        switchSession(chatSessions.value[0].id)
+        const firstSession = chatSessions.value[0]
+        if (firstSession) {
+          switchSession(firstSession.id)
+        } else {
+          createNewSession()
+        }
       } else {
         createNewSession()
       }
@@ -148,8 +153,13 @@ const loadSessionsFromStorage = () => {
         }))
       }))
       if (chatSessions.value.length > 0) {
-        currentSessionId.value = chatSessions.value[0].id
-        messages.value = [...chatSessions.value[0].messages]
+        const firstSession = chatSessions.value[0]
+        if (firstSession) {
+          currentSessionId.value = firstSession.id
+          messages.value = [...firstSession.messages]
+        } else {
+          createNewSession()
+        }
       } else {
         createNewSession()
       }
@@ -169,13 +179,18 @@ const updateCurrentSession = () => {
   const sessionIndex = chatSessions.value.findIndex(s => s.id === currentSessionId.value)
   if (sessionIndex !== -1) {
     const session = chatSessions.value[sessionIndex]
+    if (!session) return
+
     session.messages = [...messages.value]
     session.updatedAt = new Date()
 
     // 如果是第一条用户消息，更新标题
     const userMessages = messages.value.filter(m => m.role === 'user')
     if (userMessages.length === 1 && messages.value.filter(m => m.role === 'model').length === 2) {
-      session.title = generateSessionTitle(userMessages[0].text)
+      const firstUserMessage = userMessages[0]
+      if (firstUserMessage) {
+        session.title = generateSessionTitle(firstUserMessage.text)
+      }
     }
 
     // 移动到顶部
@@ -224,7 +239,7 @@ const handleSend = async () => {
       '明白你想要达到的目标。这里有几个思路...'
     ]
 
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)]
+    const randomResponse = responses[Math.floor(Math.random() * responses.length)] || '好的，我明白了。'
 
     const modelMessage: ChatMessage = {
       role: 'model',

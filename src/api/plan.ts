@@ -65,6 +65,7 @@ export interface PlanQueryParams {
   tags?: string
   status?: number
   repeatType?: number
+  type?: number
   startTimeFrom?: string
   startTimeTo?: string
   dueTimeFrom?: string

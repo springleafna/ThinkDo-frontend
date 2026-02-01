@@ -52,7 +52,7 @@ const quadrantConfigs = [
     description: '立即处理，危机管理。',
     icon: Zap,
     color: 'bg-rose-50 border-rose-200 text-rose-900',
-    key: 'importantUrgent' as keyof QuadrantData
+    key: 'importantUrgent' as const
   },
   {
     id: 'q2',
@@ -61,7 +61,7 @@ const quadrantConfigs = [
     description: '长期规划，自我提升。',
     icon: Calendar,
     color: 'bg-indigo-50 border-indigo-200 text-indigo-900',
-    key: 'importantNotUrgent' as keyof QuadrantData
+    key: 'importantNotUrgent' as const
   },
   {
     id: 'q3',
@@ -70,7 +70,7 @@ const quadrantConfigs = [
     description: '琐碎事务，尽量授权。',
     icon: Users,
     color: 'bg-amber-50 border-amber-200 text-amber-900',
-    key: 'urgentNotImportant' as keyof QuadrantData
+    key: 'urgentNotImportant' as const
   },
   {
     id: 'q4',
@@ -79,7 +79,7 @@ const quadrantConfigs = [
     description: '消遣娱乐，断舍离。',
     icon: Trash,
     color: 'bg-stone-50 border-stone-200 text-stone-900',
-    key: 'notImportantNotUrgent' as keyof QuadrantData
+    key: 'notImportantNotUrgent' as const
   }
 ]
 
@@ -96,7 +96,7 @@ const fetchQuadrantData = async () => {
     // 将 API 数据转换为象限数据格式
     data.value = quadrantConfigs.map(config => ({
       ...config,
-      tasks: response[config.key] || []
+      tasks: response[config.key as keyof typeof response] || []
     }))
   } catch (error) {
     console.error('获取四象限数据失败:', error)

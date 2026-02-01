@@ -155,7 +155,7 @@ const addQuickTask = async () => {
   try {
     // 获取今天的日期
     const today = new Date()
-    const executeDate = today.toISOString().split('T')[0]
+    const executeDate = today.toISOString().split('T')[0] || new Date().toISOString().split('T')[0]!
 
     const params: CreatePlanExecutionParams = {
       title,
@@ -344,15 +344,15 @@ const getPriorityLabel = (priority: 'low' | 'medium' | 'high') => {
 }
 
 // 格式化时间显示
-const formatTime = (dateTimeStr?: string) => {
-  if (!dateTimeStr) return null
+const formatTime = (dateTimeStr?: string): string => {
+  if (!dateTimeStr) return ''
   try {
     const date = new Date(dateTimeStr)
     const hours = String(date.getHours()).padStart(2, '0')
     const minutes = String(date.getMinutes()).padStart(2, '0')
     return `${hours}:${minutes}`
   } catch (e) {
-    return null
+    return ''
   }
 }
 

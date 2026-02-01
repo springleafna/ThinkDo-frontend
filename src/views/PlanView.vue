@@ -617,7 +617,7 @@ const getPriorityColor = (priority: 'low' | 'medium' | 'high') => {
       icon: AlertTriangle
     }
   }
-  return colorMap[priority] || colorMap['medium']
+  return colorMap[priority] || colorMap['medium']!
 }
 
 const getPriorityLabel = (priority: 'low' | 'medium' | 'high') => {
@@ -854,8 +854,9 @@ const handleEditPlan = async () => {
 
   try {
     // 查找分类ID（"uncategorized" 表示未分类）
-    const category = categories.value.find(c => c.name === editingPlan.value.category && c.name !== '全部')
-    const categoryId = (editingPlan.value.category && editingPlan.value.category !== 'uncategorized' && category?.id)
+    const currentCategory = editingPlan.value.category
+    const category = categories.value.find(c => c.name === currentCategory && c.name !== '全部')
+    const categoryId = (currentCategory && currentCategory !== 'uncategorized' && category?.id)
       ? parseInt(category.id)
       : undefined
 
@@ -1793,8 +1794,9 @@ const handleDeleteSubTask = async () => {
               <Input
                 :model-value="editingPlan.repeatConfig?.dailyInterval || 1"
                 @update:model-value="(val) => {
-                  if (editingPlan.repeatConfig) {
-                    editingPlan.repeatConfig.dailyInterval = parseInt(String(val)) || 1
+                  const plan = editingPlan
+                  if (plan?.repeatConfig) {
+                    plan.repeatConfig.dailyInterval = parseInt(String(val)) || 1
                   }
                 }"
                 type="number"
@@ -1858,7 +1860,8 @@ const handleDeleteSubTask = async () => {
                 <Select
                   :model-value="String(editingPlan.repeatConfig?.yearlyMonth || '')"
                   @update:model-value="(val) => {
-                    if (editingPlan.repeatConfig && val) editingPlan.repeatConfig.yearlyMonth = Number(val)
+                    const plan = editingPlan
+                    if (plan?.repeatConfig && val) plan.repeatConfig.yearlyMonth = Number(val)
                   }"
                 >
                   <SelectTrigger class="w-full px-3 py-2 bg-white border border-black/5 rounded-xl text-sm">
@@ -1874,7 +1877,8 @@ const handleDeleteSubTask = async () => {
                 <Select
                   :model-value="String(editingPlan.repeatConfig?.yearlyDay || '')"
                   @update:model-value="(val) => {
-                    if (editingPlan.repeatConfig && val) editingPlan.repeatConfig.yearlyDay = Number(val)
+                    const plan = editingPlan
+                    if (plan?.repeatConfig && val) plan.repeatConfig.yearlyDay = Number(val)
                   }"
                 >
                   <SelectTrigger class="w-full px-3 py-2 bg-white border border-black/5 rounded-xl text-sm">

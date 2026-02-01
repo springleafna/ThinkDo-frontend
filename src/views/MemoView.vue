@@ -159,7 +159,7 @@ const loadMemos = async () => {
     const data = await memoApi.getList()
 
     // 将后端数据转换为前端显示格式
-    const defaultPreset = colorPresets[0]
+    const defaultPreset = colorPresets[0]!
     memos.value = data.map((memo) => {
       const preset = getColorPreset(memo.backgroundColor)
       return {
@@ -231,6 +231,10 @@ const handleSubmit = async (e: Event) => {
 
   try {
     const preset = colorPresets[form.value.colorIndex]
+    if (!preset) {
+      toast.error('无效的颜色选择')
+      return
+    }
 
     if (editId.value) {
       // 更新便签
