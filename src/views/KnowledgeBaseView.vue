@@ -5,19 +5,19 @@ import { useLayoutStore } from '@/stores/layout'
 import {
   Plus,
   Search,
-  Filter,
-  Calendar,
-  Tag,
-  Edit3,
-  Trash2,
+  Folder,
   FolderOpen,
-  Star,
-  StarOff,
-  ChevronRight,
-  LayoutGrid,
-  List,
+  FileText,
+  Upload,
+  Trash2,
+  Edit3,
+  MoreVertical,
   Clock,
-  TrendingUp
+  Grid3x3,
+  List,
+  Library,
+  Archive,
+  Star
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
@@ -25,7 +25,7 @@ import AppHeader from '@/components/layout/AppHeader.vue'
 
 const router = useRouter()
 const layoutStore = useLayoutStore()
-const activeView = ref('notes')
+const activeView = ref('knowledge-base')
 
 // 使用全局 store 的侧边栏状态和方法
 const isSidebarOpen = computed(() => layoutStore.isSidebarOpen)
@@ -39,98 +39,86 @@ const viewMode = ref<'grid' | 'list'>('grid')
 // 搜索关键词
 const searchKeyword = ref('')
 
-// 筛选条件
+// 知识库分类
 const selectedCategory = ref('all')
-const selectedTag = ref('all')
 
-// 笔记分类
 const categories = ref([
-  { id: 'all', name: '全部笔记', icon: FolderOpen, count: 0 },
-  { id: 'study', name: '学习笔记', icon: TrendingUp, count: 0 },
-  { id: 'work', name: '工作记录', icon: LayoutGrid, count: 0 },
-  { id: 'life', name: '生活感悟', icon: Calendar, count: 0 },
-  { id: 'favorite', name: '收藏夹', icon: Star, count: 0 }
+  { id: 'all', name: '全部知识库', icon: Library, count: 0 },
+  { id: 'recent', name: '最近使用', icon: Clock, count: 0 },
+  { id: 'favorite', name: '收藏夹', icon: Star, count: 0 },
+  { id: 'archive', name: '已归档', icon: Archive, count: 0 }
 ])
 
-// 常用标签
-const tags = ref([
-  { id: 'all', name: '全部', color: 'bg-gray-100 text-gray-700' },
-  { id: 'important', name: '重要', color: 'bg-red-100 text-red-700' },
-  { id: 'idea', name: '想法', color: 'bg-blue-100 text-blue-700' },
-  { id: 'todo', name: '待办', color: 'bg-yellow-100 text-yellow-700' },
-  { id: 'done', name: '已完成', color: 'bg-green-100 text-green-700' },
-  { id: 'question', name: '疑问', color: 'bg-purple-100 text-purple-700' }
-])
-
-// 模拟笔记数据
-interface Note {
+// 知识库数据接口
+interface KnowledgeBase {
   id: number
-  title: string
-  content: string
+  name: string
+  description: string
+  fileCount: number
   category: string
-  tags: string[]
   isFavorite: boolean
   createdAt: string
   updatedAt: string
 }
 
-const notes = ref<Note[]>([
+// 模拟知识库数据
+const knowledgeBases = ref<KnowledgeBase[]>([
   {
     id: 1,
-    title: 'Vue3 组合式 API 学习笔记',
-    content: 'Vue 3 的 Composition API 提供了一种更灵活的方式来组织组件逻辑。通过 setup 函数，我们可以更好地复用代码...',
-    category: 'study',
-    tags: ['important', 'idea'],
+    name: '前端开发资料',
+    description: 'Vue3、React、TypeScript 等前端技术文档和教程',
+    fileCount: 28,
+    category: 'recent',
     isFavorite: true,
     createdAt: '2024-01-15T10:30:00',
     updatedAt: '2024-01-15T10:30:00'
   },
   {
     id: 2,
-    title: '项目需求讨论会议记录',
-    content: '今天和产品经理讨论了新功能的需求，主要涉及用户权限管理和数据可视化模块...',
-    category: 'work',
-    tags: ['todo', 'important'],
+    name: '产品设计灵感',
+    description: 'UI/UX 设计案例、配色方案、设计规范等',
+    fileCount: 15,
+    category: 'recent',
     isFavorite: false,
     createdAt: '2024-01-14T14:20:00',
     updatedAt: '2024-01-14T14:20:00'
   },
   {
     id: 3,
-    title: '周末读书感悟',
-    content: '读了《原子习惯》这本书，深受启发。微小的改变能够带来巨大的不同，关键是要坚持下去...',
-    category: 'life',
-    tags: ['done'],
+    name: '项目文档',
+    description: '各个项目的需求文档、技术方案、会议记录',
+    fileCount: 42,
+    category: 'recent',
     isFavorite: true,
     createdAt: '2024-01-13T20:15:00',
     updatedAt: '2024-01-13T20:15:00'
   },
   {
     id: 4,
-    title: 'TypeScript 类型系统探究',
-    content: 'TypeScript 的类型系统非常强大，泛型、条件类型、映射类型等高级特性可以帮我们构建更安全的应用...',
-    category: 'study',
-    tags: ['idea', 'question'],
-    isFavorite: false,
+    name: 'AI 学习笔记',
+    description: '机器学习、深度学习、LLM 相关资料',
+    fileCount: 19,
+    category: 'favorite',
+    isFavorite: true,
     createdAt: '2024-01-12T16:45:00',
     updatedAt: '2024-01-12T16:45:00'
   },
   {
     id: 5,
-    title: '季度工作总结',
-    content: '这个季度完成了三个重要项目，团队协作效率有了明显提升。下个季度的目标是优化代码质量...',
-    category: 'work',
-    tags: ['done', 'important'],
-    isFavorite: true,
+    name: '个人博客素材',
+    description: '技术博客文章草稿、图片素材、引用资料',
+    fileCount: 8,
+    category: 'archive',
+    isFavorite: false,
     createdAt: '2024-01-11T09:00:00',
     updatedAt: '2024-01-11T09:00:00'
   },
   {
     id: 6,
-    title: '高效时间管理技巧',
-    content: '番茄工作法真的很有效，每工作25分钟休息5分钟，能够保持专注同时避免疲劳...',
-    category: 'life',
-    tags: ['idea'],
+    name: '工具使用指南',
+    description: '各种开发工具、生产力工具的使用说明',
+    fileCount: 12,
+    category: 'archive',
     isFavorite: false,
     createdAt: '2024-01-10T22:30:00',
     updatedAt: '2024-01-10T22:30:00'
@@ -163,28 +151,23 @@ const formatTime = (dateString: string) => {
   return year === now.getFullYear() ? `${month}-${day}` : `${year}-${month}-${day}`
 }
 
-// 过滤后的笔记列表
-const filteredNotes = computed(() => {
-  let result = notes.value
+// 过滤后的知识库列表
+const filteredKnowledgeBases = computed(() => {
+  let result = knowledgeBases.value
 
   // 按分类筛选
   if (selectedCategory.value === 'favorite') {
-    result = result.filter(note => note.isFavorite)
+    result = result.filter(kb => kb.isFavorite)
   } else if (selectedCategory.value !== 'all') {
-    result = result.filter(note => note.category === selectedCategory.value)
-  }
-
-  // 按标签筛选
-  if (selectedTag.value !== 'all') {
-    result = result.filter(note => note.tags.includes(selectedTag.value))
+    result = result.filter(kb => kb.category === selectedCategory.value)
   }
 
   // 按关键词搜索
   if (searchKeyword.value) {
     const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(note =>
-      note.title.toLowerCase().includes(keyword) ||
-      note.content.toLowerCase().includes(keyword)
+    result = result.filter(kb =>
+      kb.name.toLowerCase().includes(keyword) ||
+      kb.description.toLowerCase().includes(keyword)
     )
   }
 
@@ -195,43 +178,43 @@ const filteredNotes = computed(() => {
 const updateCategoryCount = () => {
   categories.value.forEach(cat => {
     if (cat.id === 'all') {
-      cat.count = notes.value.length
+      cat.count = knowledgeBases.value.length
     } else if (cat.id === 'favorite') {
-      cat.count = notes.value.filter(n => n.isFavorite).length
+      cat.count = knowledgeBases.value.filter(k => k.isFavorite).length
     } else {
-      cat.count = notes.value.filter(n => n.category === cat.id).length
+      cat.count = knowledgeBases.value.filter(k => k.category === cat.id).length
     }
   })
 }
 
 // 切换收藏状态
-const toggleFavorite = (noteId: number) => {
-  const note = notes.value.find(n => n.id === noteId)
-  if (note) {
-    note.isFavorite = !note.isFavorite
-    toast.success(note.isFavorite ? '已添加到收藏' : '已取消收藏')
+const toggleFavorite = (kbId: number) => {
+  const kb = knowledgeBases.value.find(k => k.id === kbId)
+  if (kb) {
+    kb.isFavorite = !kb.isFavorite
+    toast.success(kb.isFavorite ? '已添加到收藏' : '已取消收藏')
     updateCategoryCount()
   }
 }
 
-// 删除笔记
-const deleteNote = (noteId: number) => {
-  const index = notes.value.findIndex(n => n.id === noteId)
+// 删除知识库
+const deleteKnowledgeBase = (kbId: number) => {
+  const index = knowledgeBases.value.findIndex(k => k.id === kbId)
   if (index !== -1) {
-    notes.value.splice(index, 1)
-    toast.success('笔记已删除')
+    knowledgeBases.value.splice(index, 1)
+    toast.success('知识库已删除')
     updateCategoryCount()
   }
 }
 
-// 新建笔记
-const createNote = () => {
-  toast.success('创建笔记功能开发中...')
+// 新建知识库
+const createKnowledgeBase = () => {
+  toast.success('创建知识库功能开发中...')
 }
 
-// 查看笔记详情
-const viewNoteDetail = (noteId: number) => {
-  router.push(`/notes/${noteId}`)
+// 查看知识库文件列表
+const viewKnowledgeBaseFiles = (kbId: number) => {
+  router.push(`/knowledge-base/${kbId}`)
 }
 
 onMounted(() => {
@@ -252,16 +235,17 @@ onMounted(() => {
           <div class="mb-8">
             <div class="flex items-center justify-between">
               <div>
+                <h1 class="text-3xl font-bold text-neutral-900 mb-2">知识库</h1>
                 <p class="text-sm text-neutral-400">
-                  记录思考轨迹，构建知识体系
+                  上传文件，构建你的知识管理体系
                 </p>
               </div>
               <button
-                @click="createNote"
+                @click="createKnowledgeBase"
                 class="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-2xl text-[12px] font-bold tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10"
               >
                 <Plus :size="16" />
-                <span>新建笔记</span>
+                <span>新建知识库</span>
               </button>
             </div>
           </div>
@@ -274,17 +258,17 @@ onMounted(() => {
               <input
                 v-model="searchKeyword"
                 type="text"
-                placeholder="搜索笔记..."
+                placeholder="搜索知识库..."
                 class="w-full pl-12 pr-4 py-3 bg-white border border-black/5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/10 transition-all"
               />
             </div>
 
-            <!-- 筛选按钮 -->
+            <!-- 上传按钮 -->
             <button
               class="flex items-center gap-2 px-4 py-3 bg-white border border-black/5 rounded-xl text-sm hover:bg-black/5 transition-all"
             >
-              <Filter :size="16" />
-              <span class="hidden sm:inline">筛选</span>
+              <Upload :size="16" />
+              <span class="hidden sm:inline">上传文件</span>
             </button>
 
             <!-- 视图切换 -->
@@ -296,7 +280,7 @@ onMounted(() => {
                   viewMode === 'grid' ? 'bg-black text-white' : 'text-neutral-400 hover:text-neutral-900'
                 ]"
               >
-                <LayoutGrid :size="16" />
+                <Grid3x3 :size="16" />
               </button>
               <button
                 @click="viewMode = 'list'"
@@ -340,56 +324,34 @@ onMounted(() => {
                     </button>
                   </div>
                 </div>
-
-                <!-- 标签 -->
-                <div>
-                  <h3 class="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-3 px-1">
-                    标签
-                  </h3>
-                  <div class="flex flex-wrap gap-2">
-                    <button
-                      v-for="tag in tags"
-                      :key="tag.id"
-                      @click="selectedTag = tag.id"
-                      :class="[
-                        'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
-                        selectedTag === tag.id
-                          ? 'bg-black text-white'
-                          : tag.color
-                      ]"
-                    >
-                      {{ tag.name }}
-                    </button>
-                  </div>
-                </div>
               </div>
             </aside>
 
-            <!-- 右侧笔记列表 -->
+            <!-- 右侧知识库列表 -->
             <div class="flex-1 min-w-0">
               <!-- 网格视图 -->
               <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 <div
-                  v-for="note in filteredNotes"
-                  :key="note.id"
-                  @click="viewNoteDetail(note.id)"
+                  v-for="kb in filteredKnowledgeBases"
+                  :key="kb.id"
+                  @click="viewKnowledgeBaseFiles(kb.id)"
                   class="group bg-white border border-black/5 rounded-2xl p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                 >
-                  <!-- 笔记头部 -->
-                  <div class="flex items-start justify-between mb-3">
-                    <h3 class="text-base font-semibold text-neutral-900 flex-1 line-clamp-2">
-                      {{ note.title }}
-                    </h3>
+                  <!-- 知识库头部 -->
+                  <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 bg-gradient-to-br from-neutral-100 to-neutral-50 border border-black/5 rounded-xl flex items-center justify-center shadow-lg shadow-black/5">
+                      <Folder :size="24" class="text-neutral-600" />
+                    </div>
                     <button
-                      @click.stop="toggleFavorite(note.id)"
-                      class="ml-2 shrink-0"
+                      @click.stop="toggleFavorite(kb.id)"
+                      class="shrink-0"
                     >
                       <Star
-                        v-if="note.isFavorite"
+                        v-if="kb.isFavorite"
                         :size="18"
                         class="fill-yellow-400 text-yellow-400"
                       />
-                      <StarOff
+                      <Star
                         v-else
                         :size="18"
                         class="text-neutral-300 group-hover:text-neutral-500"
@@ -397,27 +359,27 @@ onMounted(() => {
                     </button>
                   </div>
 
-                  <!-- 笔记内容 -->
-                  <p class="text-sm text-neutral-600 mb-4 line-clamp-3 leading-relaxed">
-                    {{ note.content }}
-                  </p>
+                  <!-- 知识库名称 -->
+                  <h3 class="text-lg font-semibold text-neutral-900 mb-2 line-clamp-1">
+                    {{ kb.name }}
+                  </h3>
 
-                  <!-- 标签 -->
-                  <div class="flex flex-wrap gap-2 mb-4">
-                    <span
-                      v-for="tagId in note.tags"
-                      :key="tagId"
-                      class="px-2 py-1 bg-black/5 text-neutral-600 rounded text-xs"
-                    >
-                      {{ tags.find(t => t.id === tagId)?.name || tagId }}
-                    </span>
-                  </div>
+                  <!-- 知识库描述 -->
+                  <p class="text-sm text-neutral-600 mb-4 line-clamp-2 leading-relaxed">
+                    {{ kb.description }}
+                  </p>
 
                   <!-- 底部信息 -->
                   <div class="flex items-center justify-between text-xs text-neutral-400">
-                    <div class="flex items-center gap-1">
-                      <Clock :size="14" />
-                      <span>{{ formatTime(note.updatedAt) }}</span>
+                    <div class="flex items-center gap-3">
+                      <div class="flex items-center gap-1">
+                        <FileText :size="14" />
+                        <span>{{ kb.fileCount }} 个文件</span>
+                      </div>
+                      <div class="flex items-center gap-1">
+                        <Clock :size="14" />
+                        <span>{{ formatTime(kb.updatedAt) }}</span>
+                      </div>
                     </div>
                     <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
@@ -428,7 +390,7 @@ onMounted(() => {
                         <Edit3 :size="14" />
                       </button>
                       <button
-                        @click.stop="deleteNote(note.id)"
+                        @click.stop="deleteKnowledgeBase(kb.id)"
                         class="p-1.5 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors"
                         title="删除"
                       >
@@ -438,9 +400,9 @@ onMounted(() => {
                   </div>
                 </div>
 
-                <!-- 新建笔记卡片 -->
+                <!-- 新建知识库卡片 -->
                 <button
-                  @click="createNote"
+                  @click="createKnowledgeBase"
                   class="border-2 border-dashed border-black/10 bg-white/50 rounded-2xl flex flex-col items-center justify-center p-6 text-neutral-400 hover:text-neutral-600 hover:bg-white hover:border-black/20 transition-all min-h-[240px] group"
                 >
                   <div
@@ -448,63 +410,58 @@ onMounted(() => {
                   >
                     <Plus :size="24" :stroke-width="1" />
                   </div>
-                  <span class="text-sm font-medium">新建笔记</span>
+                  <span class="text-sm font-medium">新建知识库</span>
                 </button>
               </div>
 
               <!-- 列表视图 -->
               <div v-else class="space-y-3">
                 <div
-                  v-for="note in filteredNotes"
-                  :key="note.id"
-                  @click="viewNoteDetail(note.id)"
+                  v-for="kb in filteredKnowledgeBases"
+                  :key="kb.id"
+                  @click="viewKnowledgeBaseFiles(kb.id)"
                   class="group bg-white border border-black/5 rounded-xl p-4 hover:shadow-md transition-all cursor-pointer"
                 >
                   <div class="flex items-center gap-4">
                     <!-- 图标/缩略图 -->
-                    <div class="w-12 h-12 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-lg flex items-center justify-center shrink-0">
-                      <component :is="categories.find(c => c.id === note.category)?.icon || FolderOpen" :size="20" class="text-neutral-600" />
+                    <div class="w-12 h-12 bg-gradient-to-br from-neutral-100 to-neutral-50 border border-black/5 rounded-lg flex items-center justify-center shrink-0 shadow-lg shadow-black/5">
+                      <Folder :size="20" class="text-neutral-600" />
                     </div>
 
                     <!-- 内容 -->
                     <div class="flex-1 min-w-0">
                       <h3 class="text-sm font-semibold text-neutral-900 mb-1 line-clamp-1">
-                        {{ note.title }}
+                        {{ kb.name }}
                       </h3>
-                      <p class="text-xs text-neutral-500 line-clamp-2">
-                        {{ note.content }}
+                      <p class="text-xs text-neutral-500 line-clamp-1">
+                        {{ kb.description }}
                       </p>
                     </div>
 
-                    <!-- 标签 -->
-                    <div class="hidden sm:flex flex-wrap gap-2 shrink-0">
-                      <span
-                        v-for="tagId in note.tags.slice(0, 2)"
-                        :key="tagId"
-                        class="px-2 py-1 bg-black/5 text-neutral-600 rounded text-xs"
-                      >
-                        {{ tags.find(t => t.id === tagId)?.name || tagId }}
-                      </span>
+                    <!-- 文件数量 -->
+                    <div class="hidden sm:flex items-center gap-1 text-xs text-neutral-400 shrink-0">
+                      <FileText :size="14" />
+                      <span>{{ kb.fileCount }}</span>
                     </div>
 
                     <!-- 时间 -->
                     <div class="hidden md:flex items-center gap-1 text-xs text-neutral-400 shrink-0">
                       <Clock :size="14" />
-                      <span>{{ formatTime(note.updatedAt) }}</span>
+                      <span>{{ formatTime(kb.updatedAt) }}</span>
                     </div>
 
                     <!-- 操作按钮 -->
                     <div class="flex items-center gap-2 shrink-0">
                       <button
-                        @click.stop="toggleFavorite(note.id)"
+                        @click.stop="toggleFavorite(kb.id)"
                         class="p-2 hover:bg-black/5 rounded-lg transition-colors"
                       >
                         <Star
-                          v-if="note.isFavorite"
+                          v-if="kb.isFavorite"
                           :size="16"
                           class="fill-yellow-400 text-yellow-400"
                         />
-                        <StarOff
+                        <Star
                           v-else
                           :size="16"
                           class="text-neutral-300"
@@ -517,12 +474,11 @@ onMounted(() => {
                         <Edit3 :size="16" class="text-neutral-400" />
                       </button>
                       <button
-                        @click.stop="deleteNote(note.id)"
+                        @click.stop="deleteKnowledgeBase(kb.id)"
                         class="p-2 hover:bg-rose-50 rounded-lg transition-colors"
                       >
                         <Trash2 :size="16" class="text-neutral-400 hover:text-rose-600" />
                       </button>
-                      <ChevronRight :size="16" class="text-neutral-300 ml-1" />
                     </div>
                   </div>
                 </div>
@@ -530,12 +486,12 @@ onMounted(() => {
 
               <!-- 空状态 -->
               <div
-                v-if="filteredNotes.length === 0"
+                v-if="filteredKnowledgeBases.length === 0"
                 class="flex flex-col items-center justify-center py-20 text-neutral-400"
               >
                 <FolderOpen :size="48" class="mb-4 opacity-50" />
-                <p class="text-sm font-medium">暂无笔记</p>
-                <p class="text-xs mt-1">点击上方按钮创建你的第一条笔记</p>
+                <p class="text-sm font-medium">暂无知识库</p>
+                <p class="text-xs mt-1">点击上方按钮创建你的第一个知识库</p>
               </div>
             </div>
           </div>
@@ -556,13 +512,6 @@ onMounted(() => {
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

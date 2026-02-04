@@ -304,7 +304,6 @@ const formatTime = (date: Date) => {
       <div class="px-2 pt-8 bg-white/50 backdrop-blur-sm">
         <div class="flex items-center justify-between" style="padding-left: 96px; padding-right: 96px;">
           <div style="margin-left: 0px;">
-            <h2 class="text-lg font-semibold text-neutral-900">AI 智库</h2>
             <p class="text-xs text-neutral-500">智能助手 · 随时待命</p>
           </div>
           <Button

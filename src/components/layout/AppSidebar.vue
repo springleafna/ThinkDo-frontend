@@ -70,7 +70,7 @@ const handleNavigation = (viewId: string) => {
     'sticky': '/memo',
     'long-term': '/plan',
     'ai-chat': '/ai-chat',
-    'knowledge-base': '/dashboard',
+    'knowledge-base': '/knowledge-base',
     'quadrant': '/quadrant',
     'daily': '/daily',
     'notes': '/notes'

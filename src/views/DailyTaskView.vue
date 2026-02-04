@@ -393,7 +393,6 @@ onMounted(() => {
           <!-- 头部 -->
           <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
-              <h1 class="text-3xl md:text-4xl font-bold text-neutral-900 mb-2">每日清单</h1>
               <p class="text-sm text-neutral-400 mt-1 italic">专注当下，高效完成每一天。</p>
             </div>
             <div class="flex items-center gap-3">

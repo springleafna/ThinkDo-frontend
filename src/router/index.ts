@@ -62,6 +62,18 @@ const router = createRouter({
       name: 'daily',
       component: () => import('@/views/DailyTaskView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/knowledge-base',
+      name: 'knowledge-base',
+      component: () => import('@/views/KnowledgeBaseView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/knowledge-base/:id',
+      name: 'knowledge-files',
+      component: () => import('@/views/KnowledgeFilesView.vue'),
+      meta: { requiresAuth: true }
     }
   ],
 })
