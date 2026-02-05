@@ -22,6 +22,13 @@ import {
 import { toast } from 'vue-sonner'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
+import { noteApi, type Note as NoteType } from '@/api/note'
+import { noteCategoryApi, type NoteCategory } from '@/api/noteCategory'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 const router = useRouter()
 const layoutStore = useLayoutStore()
@@ -43,14 +50,33 @@ const searchKeyword = ref('')
 const selectedCategory = ref('all')
 const selectedTag = ref('all')
 
-// 笔记分类
-const categories = ref([
-  { id: 'all', name: '全部笔记', icon: FolderOpen, count: 0 },
-  { id: 'study', name: '学习笔记', icon: TrendingUp, count: 0 },
-  { id: 'work', name: '工作记录', icon: LayoutGrid, count: 0 },
-  { id: 'life', name: '生活感悟', icon: Calendar, count: 0 },
-  { id: 'favorite', name: '收藏夹', icon: Star, count: 0 }
+// 笔记分类列表
+const categories = ref<NoteCategory[]>([])
+// 分类计数映射
+const categoryCounts = ref<Record<string, number>>({
+  all: 0,
+  favorite: 0
+})
+
+// 分类列表（包含特殊分类）
+const categoryList = computed(() => [
+  { id: 'all', name: '全部笔记', icon: FolderOpen, count: categoryCounts.value.all || 0 },
+  { id: 'favorite', name: '收藏夹', icon: Star, count: categoryCounts.value.favorite || 0 },
+  ...categories.value.map((cat, index) => ({
+    id: cat.id.toString(),
+    name: cat.name,
+    icon: [FolderOpen, TrendingUp, LayoutGrid, Calendar][index % 4],
+    count: categoryCounts.value[cat.id.toString()] || 0
+  }))
 ])
+
+// 加载中状态
+const loading = ref(false)
+
+// 新建分类对话框
+const showCategoryDialog = ref(false)
+const newCategoryName = ref('')
+const isCreatingCategory = ref(false)
 
 // 常用标签
 const tags = ref([
@@ -62,80 +88,69 @@ const tags = ref([
   { id: 'question', name: '疑问', color: 'bg-purple-100 text-purple-700' }
 ])
 
-// 模拟笔记数据
+// 本地笔记接口（兼容旧代码）
 interface Note {
   id: number
   title: string
   content: string
   category: string
+  categoryId?: number
   tags: string[]
   isFavorite: boolean
   createdAt: string
   updatedAt: string
 }
 
-const notes = ref<Note[]>([
-  {
-    id: 1,
-    title: 'Vue3 组合式 API 学习笔记',
-    content: 'Vue 3 的 Composition API 提供了一种更灵活的方式来组织组件逻辑。通过 setup 函数，我们可以更好地复用代码...',
-    category: 'study',
-    tags: ['important', 'idea'],
-    isFavorite: true,
-    createdAt: '2024-01-15T10:30:00',
-    updatedAt: '2024-01-15T10:30:00'
-  },
-  {
-    id: 2,
-    title: '项目需求讨论会议记录',
-    content: '今天和产品经理讨论了新功能的需求，主要涉及用户权限管理和数据可视化模块...',
-    category: 'work',
-    tags: ['todo', 'important'],
-    isFavorite: false,
-    createdAt: '2024-01-14T14:20:00',
-    updatedAt: '2024-01-14T14:20:00'
-  },
-  {
-    id: 3,
-    title: '周末读书感悟',
-    content: '读了《原子习惯》这本书，深受启发。微小的改变能够带来巨大的不同，关键是要坚持下去...',
-    category: 'life',
-    tags: ['done'],
-    isFavorite: true,
-    createdAt: '2024-01-13T20:15:00',
-    updatedAt: '2024-01-13T20:15:00'
-  },
-  {
-    id: 4,
-    title: 'TypeScript 类型系统探究',
-    content: 'TypeScript 的类型系统非常强大，泛型、条件类型、映射类型等高级特性可以帮我们构建更安全的应用...',
-    category: 'study',
-    tags: ['idea', 'question'],
-    isFavorite: false,
-    createdAt: '2024-01-12T16:45:00',
-    updatedAt: '2024-01-12T16:45:00'
-  },
-  {
-    id: 5,
-    title: '季度工作总结',
-    content: '这个季度完成了三个重要项目，团队协作效率有了明显提升。下个季度的目标是优化代码质量...',
-    category: 'work',
-    tags: ['done', 'important'],
-    isFavorite: true,
-    createdAt: '2024-01-11T09:00:00',
-    updatedAt: '2024-01-11T09:00:00'
-  },
-  {
-    id: 6,
-    title: '高效时间管理技巧',
-    content: '番茄工作法真的很有效，每工作25分钟休息5分钟，能够保持专注同时避免疲劳...',
-    category: 'life',
-    tags: ['idea'],
-    isFavorite: false,
-    createdAt: '2024-01-10T22:30:00',
-    updatedAt: '2024-01-10T22:30:00'
+// 笔记列表
+const notes = ref<Note[]>([])
+
+// 加载笔记列表
+const loadNotes = async () => {
+  loading.value = true
+  try {
+    const params: { categoryId?: number; keyword?: string; favorited?: number } = {}
+
+    if (selectedCategory.value !== 'all' && selectedCategory.value !== 'favorite') {
+      params.categoryId = parseInt(selectedCategory.value)
+    }
+    if (selectedCategory.value === 'favorite') {
+      params.favorited = 1
+    }
+    if (searchKeyword.value) {
+      params.keyword = searchKeyword.value
+    }
+
+    const response = await noteApi.getList(params)
+    notes.value = response.map((note: NoteType) => ({
+      id: note.id,
+      title: note.title,
+      content: note.content,
+      category: note.categoryId?.toString() || '',
+      categoryId: note.categoryId,
+      tags: note.tags ? note.tags.split(',') : [],
+      isFavorite: note.favorited === 1,
+      createdAt: note.createdAt,
+      updatedAt: note.updatedAt
+    }))
+    updateCategoryCount()
+  } catch (error) {
+    console.error('加载笔记失败:', error)
+    toast.error('加载笔记失败')
+  } finally {
+    loading.value = false
   }
-])
+}
+
+// 加载分类列表
+const loadCategories = async () => {
+  try {
+    const response = await noteCategoryApi.getList()
+    categories.value = response
+  } catch (error) {
+    console.error('加载分类失败:', error)
+    toast.error('加载分类失败')
+  }
+}
 
 // 格式化时间
 const formatTime = (dateString: string) => {
@@ -163,29 +178,13 @@ const formatTime = (dateString: string) => {
   return year === now.getFullYear() ? `${month}-${day}` : `${year}-${month}-${day}`
 }
 
-// 过滤后的笔记列表
+// 过滤后的笔记列表（标签筛选在前端进行）
 const filteredNotes = computed(() => {
   let result = notes.value
-
-  // 按分类筛选
-  if (selectedCategory.value === 'favorite') {
-    result = result.filter(note => note.isFavorite)
-  } else if (selectedCategory.value !== 'all') {
-    result = result.filter(note => note.category === selectedCategory.value)
-  }
 
   // 按标签筛选
   if (selectedTag.value !== 'all') {
     result = result.filter(note => note.tags.includes(selectedTag.value))
-  }
-
-  // 按关键词搜索
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(note =>
-      note.title.toLowerCase().includes(keyword) ||
-      note.content.toLowerCase().includes(keyword)
-    )
   }
 
   return result
@@ -193,40 +192,110 @@ const filteredNotes = computed(() => {
 
 // 更新分类计数
 const updateCategoryCount = () => {
+  // 全部笔记
+  categoryCounts.value.all = notes.value.length
+  // 收藏夹
+  categoryCounts.value.favorite = notes.value.filter(n => n.isFavorite).length
+  // 各分类计数
   categories.value.forEach(cat => {
-    if (cat.id === 'all') {
-      cat.count = notes.value.length
-    } else if (cat.id === 'favorite') {
-      cat.count = notes.value.filter(n => n.isFavorite).length
-    } else {
-      cat.count = notes.value.filter(n => n.category === cat.id).length
-    }
+    categoryCounts.value[cat.id.toString()] = notes.value.filter(n => n.categoryId === cat.id).length
   })
 }
 
 // 切换收藏状态
-const toggleFavorite = (noteId: number) => {
-  const note = notes.value.find(n => n.id === noteId)
-  if (note) {
-    note.isFavorite = !note.isFavorite
-    toast.success(note.isFavorite ? '已添加到收藏' : '已取消收藏')
-    updateCategoryCount()
+const toggleFavorite = async (noteId: number) => {
+  try {
+    await noteApi.toggleFavorited(noteId)
+    const note = notes.value.find(n => n.id === noteId)
+    if (note) {
+      note.isFavorite = !note.isFavorite
+      toast.success(note.isFavorite ? '已添加到收藏' : '已取消收藏')
+      updateCategoryCount()
+    }
+  } catch (error) {
+    console.error('切换收藏状态失败:', error)
+    toast.error('操作失败')
   }
 }
 
 // 删除笔记
-const deleteNote = (noteId: number) => {
-  const index = notes.value.findIndex(n => n.id === noteId)
-  if (index !== -1) {
-    notes.value.splice(index, 1)
-    toast.success('笔记已删除')
-    updateCategoryCount()
+const deleteNote = async (noteId: number) => {
+  if (!confirm('确定要删除这篇笔记吗？此操作无法撤销。')) {
+    return
+  }
+
+  try {
+    await noteApi.delete(noteId)
+    const index = notes.value.findIndex(n => n.id === noteId)
+    if (index !== -1) {
+      notes.value.splice(index, 1)
+      toast.success('笔记已删除')
+      updateCategoryCount()
+    }
+  } catch (error) {
+    console.error('删除笔记失败:', error)
+    toast.error('删除失败')
   }
 }
 
 // 新建笔记
-const createNote = () => {
-  toast.success('创建笔记功能开发中...')
+const createNote = async () => {
+  try {
+    const response = await noteApi.create({
+      title: '新建笔记',
+      content: '',
+      tags: ''
+    })
+
+    toast.success('笔记创建成功')
+    // 跳转到新创建的笔记详情页
+    router.push(`/notes/${response}`)
+  } catch (error) {
+    console.error('创建笔记失败:', error)
+    toast.error('创建笔记失败')
+  }
+}
+
+// 打开新建分类对话框
+const openCategoryDialog = () => {
+  newCategoryName.value = ''
+  showCategoryDialog.value = true
+}
+
+// 关闭新建分类对话框
+const closeCategoryDialog = () => {
+  showCategoryDialog.value = false
+  newCategoryName.value = ''
+}
+
+// 创建分类
+const createCategory = async () => {
+  if (!newCategoryName.value.trim()) {
+    toast.error('请输入分类名称')
+    return
+  }
+
+  if (newCategoryName.value.trim().length > 50) {
+    toast.error('分类名称不能超过50个字符')
+    return
+  }
+
+  isCreatingCategory.value = true
+  try {
+    await noteCategoryApi.create({
+      name: newCategoryName.value.trim()
+    })
+
+    toast.success('分类创建成功')
+    closeCategoryDialog()
+    // 重新加载分类列表
+    await loadCategories()
+  } catch (error) {
+    console.error('创建分类失败:', error)
+    toast.error('创建分类失败')
+  } finally {
+    isCreatingCategory.value = false
+  }
 }
 
 // 查看笔记详情
@@ -234,9 +303,31 @@ const viewNoteDetail = (noteId: number) => {
   router.push(`/notes/${noteId}`)
 }
 
+// 监听搜索和筛选变化
+const handleSearch = () => {
+  loadNotes()
+}
+
+// 监听分类变化
+const handleCategoryChange = () => {
+  loadNotes()
+}
+
 onMounted(() => {
-  updateCategoryCount()
+  loadCategories()
+  loadNotes()
 })
+
+// 监听 ESC 键关闭对话框
+const handleKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && showCategoryDialog.value) {
+    closeCategoryDialog()
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', handleKeydown)
+}
 </script>
 
 <template>
@@ -256,13 +347,14 @@ onMounted(() => {
                   记录思考轨迹，构建知识体系
                 </p>
               </div>
-              <button
+              <Button
                 @click="createNote"
-                class="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-2xl text-[12px] font-bold tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10"
+                size="lg"
+                class="rounded-2xl text-[12px] font-bold tracking-widest"
               >
-                <Plus :size="16" />
+                <Plus :size="16" class="mr-2" />
                 <span>新建笔记</span>
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -271,42 +363,39 @@ onMounted(() => {
             <!-- 搜索框 -->
             <div class="flex-1 relative">
               <Search class="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" :size="18" />
-              <input
+              <Input
                 v-model="searchKeyword"
+                @keyup.enter="handleSearch"
                 type="text"
                 placeholder="搜索笔记..."
-                class="w-full pl-12 pr-4 py-3 bg-white border border-black/5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/10 transition-all"
+                class="pl-12 bg-white border-black/5"
               />
             </div>
 
             <!-- 筛选按钮 -->
-            <button
-              class="flex items-center gap-2 px-4 py-3 bg-white border border-black/5 rounded-xl text-sm hover:bg-black/5 transition-all"
-            >
-              <Filter :size="16" />
+            <Button variant="outline" size="default" class="bg-white border-black/5 hover:bg-black/5">
+              <Filter :size="16" class="mr-2" />
               <span class="hidden sm:inline">筛选</span>
-            </button>
+            </Button>
 
             <!-- 视图切换 -->
             <div class="flex items-center gap-2 bg-white border border-black/5 rounded-xl p-1">
-              <button
+              <Button
                 @click="viewMode = 'grid'"
-                :class="[
-                  'p-2 rounded-lg transition-all',
-                  viewMode === 'grid' ? 'bg-black text-white' : 'text-neutral-400 hover:text-neutral-900'
-                ]"
+                :variant="viewMode === 'grid' ? 'default' : 'ghost'"
+                size="icon"
+                class="rounded-lg"
               >
                 <LayoutGrid :size="16" />
-              </button>
-              <button
+              </Button>
+              <Button
                 @click="viewMode = 'list'"
-                :class="[
-                  'p-2 rounded-lg transition-all',
-                  viewMode === 'list' ? 'bg-black text-white' : 'text-neutral-400 hover:text-neutral-900'
-                ]"
+                :variant="viewMode === 'list' ? 'default' : 'ghost'"
+                size="icon"
+                class="rounded-lg"
               >
                 <List :size="16" />
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -317,27 +406,35 @@ onMounted(() => {
               <div class="sticky top-0 space-y-6">
                 <!-- 分类 -->
                 <div>
-                  <h3 class="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-3 px-1">
-                    分类
-                  </h3>
-                  <div class="space-y-1">
-                    <button
-                      v-for="category in categories"
-                      :key="category.id"
-                      @click="selectedCategory = category.id"
-                      :class="[
-                        'w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all text-left',
-                        selectedCategory === category.id
-                          ? 'bg-zinc-100 text-zinc-900 font-semibold'
-                          : 'text-neutral-500 hover:bg-black/5 hover:text-neutral-900'
-                      ]"
+                  <div class="flex items-center justify-between mb-3 px-1">
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-neutral-400">
+                      分类
+                    </h3>
+                    <Button
+                      @click="openCategoryDialog"
+                      variant="ghost"
+                      size="icon"
+                      class="h-8 w-8"
+                      title="新建分类"
                     >
-                      <div class="flex items-center gap-3">
+                      <Plus :size="14" class="text-neutral-400" />
+                    </Button>
+                  </div>
+                  <div class="space-y-1">
+                    <Button
+                      v-for="category in categoryList"
+                      :key="category.id"
+                      @click="selectedCategory = category.id; handleCategoryChange()"
+                      :variant="selectedCategory === category.id ? 'secondary' : 'ghost'"
+                      :class="selectedCategory === category.id ? 'bg-zinc-100 text-zinc-900 font-semibold justify-start' : 'text-neutral-500 hover:text-neutral-900 justify-start'"
+                      class="w-full h-auto py-2.5 px-3"
+                    >
+                      <div class="flex items-center gap-3 flex-1">
                         <component :is="category.icon" :size="16" />
                         <span class="text-sm">{{ category.name }}</span>
                       </div>
-                      <span class="text-xs text-neutral-400">{{ category.count }}</span>
-                    </button>
+                      <Badge variant="secondary" class="text-xs text-neutral-400">{{ category.count }}</Badge>
+                    </Button>
                   </div>
                 </div>
 
@@ -347,19 +444,19 @@ onMounted(() => {
                     标签
                   </h3>
                   <div class="flex flex-wrap gap-2">
-                    <button
+                    <Badge
                       v-for="tag in tags"
                       :key="tag.id"
                       @click="selectedTag = tag.id"
+                      :variant="selectedTag === tag.id ? 'default' : 'secondary'"
                       :class="[
-                        'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
-                        selectedTag === tag.id
-                          ? 'bg-black text-white'
-                          : tag.color
+                        'cursor-pointer transition-all',
+                        selectedTag === tag.id ? 'bg-black text-white' : tag.color
                       ]"
+                      class="px-3 py-1.5 text-xs font-medium"
                     >
                       {{ tag.name }}
-                    </button>
+                    </Badge>
                   </div>
                 </div>
               </div>
@@ -369,79 +466,89 @@ onMounted(() => {
             <div class="flex-1 min-w-0">
               <!-- 网格视图 -->
               <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                <div
+                <Card
                   v-for="note in filteredNotes"
                   :key="note.id"
                   @click="viewNoteDetail(note.id)"
-                  class="group bg-white border border-black/5 rounded-2xl p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+                  class="group hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer border-black/5"
                 >
-                  <!-- 笔记头部 -->
-                  <div class="flex items-start justify-between mb-3">
-                    <h3 class="text-base font-semibold text-neutral-900 flex-1 line-clamp-2">
-                      {{ note.title }}
-                    </h3>
-                    <button
-                      @click.stop="toggleFavorite(note.id)"
-                      class="ml-2 shrink-0"
-                    >
-                      <Star
-                        v-if="note.isFavorite"
-                        :size="18"
-                        class="fill-yellow-400 text-yellow-400"
-                      />
-                      <StarOff
-                        v-else
-                        :size="18"
-                        class="text-neutral-300 group-hover:text-neutral-500"
-                      />
-                    </button>
-                  </div>
-
-                  <!-- 笔记内容 -->
-                  <p class="text-sm text-neutral-600 mb-4 line-clamp-3 leading-relaxed">
-                    {{ note.content }}
-                  </p>
-
-                  <!-- 标签 -->
-                  <div class="flex flex-wrap gap-2 mb-4">
-                    <span
-                      v-for="tagId in note.tags"
-                      :key="tagId"
-                      class="px-2 py-1 bg-black/5 text-neutral-600 rounded text-xs"
-                    >
-                      {{ tags.find(t => t.id === tagId)?.name || tagId }}
-                    </span>
-                  </div>
-
-                  <!-- 底部信息 -->
-                  <div class="flex items-center justify-between text-xs text-neutral-400">
-                    <div class="flex items-center gap-1">
-                      <Clock :size="14" />
-                      <span>{{ formatTime(note.updatedAt) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        @click.stop
-                        class="p-1.5 hover:bg-black/5 rounded-lg transition-colors"
-                        title="编辑"
+                  <CardHeader class="pb-3">
+                    <div class="flex items-start justify-between">
+                      <CardTitle class="text-base flex-1 line-clamp-2">
+                        {{ note.title }}
+                      </CardTitle>
+                      <Button
+                        @click.stop="toggleFavorite(note.id)"
+                        variant="ghost"
+                        size="icon"
+                        class="ml-2 shrink-0 h-8 w-8"
                       >
-                        <Edit3 :size="14" />
-                      </button>
-                      <button
-                        @click.stop="deleteNote(note.id)"
-                        class="p-1.5 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors"
-                        title="删除"
-                      >
-                        <Trash2 :size="14" />
-                      </button>
+                        <Star
+                          v-if="note.isFavorite"
+                          :size="18"
+                          class="fill-yellow-400 text-yellow-400"
+                        />
+                        <StarOff
+                          v-else
+                          :size="18"
+                          class="text-neutral-300 group-hover:text-neutral-500"
+                        />
+                      </Button>
                     </div>
-                  </div>
-                </div>
+                  </CardHeader>
+
+                  <CardContent class="pb-4">
+                    <CardDescription class="text-sm line-clamp-3 leading-relaxed mb-4">
+                      {{ note.content }}
+                    </CardDescription>
+
+                    <!-- 标签 -->
+                    <div class="flex flex-wrap gap-2 mb-4">
+                      <Badge
+                        v-for="tagId in note.tags"
+                        :key="tagId"
+                        variant="secondary"
+                        class="text-xs"
+                      >
+                        {{ tags.find(t => t.id === tagId)?.name || tagId }}
+                      </Badge>
+                    </div>
+
+                    <!-- 底部信息 -->
+                    <div class="flex items-center justify-between text-xs text-neutral-400">
+                      <div class="flex items-center gap-1">
+                        <Clock :size="14" />
+                        <span>{{ formatTime(note.updatedAt) }}</span>
+                      </div>
+                      <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          @click.stop
+                          variant="ghost"
+                          size="icon"
+                          class="h-8 w-8"
+                          title="编辑"
+                        >
+                          <Edit3 :size="14" />
+                        </Button>
+                        <Button
+                          @click.stop="deleteNote(note.id)"
+                          variant="ghost"
+                          size="icon"
+                          class="h-8 w-8 hover:bg-rose-50 hover:text-rose-600"
+                          title="删除"
+                        >
+                          <Trash2 :size="14" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
                 <!-- 新建笔记卡片 -->
-                <button
+                <Button
                   @click="createNote"
-                  class="border-2 border-dashed border-black/10 bg-white/50 rounded-2xl flex flex-col items-center justify-center p-6 text-neutral-400 hover:text-neutral-600 hover:bg-white hover:border-black/20 transition-all min-h-[240px] group"
+                  variant="outline"
+                  class="border-dashed border-2 border-black/10 bg-white/50 rounded-2xl flex-col h-auto min-h-[240px] py-6 text-neutral-400 hover:text-neutral-600 hover:bg-white hover:border-black/20"
                 >
                   <div
                     class="w-12 h-12 rounded-full border border-black/10 bg-white flex items-center justify-center mb-3 group-hover:scale-110 transition-transform"
@@ -449,83 +556,92 @@ onMounted(() => {
                     <Plus :size="24" :stroke-width="1" />
                   </div>
                   <span class="text-sm font-medium">新建笔记</span>
-                </button>
+                </Button>
               </div>
 
               <!-- 列表视图 -->
               <div v-else class="space-y-3">
-                <div
+                <Card
                   v-for="note in filteredNotes"
                   :key="note.id"
                   @click="viewNoteDetail(note.id)"
-                  class="group bg-white border border-black/5 rounded-xl p-4 hover:shadow-md transition-all cursor-pointer"
+                  class="group hover:shadow-md transition-all cursor-pointer border-black/5"
                 >
-                  <div class="flex items-center gap-4">
-                    <!-- 图标/缩略图 -->
-                    <div class="w-12 h-12 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-lg flex items-center justify-center shrink-0">
-                      <component :is="categories.find(c => c.id === note.category)?.icon || FolderOpen" :size="20" class="text-neutral-600" />
-                    </div>
+                  <CardContent class="p-4">
+                    <div class="flex items-center gap-4">
+                      <!-- 图标/缩略图 -->
+                      <div class="w-12 h-12 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-lg flex items-center justify-center shrink-0">
+                        <component :is="categoryList.find(c => c.id === note.category)?.icon || FolderOpen" :size="20" class="text-neutral-600" />
+                      </div>
 
-                    <!-- 内容 -->
-                    <div class="flex-1 min-w-0">
-                      <h3 class="text-sm font-semibold text-neutral-900 mb-1 line-clamp-1">
-                        {{ note.title }}
-                      </h3>
-                      <p class="text-xs text-neutral-500 line-clamp-2">
-                        {{ note.content }}
-                      </p>
-                    </div>
+                      <!-- 内容 -->
+                      <div class="flex-1 min-w-0">
+                        <h3 class="text-sm font-semibold text-neutral-900 mb-1 line-clamp-1">
+                          {{ note.title }}
+                        </h3>
+                        <p class="text-xs text-neutral-500 line-clamp-2">
+                          {{ note.content }}
+                        </p>
+                      </div>
 
-                    <!-- 标签 -->
-                    <div class="hidden sm:flex flex-wrap gap-2 shrink-0">
-                      <span
-                        v-for="tagId in note.tags.slice(0, 2)"
-                        :key="tagId"
-                        class="px-2 py-1 bg-black/5 text-neutral-600 rounded text-xs"
-                      >
-                        {{ tags.find(t => t.id === tagId)?.name || tagId }}
-                      </span>
-                    </div>
+                      <!-- 标签 -->
+                      <div class="hidden sm:flex flex-wrap gap-2 shrink-0">
+                        <Badge
+                          v-for="tagId in note.tags.slice(0, 2)"
+                          :key="tagId"
+                          variant="secondary"
+                          class="text-xs"
+                        >
+                          {{ tags.find(t => t.id === tagId)?.name || tagId }}
+                        </Badge>
+                      </div>
 
-                    <!-- 时间 -->
-                    <div class="hidden md:flex items-center gap-1 text-xs text-neutral-400 shrink-0">
-                      <Clock :size="14" />
-                      <span>{{ formatTime(note.updatedAt) }}</span>
-                    </div>
+                      <!-- 时间 -->
+                      <div class="hidden md:flex items-center gap-1 text-xs text-neutral-400 shrink-0">
+                        <Clock :size="14" />
+                        <span>{{ formatTime(note.updatedAt) }}</span>
+                      </div>
 
-                    <!-- 操作按钮 -->
-                    <div class="flex items-center gap-2 shrink-0">
-                      <button
-                        @click.stop="toggleFavorite(note.id)"
-                        class="p-2 hover:bg-black/5 rounded-lg transition-colors"
-                      >
-                        <Star
-                          v-if="note.isFavorite"
-                          :size="16"
-                          class="fill-yellow-400 text-yellow-400"
-                        />
-                        <StarOff
-                          v-else
-                          :size="16"
-                          class="text-neutral-300"
-                        />
-                      </button>
-                      <button
-                        @click.stop
-                        class="p-2 hover:bg-black/5 rounded-lg transition-colors"
-                      >
-                        <Edit3 :size="16" class="text-neutral-400" />
-                      </button>
-                      <button
-                        @click.stop="deleteNote(note.id)"
-                        class="p-2 hover:bg-rose-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 :size="16" class="text-neutral-400 hover:text-rose-600" />
-                      </button>
-                      <ChevronRight :size="16" class="text-neutral-300 ml-1" />
+                      <!-- 操作按钮 -->
+                      <div class="flex items-center gap-2 shrink-0">
+                        <Button
+                          @click.stop="toggleFavorite(note.id)"
+                              variant="ghost"
+                          size="icon"
+                          class="h-9 w-9"
+                        >
+                          <Star
+                            v-if="note.isFavorite"
+                            :size="16"
+                            class="fill-yellow-400 text-yellow-400"
+                          />
+                          <StarOff
+                            v-else
+                            :size="16"
+                            class="text-neutral-300"
+                          />
+                        </Button>
+                        <Button
+                          @click.stop
+                          variant="ghost"
+                          size="icon"
+                          class="h-9 w-9"
+                        >
+                          <Edit3 :size="16" class="text-neutral-400" />
+                        </Button>
+                        <Button
+                          @click.stop="deleteNote(note.id)"
+                          variant="ghost"
+                          size="icon"
+                          class="h-9 w-9 hover:bg-rose-50"
+                        >
+                          <Trash2 :size="16" class="text-neutral-400 hover:text-rose-600" />
+                        </Button>
+                        <ChevronRight :size="16" class="text-neutral-300 ml-1" />
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               </div>
 
               <!-- 空状态 -->
@@ -542,6 +658,52 @@ onMounted(() => {
         </div>
       </div>
     </main>
+
+    <!-- 新建分类对话框 -->
+    <Dialog v-model:open="showCategoryDialog">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>新建分类</DialogTitle>
+          <DialogDescription>
+            创建一个新的笔记分类
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="space-y-4 py-4">
+          <div class="space-y-2">
+            <label class="block text-sm font-medium text-neutral-700">
+              分类名称
+            </label>
+            <Input
+              v-model="newCategoryName"
+              placeholder="输入分类名称..."
+              maxlength="50"
+              @keyup.enter="createCategory"
+            />
+            <p class="text-xs text-neutral-400">
+              {{ newCategoryName.length }}/50
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            @click="closeCategoryDialog"
+            :disabled="isCreatingCategory"
+            variant="outline"
+          >
+            取消
+          </Button>
+          <Button
+            @click="createCategory"
+            :disabled="isCreatingCategory || !newCategoryName.trim()"
+          >
+            <div v-if="isCreatingCategory" class="w-4 h-4 mr-2 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+            <span>{{ isCreatingCategory ? '创建中...' : '创建' }}</span>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 

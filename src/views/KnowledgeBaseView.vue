@@ -235,7 +235,6 @@ onMounted(() => {
           <div class="mb-8">
             <div class="flex items-center justify-between">
               <div>
-                <h1 class="text-3xl font-bold text-neutral-900 mb-2">知识库</h1>
                 <p class="text-sm text-neutral-400">
                   上传文件，构建你的知识管理体系
                 </p>

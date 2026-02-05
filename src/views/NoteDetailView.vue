@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useLayoutStore } from '@/stores/layout'
 import {
@@ -21,6 +21,13 @@ import {
   ListOrdered
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
+import { noteApi, type Note as NoteType } from '@/api/note'
+import { noteCategoryApi, type NoteCategory } from '@/api/noteCategory'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 const router = useRouter()
 const route = useRoute()
@@ -42,12 +49,21 @@ const isSaving = ref(false)
 // 编辑模式下是否显示预览
 const showPreview = ref(true)
 
-// 笔记分类
-const categories = [
-  { id: 'study', name: '学习笔记' },
-  { id: 'work', name: '工作记录' },
-  { id: 'life', name: '生活感悟' }
-]
+// 笔记分类列表
+const categories = ref<NoteCategory[]>([])
+
+// 加载中状态
+const loading = ref(false)
+
+// 加载分类列表
+const loadCategories = async () => {
+  try {
+    const response = await noteCategoryApi.getList()
+    categories.value = response
+  } catch (error) {
+    console.error('加载分类失败:', error)
+  }
+}
 
 // 可用标签
 const availableTags = [
@@ -58,12 +74,13 @@ const availableTags = [
   { id: 'question', name: '疑问', color: 'bg-purple-100 text-purple-700' }
 ]
 
-// 笔记数据
+// 本地笔记接口
 interface Note {
   id: number
   title: string
   content: string
   category: string
+  categoryId?: number
   tags: string[]
   isFavorite: boolean
   createdAt: string
@@ -74,7 +91,8 @@ const note = ref<Note>({
   id: noteId.value,
   title: '',
   content: '',
-  category: 'study',
+  category: '',
+  categoryId: undefined,
   tags: [],
   isFavorite: false,
   createdAt: '',
@@ -85,7 +103,7 @@ const note = ref<Note>({
 const form = ref({
   title: '',
   content: '',
-  category: 'study',
+  categoryId: undefined as number | undefined,
   tags: [] as string[]
 })
 
@@ -102,126 +120,31 @@ const formatTime = (dateString: string) => {
 
 // 加载笔记详情
 const loadNoteDetail = async () => {
-  // 模拟加载数据
-  // 实际项目中应该从 API 获取
-  const mockNotes: Record<number, Note> = {
-    1: {
-      id: 1,
-      title: 'Vue3 组合式 API 学习笔记',
-      content: `# Vue3 组合式 API 学习笔记
-
-## 基本概念
-
-Vue 3 的 Composition API 提供了一种更灵活的方式来组织组件逻辑。通过 setup 函数，我们可以更好地复用代码。
-
-### 核心特性
-
-1. **响应式 API**
-   - ref() - 创建响应式引用
-   - reactive() - 创建响应式对象
-   - computed() - 计算属性
-
-2. **生命周期钩子**
-   - onMounted()
-   - onUpdated()
-   - onUnmounted()
-
-### 代码示例
-
-\`\`\`javascript
-import { ref, computed, onMounted } from 'vue'
-
-export default {
-  setup() {
-    const count = ref(0)
-    const doubleCount = computed(() => count.value * 2)
-
-    onMounted(() => {
-      console.log('组件已挂载')
-    })
-
-    return { count, doubleCount }
-  }
-}
-\`\`\`
-
-## 学习心得
-
-Composition API 让代码逻辑更加清晰，特别是在处理复杂组件时。通过将相关逻辑组织在一起，代码的可读性和可维护性都得到了显著提升。`,
-      category: 'study',
-      tags: ['important', 'idea'],
-      isFavorite: true,
-      createdAt: '2024-01-15T10:30:00',
-      updatedAt: '2024-01-15T10:30:00'
-    },
-    2: {
-      id: 2,
-      title: '项目需求讨论会议记录',
-      content: `# 项目需求讨论会议记录
-
-## 会议时间
-2024年1月14日 14:20-15:30
-
-## 参与人员
-- 产品经理：张三
-- 开发负责人：李四
-- 前端开发：王五
-
-## 讨论内容
-
-### 1. 用户权限管理模块
-- 需要实现基于角色的权限控制（RBAC）
-- 支持动态权限配置
-- 前端路由守卫配合
-
-### 2. 数据可视化模块
-- 使用 ECharts 实现图表展示
-- 需要支持实时数据更新
-- 移动端适配优化
-
-## 待办事项
-
-- [ ] 完成权限管理数据库设计
-- [ ] 确定可视化图表类型
-- [ ] 制定开发时间表`,
-      category: 'work',
-      tags: ['todo', 'important'],
-      isFavorite: false,
-      createdAt: '2024-01-14T14:20:00',
-      updatedAt: '2024-01-14T14:20:00'
-    }
-  }
-
-  // 模拟异步加载
-  await new Promise(resolve => setTimeout(resolve, 300))
-
-  const foundNote = mockNotes[noteId.value]
-  if (foundNote) {
-    note.value = foundNote
-    form.value = {
-      title: foundNote.title,
-      content: foundNote.content,
-      category: foundNote.category,
-      tags: [...foundNote.tags]
-    }
-  } else {
-    // 如果没有找到，使用默认数据
+  loading.value = true
+  try {
+    const response = await noteApi.getById(noteId.value)
     note.value = {
-      id: noteId.value,
-      title: '示例笔记',
-      content: '这是一篇示例笔记的内容...',
-      category: 'study',
-      tags: ['idea'],
-      isFavorite: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      id: response.id,
+      title: response.title,
+      content: response.content,
+      category: response.categoryId?.toString() || '',
+      categoryId: response.categoryId,
+      tags: response.tags ? response.tags.split(',') : [],
+      isFavorite: response.favorited === 1,
+      createdAt: response.createdAt,
+      updatedAt: response.updatedAt
     }
     form.value = {
-      title: '示例笔记',
-      content: '这是一篇示例笔记的内容...',
-      category: 'study',
-      tags: ['idea']
+      title: response.title,
+      content: response.content,
+      categoryId: response.categoryId,
+      tags: response.tags ? response.tags.split(',') : []
     }
+  } catch (error) {
+    console.error('加载笔记详情失败:', error)
+    toast.error('加载笔记详情失败')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -231,7 +154,7 @@ const startEdit = () => {
   form.value = {
     title: note.value.title,
     content: note.value.content,
-    category: note.value.category,
+    categoryId: note.value.categoryId,
     tags: [...note.value.tags]
   }
 }
@@ -242,7 +165,7 @@ const cancelEdit = () => {
   form.value = {
     title: note.value.title,
     content: note.value.content,
-    category: note.value.category,
+    categoryId: note.value.categoryId,
     tags: [...note.value.tags]
   }
 }
@@ -254,18 +177,29 @@ const saveNote = async () => {
     return
   }
 
+  if (!form.value.content.trim()) {
+    toast.error('请输入笔记内容')
+    return
+  }
+
   isSaving.value = true
 
   try {
-    // 模拟保存 API 调用
-    await new Promise(resolve => setTimeout(resolve, 500))
+    await noteApi.update({
+      id: note.value.id,
+      title: form.value.title,
+      content: form.value.content,
+      categoryId: form.value.categoryId,
+      tags: form.value.tags.join(',')
+    })
 
-    // 更新笔记数据
+    // 更新本地笔记数据
     note.value = {
       ...note.value,
       title: form.value.title,
       content: form.value.content,
-      category: form.value.category,
+      categoryId: form.value.categoryId,
+      category: form.value.categoryId?.toString() || '',
       tags: [...form.value.tags],
       updatedAt: new Date().toISOString()
     }
@@ -273,6 +207,7 @@ const saveNote = async () => {
     isEditing.value = false
     toast.success('笔记已保存')
   } catch (error) {
+    console.error('保存笔记失败:', error)
     toast.error('保存失败，请重试')
   } finally {
     isSaving.value = false
@@ -281,20 +216,25 @@ const saveNote = async () => {
 
 // 切换收藏状态
 const toggleFavorite = async () => {
-  note.value.isFavorite = !note.value.isFavorite
-  toast.success(note.value.isFavorite ? '已添加到收藏' : '已取消收藏')
+  try {
+    await noteApi.toggleFavorited(note.value.id)
+    note.value.isFavorite = !note.value.isFavorite
+    toast.success(note.value.isFavorite ? '已添加到收藏' : '已取消收藏')
+  } catch (error) {
+    console.error('切换收藏状态失败:', error)
+    toast.error('操作失败')
+  }
 }
 
 // 删除笔记
 const deleteNote = async () => {
   if (confirm('确定要删除这篇笔记吗？此操作无法撤销。')) {
     try {
-      // 模拟删除 API 调用
-      await new Promise(resolve => setTimeout(resolve, 300))
-
+      await noteApi.delete(note.value.id)
       toast.success('笔记已删除')
       router.push('/notes')
     } catch (error) {
+      console.error('删除笔记失败:', error)
       toast.error('删除失败，请重试')
     }
   }
@@ -349,7 +289,23 @@ const renderContent = computed(() => {
 })
 
 onMounted(() => {
+  loadCategories()
   loadNoteDetail()
+})
+
+// 监听笔记加载完成，如果是新建笔记则自动进入编辑模式
+watch(() => [note.value.title, note.value.content, loading.value], () => {
+  // 如果不在编辑模式、不是加载中、标题是默认的"新建笔记"且内容为空，则自动进入编辑模式
+  if (!isEditing.value && !loading.value && note.value.title === '新建笔记' && !note.value.content) {
+    startEdit()
+  }
+}, { deep: true })
+
+// 监听路由参数变化，重新加载笔记
+watch(() => route.params.id, () => {
+  if (route.params.id) {
+    loadNoteDetail()
+  }
 })
 </script>
 
@@ -364,13 +320,15 @@ onMounted(() => {
       <header class="bg-white border-b border-black/5 px-6 py-4 flex items-center justify-between">
         <div class="flex items-center gap-4">
           <!-- 返回按钮 -->
-          <button
+          <Button
             @click="router.push('/notes')"
-            class="p-2 hover:bg-black/5 rounded-xl transition-colors"
+            variant="ghost"
+            size="icon"
+            class="rounded-xl"
             title="返回笔记列表"
           >
             <ArrowLeft :size="20" class="text-neutral-600" />
-          </button>
+          </Button>
 
           <div class="h-6 w-px bg-black/10"></div>
 
@@ -385,10 +343,12 @@ onMounted(() => {
 
         <div class="flex items-center gap-2">
           <!-- 收藏按钮 -->
-          <button
+          <Button
             v-if="!isEditing"
             @click="toggleFavorite"
-            class="p-2 hover:bg-black/5 rounded-xl transition-colors"
+            variant="ghost"
+            size="icon"
+            class="rounded-xl"
             :title="note.isFavorite ? '取消收藏' : '收藏'"
           >
             <Star
@@ -397,47 +357,48 @@ onMounted(() => {
               class="fill-yellow-400 text-yellow-400"
             />
             <StarOff v-else :size="20" class="text-neutral-400" />
-          </button>
+          </Button>
 
           <!-- 删除按钮 -->
-          <button
+          <Button
             v-if="!isEditing"
             @click="deleteNote"
-            class="p-2 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition-colors"
+            variant="ghost"
+            size="icon"
+            class="rounded-xl hover:bg-rose-50 hover:text-rose-600"
             title="删除笔记"
           >
             <Trash2 :size="20" class="text-neutral-400" />
-          </button>
+          </Button>
 
           <div v-if="!isEditing" class="h-6 w-px bg-black/10"></div>
 
           <!-- 编辑/保存按钮 -->
-          <button
+          <Button
             v-if="!isEditing"
             @click="startEdit"
-            class="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-xl text-sm font-medium hover:bg-black/90 transition-colors"
+            size="default"
           >
-            <Tag :size="16" />
+            <Tag :size="16" class="mr-2" />
             <span>编辑</span>
-          </button>
+          </Button>
 
           <template v-else>
-            <button
+            <Button
               @click="cancelEdit"
-              class="px-4 py-2 border border-black/10 rounded-xl text-sm font-medium hover:bg-black/5 transition-colors"
+              variant="outline"
               :disabled="isSaving"
             >
               取消
-            </button>
-            <button
+            </Button>
+            <Button
               @click="saveNote"
               :disabled="isSaving"
-              class="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-xl text-sm font-medium hover:bg-black/90 transition-colors disabled:opacity-50"
             >
-              <div v-if="isSaving" class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-              <Save v-else :size="16" />
+              <div v-if="isSaving" class="w-4 h-4 mr-2 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+              <Save v-else :size="16" class="mr-2" />
               <span>{{ isSaving ? '保存中...' : '保存' }}</span>
-            </button>
+            </Button>
           </template>
         </div>
       </header>
@@ -448,29 +409,32 @@ onMounted(() => {
           <!-- 预览模式 -->
           <div v-if="!isEditing" class="prose prose-neutral max-w-none">
             <!-- 元信息 -->
-            <div class="flex items-center gap-4 mb-6 pb-6 border-b border-black/5">
-              <div class="flex items-center gap-2 text-sm text-neutral-600">
-                <FolderOpen :size="16" />
-                <span>{{ categories.find(c => c.id === note.category)?.name || '未分类' }}</span>
-              </div>
-              <div class="flex items-center gap-2 text-sm text-neutral-600">
-                <Calendar :size="16" />
-                <span>创建于 {{ formatTime(note.createdAt) }}</span>
-              </div>
-            </div>
+            <Card class="mb-6 border-black/5">
+              <CardContent class="pt-6">
+                <div class="flex items-center gap-4">
+                  <div class="flex items-center gap-2 text-sm text-neutral-600">
+                    <FolderOpen :size="16" />
+                    <span>{{ categories.find(c => c.id === note.categoryId)?.name || '未分类' }}</span>
+                  </div>
+                  <div class="flex items-center gap-2 text-sm text-neutral-600">
+                    <Calendar :size="16" />
+                    <span>创建于 {{ formatTime(note.createdAt) }}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             <!-- 标签 -->
             <div v-if="note.tags.length > 0" class="flex flex-wrap gap-2 mb-6">
-              <span
+              <Badge
                 v-for="tagId in note.tags"
                 :key="tagId"
-                :class="[
-                  'px-3 py-1 rounded-lg text-sm font-medium',
-                  availableTags.find(t => t.id === tagId)?.color || 'bg-gray-100 text-gray-700'
-                ]"
+                :variant="'secondary'"
+                :class="availableTags.find(t => t.id === tagId)?.color || 'bg-gray-100 text-gray-700'"
+                class="px-3 py-1 text-sm font-medium"
               >
                 {{ availableTags.find(t => t.id === tagId)?.name || tagId }}
-              </span>
+              </Badge>
             </div>
 
             <!-- 内容渲染 -->
@@ -487,11 +451,11 @@ onMounted(() => {
               <label class="block text-sm font-medium text-neutral-700 mb-2">
                 笔记标题
               </label>
-              <input
+              <Input
                 v-model="form.title"
                 type="text"
                 placeholder="输入笔记标题..."
-                class="w-full px-4 py-3 bg-white border border-black/10 rounded-xl text-lg font-medium focus:outline-none focus:ring-2 focus:ring-black/10 transition-all"
+                class="text-lg font-medium"
               />
             </div>
 
@@ -502,14 +466,17 @@ onMounted(() => {
                 <label class="block text-sm font-medium text-neutral-700 mb-2">
                   分类
                 </label>
-                <select
-                  v-model="form.category"
-                  class="w-full px-4 py-3 bg-white border border-black/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/10 transition-all"
-                >
-                  <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-                    {{ cat.name }}
-                  </option>
-                </select>
+                <Select v-model="form.categoryId">
+                  <SelectTrigger class="bg-white border-black/10">
+                    <SelectValue placeholder="选择分类" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">未分类</SelectItem>
+                    <SelectItem v-for="cat in categories" :key="cat.id" :value="cat.id">
+                      {{ cat.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <!-- 标签选择 -->
@@ -518,19 +485,19 @@ onMounted(() => {
                   标签
                 </label>
                 <div class="flex flex-wrap gap-2">
-                  <button
+                  <Badge
                     v-for="tag in availableTags"
                     :key="tag.id"
                     @click="toggleTag(tag.id)"
+                    :variant="form.tags.includes(tag.id) ? 'default' : 'secondary'"
                     :class="[
-                      'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
-                      form.tags.includes(tag.id)
-                        ? 'bg-black text-white'
-                        : tag.color
+                      'cursor-pointer transition-all',
+                      form.tags.includes(tag.id) ? 'bg-black text-white' : tag.color
                     ]"
+                    class="px-3 py-1.5 text-sm font-medium"
                   >
                     {{ tag.name }}
-                  </button>
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -542,76 +509,92 @@ onMounted(() => {
                   内容（支持 Markdown）
                 </label>
                 <!-- 预览切换按钮 -->
-                <button
+                <Button
                   @click="showPreview = !showPreview"
-                  class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
-                  :class="showPreview ? 'bg-black/10 text-neutral-900' : 'bg-white border border-black/10 text-neutral-600 hover:bg-black/5'"
+                  :variant="showPreview ? 'secondary' : 'outline'"
+                  size="sm"
                 >
                   <span>{{ showPreview ? '隐藏预览' : '显示预览' }}</span>
-                </button>
+                </Button>
               </div>
 
               <div :class="showPreview ? 'grid grid-cols-2 gap-4' : ''">
                 <!-- 编辑区 -->
-                <div class="border border-black/10 rounded-xl overflow-hidden">
+                <Card class="border-black/10 overflow-hidden">
                   <!-- 工具栏 -->
                   <div class="flex items-center gap-1 px-3 py-2 bg-black/5 border-b border-black/10">
-                    <button
+                    <Button
                       @click="form.content += '**粗体**'"
-                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      variant="ghost"
+                      size="icon"
+                      class="h-8 w-8"
                       title="粗体"
                     >
                       <Bold :size="16" class="text-neutral-600" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       @click="form.content += '*斜体*'"
-                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      variant="ghost"
+                      size="icon"
+                      class="h-8 w-8"
                       title="斜体"
                     >
                       <Italic :size="16" class="text-neutral-600" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       @click="form.content += '\n# 一级标题'"
-                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      variant="ghost"
+                      size="icon"
+                      class="h-8 w-8"
                       title="一级标题"
                     >
                       <Heading1 :size="16" class="text-neutral-600" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       @click="form.content += '\n## 二级标题'"
-                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      variant="ghost"
+                      size="icon"
+                      class="h-8 w-8"
                       title="二级标题"
                     >
                       <Heading2 :size="16" class="text-neutral-600" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       @click="form.content += '\n- 列表项'"
-                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      variant="ghost"
+                      size="icon"
+                      class="h-8 w-8"
                       title="无序列表"
                     >
                       <List :size="16" class="text-neutral-600" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       @click="form.content += '\n1. 列表项'"
-                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      variant="ghost"
+                      size="icon"
+                      class="h-8 w-8"
                       title="有序列表"
                     >
                       <ListOrdered :size="16" class="text-neutral-600" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       @click="form.content += '\n```\n代码块\n```'"
-                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      variant="ghost"
+                      size="icon"
+                      class="h-8 w-8"
                       title="代码块"
                     >
                       <Code :size="16" class="text-neutral-600" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       @click="form.content += '[链接文本](url)'"
-                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      variant="ghost"
+                      size="icon"
+                      class="h-8 w-8"
                       title="链接"
                     >
                       <LinkIcon :size="16" class="text-neutral-600" />
-                    </button>
+                    </Button>
                   </div>
 
                   <!-- 编辑区 -->
@@ -619,24 +602,26 @@ onMounted(() => {
                     v-model="form.content"
                     placeholder="在这里输入笔记内容，支持 Markdown 格式..."
                     :class="showPreview ? 'min-h-[700px]' : 'min-h-[800px]'"
-                    class="w-full px-4 py-3 bg-white text-sm leading-relaxed focus:outline-none resize-none font-mono"
+                    class="w-full px-4 py-3 bg-white text-sm leading-relaxed focus:outline-none resize-none font-mono border-0 rounded-none"
                   ></textarea>
-                </div>
+                </Card>
 
                 <!-- 预览区 -->
-                <div
+                <Card
                   v-if="showPreview"
-                  class="border border-black/10 rounded-xl bg-white p-6 overflow-y-auto custom-scrollbar"
+                  class="border-black/10 overflow-hidden custom-scrollbar"
                   :class="showPreview ? 'min-h-[700px] max-h-[800px]' : ''"
                 >
-                  <div class="flex items-center justify-between mb-4 pb-3 border-b border-black/5">
-                    <span class="text-xs font-medium text-neutral-400">预览</span>
-                  </div>
-                  <div
-                    class="prose prose-neutral prose-sm max-w-none"
-                    v-html="renderContent"
-                  ></div>
-                </div>
+                  <CardHeader class="pb-3 border-b border-black/5">
+                    <CardTitle class="text-xs font-medium text-neutral-400">预览</CardTitle>
+                  </CardHeader>
+                  <CardContent class="pt-4 overflow-y-auto">
+                    <div
+                      class="prose prose-neutral prose-sm max-w-none"
+                      v-html="renderContent"
+                    ></div>
+                  </CardContent>
+                </Card>
               </div>
 
               <!-- 提示信息 -->
