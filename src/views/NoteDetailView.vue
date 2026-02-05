@@ -39,12 +39,14 @@ const noteId = computed(() => parseInt(route.params.id as string))
 const isEditing = ref(false)
 // 是否保存中
 const isSaving = ref(false)
+// 编辑模式下是否显示预览
+const showPreview = ref(true)
 
 // 笔记分类
 const categories = [
-  { id: 'study', name: '学习笔记', icon: '📚' },
-  { id: 'work', name: '工作记录', icon: '💼' },
-  { id: 'life', name: '生活感悟', icon: '🌟' }
+  { id: 'study', name: '学习笔记' },
+  { id: 'work', name: '工作记录' },
+  { id: 'life', name: '生活感悟' }
 ]
 
 // 可用标签
@@ -310,40 +312,40 @@ const toggleTag = (tagId: string) => {
 
 // 渲染 Markdown 内容（简单实现）
 const renderContent = computed(() => {
-  if (!isEditing.value) {
-    // 简单的 Markdown 渲染
-    let html = note.value.content
+  // 根据是否在编辑模式选择使用原始内容还是编辑中的内容
+  const content = isEditing.value ? form.value.content : note.value.content
 
-    // 标题
-    html = html.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
-    html = html.replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-6 mb-3">$1</h2>')
-    html = html.replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-6 mb-4">$1</h1>')
+  // 简单的 Markdown 渲染
+  let html = content
 
-    // 粗体和斜体
-    html = html.replace(/\*\*\*(.*?)\*\*\*/gim, '<strong><em>$1</em></strong>')
-    html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-    html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>')
+  // 标题
+  html = html.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
+  html = html.replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-6 mb-3">$1</h2>')
+  html = html.replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-6 mb-4">$1</h1>')
 
-    // 代码块
-    html = html.replace(/```(\w+)?\n([\s\S]*?)```/gim, '<pre class="bg-black/5 p-4 rounded-lg my-3 overflow-x-auto"><code>$2</code></pre>')
+  // 粗体和斜体
+  html = html.replace(/\*\*\*(.*?)\*\*\*/gim, '<strong><em>$1</em></strong>')
+  html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
+  html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>')
 
-    // 行内代码
-    html = html.replace(/`([^`]+)`/gim, '<code class="bg-black/5 px-1.5 py-0.5 rounded text-sm">$1</code>')
+  // 代码块
+  html = html.replace(/```(\w+)?\n([\s\S]*?)```/gim, '<pre class="bg-black/5 p-4 rounded-lg my-3 overflow-x-auto"><code>$2</code></pre>')
 
-    // 待办事项
-    html = html.replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 my-1"><input type="checkbox" checked disabled class="rounded"><span class="line-through text-neutral-500">$1</span></div>')
-    html = html.replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 my-1"><input type="checkbox" disabled class="rounded"><span>$1</span></div>')
+  // 行内代码
+  html = html.replace(/`([^`]+)`/gim, '<code class="bg-black/5 px-1.5 py-0.5 rounded text-sm">$1</code>')
 
-    // 列表
-    html = html.replace(/^- (.*$)/gim, '<li class="ml-4">$1</li>')
+  // 待办事项
+  html = html.replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 my-1"><input type="checkbox" checked disabled class="rounded"><span class="line-through text-neutral-500">$1</span></div>')
+  html = html.replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 my-1"><input type="checkbox" disabled class="rounded"><span>$1</span></div>')
 
-    // 段落
-    html = html.replace(/\n\n/g, '</p><p class="my-3 leading-relaxed">')
-    html = '<p class="my-3 leading-relaxed">' + html + '</p>'
+  // 列表
+  html = html.replace(/^- (.*$)/gim, '<li class="ml-4">$1</li>')
 
-    return html
-  }
-  return ''
+  // 段落
+  html = html.replace(/\n\n/g, '</p><p class="my-3 leading-relaxed">')
+  html = '<p class="my-3 leading-relaxed">' + html + '</p>'
+
+  return html
 })
 
 onMounted(() => {
@@ -442,7 +444,7 @@ onMounted(() => {
 
       <!-- 内容区域 -->
       <div class="flex-1 overflow-y-auto custom-scrollbar">
-        <div class="max-w-4xl mx-auto px-8 py-8">
+        <div :class="isEditing ? 'max-w-7xl' : 'max-w-4xl'" class="mx-auto px-8 py-8">
           <!-- 预览模式 -->
           <div v-if="!isEditing" class="prose prose-neutral max-w-none">
             <!-- 元信息 -->
@@ -505,7 +507,7 @@ onMounted(() => {
                   class="w-full px-4 py-3 bg-white border border-black/10 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/10 transition-all"
                 >
                   <option v-for="cat in categories" :key="cat.id" :value="cat.id">
-                    {{ cat.icon }} {{ cat.name }}
+                    {{ cat.name }}
                   </option>
                 </select>
               </div>
@@ -535,76 +537,106 @@ onMounted(() => {
 
             <!-- Markdown 工具栏 -->
             <div>
-              <label class="block text-sm font-medium text-neutral-700 mb-2">
-                内容（支持 Markdown）
-              </label>
-              <div class="border border-black/10 rounded-xl overflow-hidden">
-                <!-- 工具栏 -->
-                <div class="flex items-center gap-1 px-3 py-2 bg-black/5 border-b border-black/10">
-                  <button
-                    @click="form.content += '**粗体**'"
-                    class="p-1.5 hover:bg-black/10 rounded transition-colors"
-                    title="粗体"
-                  >
-                    <Bold :size="16" class="text-neutral-600" />
-                  </button>
-                  <button
-                    @click="form.content += '*斜体*'"
-                    class="p-1.5 hover:bg-black/10 rounded transition-colors"
-                    title="斜体"
-                  >
-                    <Italic :size="16" class="text-neutral-600" />
-                  </button>
-                  <button
-                    @click="form.content += '\n# 一级标题'"
-                    class="p-1.5 hover:bg-black/10 rounded transition-colors"
-                    title="一级标题"
-                  >
-                    <Heading1 :size="16" class="text-neutral-600" />
-                  </button>
-                  <button
-                    @click="form.content += '\n## 二级标题'"
-                    class="p-1.5 hover:bg-black/10 rounded transition-colors"
-                    title="二级标题"
-                  >
-                    <Heading2 :size="16" class="text-neutral-600" />
-                  </button>
-                  <button
-                    @click="form.content += '\n- 列表项'"
-                    class="p-1.5 hover:bg-black/10 rounded transition-colors"
-                    title="无序列表"
-                  >
-                    <List :size="16" class="text-neutral-600" />
-                  </button>
-                  <button
-                    @click="form.content += '\n1. 列表项'"
-                    class="p-1.5 hover:bg-black/10 rounded transition-colors"
-                    title="有序列表"
-                  >
-                    <ListOrdered :size="16" class="text-neutral-600" />
-                  </button>
-                  <button
-                    @click="form.content += '\n```\n代码块\n```'"
-                    class="p-1.5 hover:bg-black/10 rounded transition-colors"
-                    title="代码块"
-                  >
-                    <Code :size="16" class="text-neutral-600" />
-                  </button>
-                  <button
-                    @click="form.content += '[链接文本](url)'"
-                    class="p-1.5 hover:bg-black/10 rounded transition-colors"
-                    title="链接"
-                  >
-                    <LinkIcon :size="16" class="text-neutral-600" />
-                  </button>
+              <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium text-neutral-700">
+                  内容（支持 Markdown）
+                </label>
+                <!-- 预览切换按钮 -->
+                <button
+                  @click="showPreview = !showPreview"
+                  class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+                  :class="showPreview ? 'bg-black/10 text-neutral-900' : 'bg-white border border-black/10 text-neutral-600 hover:bg-black/5'"
+                >
+                  <span>{{ showPreview ? '隐藏预览' : '显示预览' }}</span>
+                </button>
+              </div>
+
+              <div :class="showPreview ? 'grid grid-cols-2 gap-4' : ''">
+                <!-- 编辑区 -->
+                <div class="border border-black/10 rounded-xl overflow-hidden">
+                  <!-- 工具栏 -->
+                  <div class="flex items-center gap-1 px-3 py-2 bg-black/5 border-b border-black/10">
+                    <button
+                      @click="form.content += '**粗体**'"
+                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      title="粗体"
+                    >
+                      <Bold :size="16" class="text-neutral-600" />
+                    </button>
+                    <button
+                      @click="form.content += '*斜体*'"
+                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      title="斜体"
+                    >
+                      <Italic :size="16" class="text-neutral-600" />
+                    </button>
+                    <button
+                      @click="form.content += '\n# 一级标题'"
+                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      title="一级标题"
+                    >
+                      <Heading1 :size="16" class="text-neutral-600" />
+                    </button>
+                    <button
+                      @click="form.content += '\n## 二级标题'"
+                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      title="二级标题"
+                    >
+                      <Heading2 :size="16" class="text-neutral-600" />
+                    </button>
+                    <button
+                      @click="form.content += '\n- 列表项'"
+                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      title="无序列表"
+                    >
+                      <List :size="16" class="text-neutral-600" />
+                    </button>
+                    <button
+                      @click="form.content += '\n1. 列表项'"
+                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      title="有序列表"
+                    >
+                      <ListOrdered :size="16" class="text-neutral-600" />
+                    </button>
+                    <button
+                      @click="form.content += '\n```\n代码块\n```'"
+                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      title="代码块"
+                    >
+                      <Code :size="16" class="text-neutral-600" />
+                    </button>
+                    <button
+                      @click="form.content += '[链接文本](url)'"
+                      class="p-1.5 hover:bg-black/10 rounded transition-colors"
+                      title="链接"
+                    >
+                      <LinkIcon :size="16" class="text-neutral-600" />
+                    </button>
+                  </div>
+
+                  <!-- 编辑区 -->
+                  <textarea
+                    v-model="form.content"
+                    placeholder="在这里输入笔记内容，支持 Markdown 格式..."
+                    :class="showPreview ? 'min-h-[700px]' : 'min-h-[800px]'"
+                    class="w-full px-4 py-3 bg-white text-sm leading-relaxed focus:outline-none resize-none font-mono"
+                  ></textarea>
                 </div>
 
-                <!-- 编辑区 -->
-                <textarea
-                  v-model="form.content"
-                  placeholder="在这里输入笔记内容，支持 Markdown 格式..."
-                  class="w-full px-4 py-3 bg-white min-h-[500px] text-sm leading-relaxed focus:outline-none resize-none font-mono"
-                ></textarea>
+                <!-- 预览区 -->
+                <div
+                  v-if="showPreview"
+                  class="border border-black/10 rounded-xl bg-white p-6 overflow-y-auto custom-scrollbar"
+                  :class="showPreview ? 'min-h-[700px] max-h-[800px]' : ''"
+                >
+                  <div class="flex items-center justify-between mb-4 pb-3 border-b border-black/5">
+                    <span class="text-xs font-medium text-neutral-400">预览</span>
+                  </div>
+                  <div
+                    class="prose prose-neutral prose-sm max-w-none"
+                    v-html="renderContent"
+                  ></div>
+                </div>
               </div>
 
               <!-- 提示信息 -->

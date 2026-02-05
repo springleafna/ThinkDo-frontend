@@ -260,7 +260,7 @@ const handleSubmit = async (e: Event) => {
       }
 
       await memoApi.create(createParams)
-      toast.success('灵感已归档')
+      toast.success('便签已保存')
     }
 
     showModal.value = false
@@ -559,7 +559,7 @@ onMounted(() => {
               class="w-full py-4 bg-black text-white rounded-2xl text-xs font-bold uppercase tracking-[0.2em] shadow-xl shadow-black/10 hover:scale-[1.02] active:scale-95 transition-all mt-4 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2"
             >
               <div v-if="isLoading" class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-              <span v-else>{{ editId ? '确认更新' : '归档灵感节点' }}</span>
+              <span v-else>{{ editId ? '确认更新' : '新增灵感记录' }}</span>
             </button>
           </form>
         </div>
