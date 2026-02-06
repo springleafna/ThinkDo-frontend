@@ -468,10 +468,9 @@ watch(() => route.params.id, () => {
                 </label>
                 <Select v-model="form.categoryId">
                   <SelectTrigger class="bg-white border-black/10">
-                    <SelectValue placeholder="选择分类" />
+                    <SelectValue placeholder="未分类" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">未分类</SelectItem>
                     <SelectItem v-for="cat in categories" :key="cat.id" :value="cat.id">
                       {{ cat.name }}
                     </SelectItem>

@@ -6,7 +6,6 @@ import {
   Plus,
   Search,
   Filter,
-  Calendar,
   Tag,
   Edit3,
   Trash2,
@@ -16,14 +15,13 @@ import {
   ChevronRight,
   LayoutGrid,
   List,
-  Clock,
-  TrendingUp
+  Clock
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
-import { noteApi, type Note as NoteType } from '@/api/note'
-import { noteCategoryApi, type NoteCategory } from '@/api/noteCategory'
+import { noteApi, type Note as NoteType, type NoteStatistics } from '@/api/note'
+import { noteCategoryApi } from '@/api/noteCategory'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -48,27 +46,39 @@ const searchKeyword = ref('')
 
 // 筛选条件
 const selectedCategory = ref('all')
-const selectedTag = ref('all')
 
-// 笔记分类列表
-const categories = ref<NoteCategory[]>([])
-// 分类计数映射
-const categoryCounts = ref<Record<string, number>>({
-  all: 0,
-  favorite: 0
-})
+// 笔记统计数据
+const statistics = ref<NoteStatistics | null>(null)
+
+// 分类列表项类型
+interface CategoryListItem {
+  id: string
+  name: string
+  icon: any
+  count: number
+}
 
 // 分类列表（包含特殊分类）
-const categoryList = computed(() => [
-  { id: 'all', name: '全部笔记', icon: FolderOpen, count: categoryCounts.value.all || 0 },
-  { id: 'favorite', name: '收藏夹', icon: Star, count: categoryCounts.value.favorite || 0 },
-  ...categories.value.map((cat, index) => ({
-    id: cat.id.toString(),
-    name: cat.name,
-    icon: [FolderOpen, TrendingUp, LayoutGrid, Calendar][index % 4],
-    count: categoryCounts.value[cat.id.toString()] || 0
-  }))
-])
+const categoryList = computed(() => {
+  const list: CategoryListItem[] = [
+    { id: 'all', name: '全部笔记', icon: FolderOpen, count: statistics.value?.totalCount || 0 },
+    { id: 'favorite', name: '收藏夹', icon: Star, count: statistics.value?.favoritedCount || 0 }
+  ]
+
+  // 添加各分类
+  if (statistics.value?.categoryCounts) {
+    statistics.value.categoryCounts.forEach((cat) => {
+      list.push({
+        id: cat.categoryId.toString(),
+        name: cat.categoryName,
+        icon: FolderOpen,
+        count: cat.count
+      })
+    })
+  }
+
+  return list
+})
 
 // 加载中状态
 const loading = ref(false)
@@ -77,16 +87,6 @@ const loading = ref(false)
 const showCategoryDialog = ref(false)
 const newCategoryName = ref('')
 const isCreatingCategory = ref(false)
-
-// 常用标签
-const tags = ref([
-  { id: 'all', name: '全部', color: 'bg-gray-100 text-gray-700' },
-  { id: 'important', name: '重要', color: 'bg-red-100 text-red-700' },
-  { id: 'idea', name: '想法', color: 'bg-blue-100 text-blue-700' },
-  { id: 'todo', name: '待办', color: 'bg-yellow-100 text-yellow-700' },
-  { id: 'done', name: '已完成', color: 'bg-green-100 text-green-700' },
-  { id: 'question', name: '疑问', color: 'bg-purple-100 text-purple-700' }
-])
 
 // 本地笔记接口（兼容旧代码）
 interface Note {
@@ -132,23 +132,11 @@ const loadNotes = async () => {
       createdAt: note.createdAt,
       updatedAt: note.updatedAt
     }))
-    updateCategoryCount()
   } catch (error) {
     console.error('加载笔记失败:', error)
     toast.error('加载笔记失败')
   } finally {
     loading.value = false
-  }
-}
-
-// 加载分类列表
-const loadCategories = async () => {
-  try {
-    const response = await noteCategoryApi.getList()
-    categories.value = response
-  } catch (error) {
-    console.error('加载分类失败:', error)
-    toast.error('加载分类失败')
   }
 }
 
@@ -178,28 +166,18 @@ const formatTime = (dateString: string) => {
   return year === now.getFullYear() ? `${month}-${day}` : `${year}-${month}-${day}`
 }
 
-// 过滤后的笔记列表（标签筛选在前端进行）
+// 过滤后的笔记列表
 const filteredNotes = computed(() => {
-  let result = notes.value
-
-  // 按标签筛选
-  if (selectedTag.value !== 'all') {
-    result = result.filter(note => note.tags.includes(selectedTag.value))
-  }
-
-  return result
+  return notes.value
 })
 
-// 更新分类计数
-const updateCategoryCount = () => {
-  // 全部笔记
-  categoryCounts.value.all = notes.value.length
-  // 收藏夹
-  categoryCounts.value.favorite = notes.value.filter(n => n.isFavorite).length
-  // 各分类计数
-  categories.value.forEach(cat => {
-    categoryCounts.value[cat.id.toString()] = notes.value.filter(n => n.categoryId === cat.id).length
-  })
+// 加载统计数据
+const loadStatistics = async () => {
+  try {
+    statistics.value = await noteApi.getStatistics()
+  } catch (error) {
+    console.error('加载统计数据失败:', error)
+  }
 }
 
 // 切换收藏状态
@@ -210,7 +188,8 @@ const toggleFavorite = async (noteId: number) => {
     if (note) {
       note.isFavorite = !note.isFavorite
       toast.success(note.isFavorite ? '已添加到收藏' : '已取消收藏')
-      updateCategoryCount()
+      // 重新加载统计数据
+      await loadStatistics()
     }
   } catch (error) {
     console.error('切换收藏状态失败:', error)
@@ -230,7 +209,8 @@ const deleteNote = async (noteId: number) => {
     if (index !== -1) {
       notes.value.splice(index, 1)
       toast.success('笔记已删除')
-      updateCategoryCount()
+      // 重新加载统计数据
+      await loadStatistics()
     }
   } catch (error) {
     console.error('删除笔记失败:', error)
@@ -288,8 +268,8 @@ const createCategory = async () => {
 
     toast.success('分类创建成功')
     closeCategoryDialog()
-    // 重新加载分类列表
-    await loadCategories()
+    // 重新加载统计数据
+    await loadStatistics()
   } catch (error) {
     console.error('创建分类失败:', error)
     toast.error('创建分类失败')
@@ -314,7 +294,7 @@ const handleCategoryChange = () => {
 }
 
 onMounted(() => {
-  loadCategories()
+  loadStatistics()
   loadNotes()
 })
 
@@ -437,28 +417,6 @@ if (typeof window !== 'undefined') {
                     </Button>
                   </div>
                 </div>
-
-                <!-- 标签 -->
-                <div>
-                  <h3 class="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-3 px-1">
-                    标签
-                  </h3>
-                  <div class="flex flex-wrap gap-2">
-                    <Badge
-                      v-for="tag in tags"
-                      :key="tag.id"
-                      @click="selectedTag = tag.id"
-                      :variant="selectedTag === tag.id ? 'default' : 'secondary'"
-                      :class="[
-                        'cursor-pointer transition-all',
-                        selectedTag === tag.id ? 'bg-black text-white' : tag.color
-                      ]"
-                      class="px-3 py-1.5 text-xs font-medium"
-                    >
-                      {{ tag.name }}
-                    </Badge>
-                  </div>
-                </div>
               </div>
             </aside>
 
@@ -503,14 +461,14 @@ if (typeof window !== 'undefined') {
                     </CardDescription>
 
                     <!-- 标签 -->
-                    <div class="flex flex-wrap gap-2 mb-4">
+                    <div v-if="note.tags.length > 0" class="flex flex-wrap gap-2 mb-4">
                       <Badge
-                        v-for="tagId in note.tags"
-                        :key="tagId"
+                        v-for="tag in note.tags"
+                        :key="tag"
                         variant="secondary"
                         class="text-xs"
                       >
-                        {{ tags.find(t => t.id === tagId)?.name || tagId }}
+                        {{ tag }}
                       </Badge>
                     </div>
 
@@ -571,7 +529,7 @@ if (typeof window !== 'undefined') {
                     <div class="flex items-center gap-4">
                       <!-- 图标/缩略图 -->
                       <div class="w-12 h-12 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-lg flex items-center justify-center shrink-0">
-                        <component :is="categoryList.find(c => c.id === note.category)?.icon || FolderOpen" :size="20" class="text-neutral-600" />
+                        <component :is="categoryList.find(c => c.id === note.category)?.icon" :size="20" class="text-neutral-600" />
                       </div>
 
                       <!-- 内容 -->
@@ -585,14 +543,14 @@ if (typeof window !== 'undefined') {
                       </div>
 
                       <!-- 标签 -->
-                      <div class="hidden sm:flex flex-wrap gap-2 shrink-0">
+                      <div v-if="note.tags.length > 0" class="hidden sm:flex flex-wrap gap-2 shrink-0">
                         <Badge
-                          v-for="tagId in note.tags.slice(0, 2)"
-                          :key="tagId"
+                          v-for="tag in note.tags.slice(0, 2)"
+                          :key="tag"
                           variant="secondary"
                           class="text-xs"
                         >
-                          {{ tags.find(t => t.id === tagId)?.name || tagId }}
+                          {{ tag }}
                         </Badge>
                       </div>
 

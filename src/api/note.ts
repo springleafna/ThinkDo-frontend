@@ -37,6 +37,21 @@ export interface NoteQueryParams {
   favorited?: number
 }
 
+// 分类统计信息
+export interface CategoryCount {
+  categoryId: number
+  categoryName: string
+  count: number
+}
+
+// 笔记统计信息
+export interface NoteStatistics {
+  totalCount: number
+  favoritedCount: number
+  unclassifiedCount: number
+  categoryCounts: CategoryCount[]
+}
+
 // 笔记相关 API
 export const noteApi = {
   /**
@@ -93,5 +108,13 @@ export const noteApi = {
    */
   toggleFavorited(id: number) {
     return request.put<void>(`/note/toggleFavorited/${id}`)
+  },
+
+  /**
+   * 获取笔记统计信息
+   * GET /note/statistics
+   */
+  getStatistics() {
+    return request.get<NoteStatistics>('/note/statistics')
   }
 }
