@@ -18,7 +18,9 @@ import {
   Heading2,
   Link as LinkIcon,
   Code,
-  ListOrdered
+  ListOrdered,
+  Plus,
+  X
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { noteApi, type Note as NoteType } from '@/api/note'
@@ -27,7 +29,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 const router = useRouter()
 const route = useRoute()
@@ -48,6 +51,10 @@ const isEditing = ref(false)
 const isSaving = ref(false)
 // 编辑模式下是否显示预览
 const showPreview = ref(true)
+// 是否显示删除确认对话框
+const showDeleteDialog = ref(false)
+// 是否正在删除
+const isDeleting = ref(false)
 
 // 笔记分类列表
 const categories = ref<NoteCategory[]>([])
@@ -64,15 +71,6 @@ const loadCategories = async () => {
     console.error('加载分类失败:', error)
   }
 }
-
-// 可用标签
-const availableTags = [
-  { id: 'important', name: '重要', color: 'bg-red-100 text-red-700' },
-  { id: 'idea', name: '想法', color: 'bg-blue-100 text-blue-700' },
-  { id: 'todo', name: '待办', color: 'bg-yellow-100 text-yellow-700' },
-  { id: 'done', name: '已完成', color: 'bg-green-100 text-green-700' },
-  { id: 'question', name: '疑问', color: 'bg-purple-100 text-purple-700' }
-]
 
 // 本地笔记接口
 interface Note {
@@ -106,6 +104,36 @@ const form = ref({
   categoryId: undefined as number | undefined,
   tags: [] as string[]
 })
+
+// 新标签输入
+const newTagInput = ref('')
+
+// 添加标签
+const addTag = () => {
+  const tag = newTagInput.value.trim()
+  if (!tag) {
+    toast.error('请输入标签内容')
+    return
+  }
+  if (form.value.tags.length >= 3) {
+    toast.error('最多只能添加3个标签')
+    return
+  }
+  if (form.value.tags.includes(tag)) {
+    toast.error('标签已存在')
+    return
+  }
+  form.value.tags.push(tag)
+  newTagInput.value = ''
+}
+
+// 删除标签
+const removeTag = (tag: string) => {
+  const index = form.value.tags.indexOf(tag)
+  if (index > -1) {
+    form.value.tags.splice(index, 1)
+  }
+}
 
 // 格式化时间
 const formatTime = (dateString: string) => {
@@ -227,27 +255,29 @@ const toggleFavorite = async () => {
 }
 
 // 删除笔记
-const deleteNote = async () => {
-  if (confirm('确定要删除这篇笔记吗？此操作无法撤销。')) {
-    try {
-      await noteApi.delete(note.value.id)
-      toast.success('笔记已删除')
-      router.push('/notes')
-    } catch (error) {
-      console.error('删除笔记失败:', error)
-      toast.error('删除失败，请重试')
-    }
+const deleteNote = () => {
+  showDeleteDialog.value = true
+}
+
+// 确认删除笔记
+const confirmDelete = async () => {
+  isDeleting.value = true
+  try {
+    await noteApi.delete(note.value.id)
+    toast.success('笔记已删除')
+    showDeleteDialog.value = false
+    router.push('/notes')
+  } catch (error) {
+    console.error('删除笔记失败:', error)
+    toast.error('删除失败，请重试')
+  } finally {
+    isDeleting.value = false
   }
 }
 
-// 切换标签
-const toggleTag = (tagId: string) => {
-  const index = form.value.tags.indexOf(tagId)
-  if (index > -1) {
-    form.value.tags.splice(index, 1)
-  } else {
-    form.value.tags.push(tagId)
-  }
+// 取消删除
+const cancelDelete = () => {
+  showDeleteDialog.value = false
 }
 
 // 渲染 Markdown 内容（简单实现）
@@ -410,7 +440,7 @@ watch(() => route.params.id, () => {
           <div v-if="!isEditing" class="prose prose-neutral max-w-none">
             <!-- 元信息 -->
             <Card class="mb-6 border-black/5">
-              <CardContent class="pt-6">
+              <CardContent class="py-3">
                 <div class="flex items-center gap-4">
                   <div class="flex items-center gap-2 text-sm text-neutral-600">
                     <FolderOpen :size="16" />
@@ -427,13 +457,12 @@ watch(() => route.params.id, () => {
             <!-- 标签 -->
             <div v-if="note.tags.length > 0" class="flex flex-wrap gap-2 mb-6">
               <Badge
-                v-for="tagId in note.tags"
-                :key="tagId"
-                :variant="'secondary'"
-                :class="availableTags.find(t => t.id === tagId)?.color || 'bg-gray-100 text-gray-700'"
+                v-for="tag in note.tags"
+                :key="tag"
+                variant="secondary"
                 class="px-3 py-1 text-sm font-medium"
               >
-                {{ availableTags.find(t => t.id === tagId)?.name || tagId }}
+                {{ tag }}
               </Badge>
             </div>
 
@@ -445,7 +474,7 @@ watch(() => route.params.id, () => {
           </div>
 
           <!-- 编辑模式 -->
-          <div v-else class="space-y-6">
+          <div v-else class="space-y-4">
             <!-- 标题编辑 -->
             <div>
               <label class="block text-sm font-medium text-neutral-700 mb-2">
@@ -467,7 +496,7 @@ watch(() => route.params.id, () => {
                   分类
                 </label>
                 <Select v-model="form.categoryId">
-                  <SelectTrigger class="bg-white border-black/10">
+                  <SelectTrigger class="bg-white border-black/10 w-full">
                     <SelectValue placeholder="未分类" />
                   </SelectTrigger>
                   <SelectContent>
@@ -478,35 +507,56 @@ watch(() => route.params.id, () => {
                 </Select>
               </div>
 
-              <!-- 标签选择 -->
+              <!-- 标签输入 -->
               <div>
                 <label class="block text-sm font-medium text-neutral-700 mb-2">
-                  标签
+                  标签 <span class="text-neutral-400 font-normal">（最多3个）</span>
                 </label>
-                <div class="flex flex-wrap gap-2">
-                  <Badge
-                    v-for="tag in availableTags"
-                    :key="tag.id"
-                    @click="toggleTag(tag.id)"
-                    :variant="form.tags.includes(tag.id) ? 'default' : 'secondary'"
-                    :class="[
-                      'cursor-pointer transition-all',
-                      form.tags.includes(tag.id) ? 'bg-black text-white' : tag.color
-                    ]"
-                    class="px-3 py-1.5 text-sm font-medium"
+                <div class="flex items-center gap-2 mb-2">
+                  <Input
+                    v-model="newTagInput"
+                    @keyup.enter="addTag"
+                    type="text"
+                    placeholder="输入标签后按回车或点击加号"
+                    :disabled="form.tags.length >= 3"
+                    class="flex-1"
+                  />
+                  <Button
+                    @click="addTag"
+                    :disabled="form.tags.length >= 3"
+                    variant="outline"
+                    size="icon"
+                    class="shrink-0"
                   >
-                    {{ tag.name }}
+                    <Plus :size="16" />
+                  </Button>
+                </div>
+                <!-- 已选标签 -->
+                <div v-if="form.tags.length > 0" class="flex flex-wrap gap-2">
+                  <Badge
+                    v-for="tag in form.tags"
+                    :key="tag"
+                    variant="secondary"
+                    class="px-3 py-1 text-sm font-medium gap-1"
+                  >
+                    {{ tag }}
+                    <button
+                      @click="removeTag(tag)"
+                      class="ml-1 hover:text-red-600 transition-colors"
+                    >
+                      <X :size="12" />
+                    </button>
                   </Badge>
                 </div>
+                <p v-if="form.tags.length >= 3" class="text-xs text-neutral-400 mt-1">
+                  已达到标签数量上限
+                </p>
               </div>
             </div>
 
             <!-- Markdown 工具栏 -->
             <div>
-              <div class="flex items-center justify-between mb-2">
-                <label class="block text-sm font-medium text-neutral-700">
-                  内容（支持 Markdown）
-                </label>
+              <div class="flex items-center justify-end mb-2">
                 <!-- 预览切换按钮 -->
                 <Button
                   @click="showPreview = !showPreview"
@@ -521,7 +571,7 @@ watch(() => route.params.id, () => {
                 <!-- 编辑区 -->
                 <Card class="border-black/10 overflow-hidden">
                   <!-- 工具栏 -->
-                  <div class="flex items-center gap-1 px-3 py-2 bg-black/5 border-b border-black/10">
+                  <div class="flex items-center gap-1 px-3 py-1.5 bg-black/5 border-b border-black/10">
                     <Button
                       @click="form.content += '**粗体**'"
                       variant="ghost"
@@ -601,7 +651,7 @@ watch(() => route.params.id, () => {
                     v-model="form.content"
                     placeholder="在这里输入笔记内容，支持 Markdown 格式..."
                     :class="showPreview ? 'min-h-[700px]' : 'min-h-[800px]'"
-                    class="w-full px-4 py-3 bg-white text-sm leading-relaxed focus:outline-none resize-none font-mono border-0 rounded-none"
+                    class="w-full px-4 py-2 bg-white text-sm leading-relaxed focus:outline-none resize-none font-mono border-0 rounded-none"
                   ></textarea>
                 </Card>
 
@@ -622,16 +672,41 @@ watch(() => route.params.id, () => {
                   </CardContent>
                 </Card>
               </div>
-
-              <!-- 提示信息 -->
-              <div class="mt-2 text-xs text-neutral-400">
-                💡 提示：支持 Markdown 语法，包括标题、列表、代码块、粗体、斜体等
-              </div>
             </div>
           </div>
         </div>
       </div>
     </main>
+
+    <!-- 删除确认对话框 -->
+    <Dialog v-model:open="showDeleteDialog">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>确认删除</DialogTitle>
+          <DialogDescription>
+            确定要删除这篇笔记吗？此操作无法撤销。
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter>
+          <Button
+            @click="cancelDelete"
+            :disabled="isDeleting"
+            variant="outline"
+          >
+            取消
+          </Button>
+          <Button
+            @click="confirmDelete"
+            :disabled="isDeleting"
+            variant="destructive"
+          >
+            <div v-if="isDeleting" class="w-4 h-4 mr-2 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+            <span>{{ isDeleting ? '删除中...' : '确认删除' }}</span>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 

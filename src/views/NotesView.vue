@@ -88,6 +88,11 @@ const showCategoryDialog = ref(false)
 const newCategoryName = ref('')
 const isCreatingCategory = ref(false)
 
+// 删除确认对话框
+const showDeleteDialog = ref(false)
+const deletingNoteId = ref<number | null>(null)
+const isDeleting = ref(false)
+
 // 本地笔记接口（兼容旧代码）
 interface Note {
   id: number
@@ -198,24 +203,39 @@ const toggleFavorite = async (noteId: number) => {
 }
 
 // 删除笔记
-const deleteNote = async (noteId: number) => {
-  if (!confirm('确定要删除这篇笔记吗？此操作无法撤销。')) {
-    return
-  }
+const deleteNote = (noteId: number) => {
+  deletingNoteId.value = noteId
+  showDeleteDialog.value = true
+}
 
+// 确认删除笔记
+const confirmDelete = async () => {
+  if (deletingNoteId.value === null) return
+
+  isDeleting.value = true
   try {
-    await noteApi.delete(noteId)
-    const index = notes.value.findIndex(n => n.id === noteId)
+    await noteApi.delete(deletingNoteId.value)
+    const index = notes.value.findIndex(n => n.id === deletingNoteId.value)
     if (index !== -1) {
       notes.value.splice(index, 1)
       toast.success('笔记已删除')
       // 重新加载统计数据
       await loadStatistics()
     }
+    showDeleteDialog.value = false
   } catch (error) {
     console.error('删除笔记失败:', error)
     toast.error('删除失败')
+  } finally {
+    isDeleting.value = false
+    deletingNoteId.value = null
   }
+}
+
+// 取消删除
+const cancelDelete = () => {
+  showDeleteDialog.value = false
+  deletingNoteId.value = null
 }
 
 // 新建笔记
@@ -430,7 +450,7 @@ if (typeof window !== 'undefined') {
                   @click="viewNoteDetail(note.id)"
                   class="group hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer border-black/5"
                 >
-                  <CardHeader class="pb-3">
+                  <CardHeader class="pb-2">
                     <div class="flex items-start justify-between">
                       <CardTitle class="text-base flex-1 line-clamp-2">
                         {{ note.title }}
@@ -455,13 +475,13 @@ if (typeof window !== 'undefined') {
                     </div>
                   </CardHeader>
 
-                  <CardContent class="pb-4">
-                    <CardDescription class="text-sm line-clamp-3 leading-relaxed mb-4">
+                  <CardContent class="flex flex-col h-full pb-4">
+                    <CardDescription class="text-sm line-clamp-3 leading-relaxed mb-3">
                       {{ note.content }}
                     </CardDescription>
 
                     <!-- 标签 -->
-                    <div v-if="note.tags.length > 0" class="flex flex-wrap gap-2 mb-4">
+                    <div v-if="note.tags.length > 0" class="flex flex-wrap gap-2 mb-3">
                       <Badge
                         v-for="tag in note.tags"
                         :key="tag"
@@ -473,7 +493,7 @@ if (typeof window !== 'undefined') {
                     </div>
 
                     <!-- 底部信息 -->
-                    <div class="flex items-center justify-between text-xs text-neutral-400">
+                    <div class="flex items-center justify-between text-xs text-neutral-400 mt-auto">
                       <div class="flex items-center gap-1">
                         <Clock :size="14" />
                         <span>{{ formatTime(note.updatedAt) }}</span>
@@ -529,7 +549,7 @@ if (typeof window !== 'undefined') {
                     <div class="flex items-center gap-4">
                       <!-- 图标/缩略图 -->
                       <div class="w-12 h-12 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-lg flex items-center justify-center shrink-0">
-                        <component :is="categoryList.find(c => c.id === note.category)?.icon" :size="20" class="text-neutral-600" />
+                        <component :is="categoryList.find(c => c.id === note.category)?.icon || FolderOpen" :size="20" class="text-neutral-600" />
                       </div>
 
                       <!-- 内容 -->
@@ -658,6 +678,36 @@ if (typeof window !== 'undefined') {
           >
             <div v-if="isCreatingCategory" class="w-4 h-4 mr-2 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
             <span>{{ isCreatingCategory ? '创建中...' : '创建' }}</span>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- 删除确认对话框 -->
+    <Dialog v-model:open="showDeleteDialog">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>确认删除</DialogTitle>
+          <DialogDescription>
+            确定要删除这篇笔记吗？此操作无法撤销。
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter>
+          <Button
+            @click="cancelDelete"
+            :disabled="isDeleting"
+            variant="outline"
+          >
+            取消
+          </Button>
+          <Button
+            @click="confirmDelete"
+            :disabled="isDeleting"
+            variant="destructive"
+          >
+            <div v-if="isDeleting" class="w-4 h-4 mr-2 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+            <span>{{ isDeleting ? '删除中...' : '确认删除' }}</span>
           </Button>
         </DialogFooter>
       </DialogContent>
