@@ -14,6 +14,8 @@ import {
 } from 'lucide-vue-next'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 const layoutStore = useLayoutStore()
 const activeView = ref('quadrant')
@@ -105,12 +107,38 @@ const fetchQuadrantData = async () => {
   }
 }
 
+// 完成确认对话框状态
+const showCompleteDialog = ref(false)
+const completingTaskId = ref<number | null>(null)
+const completingQuadrantId = ref<string | null>(null)
+
+// 删除确认对话框状态
+const showDeleteDialog = ref(false)
+const deletingTaskId = ref<number | null>(null)
+const deletingQuadrantId = ref<string | null>(null)
+
+// 获取当前要删除的计划
+const deletingTask = computed(() => {
+  if (deletingTaskId.value === null || deletingQuadrantId.value === null) return null
+  const quadrant = data.value.find(q => q.id === deletingQuadrantId.value)
+  if (!quadrant) return null
+  return quadrant.tasks.find(t => t.id === deletingTaskId.value) || null
+})
+
 // 切换任务状态
 const toggleTask = async (qId: string, taskId: number) => {
   const quadrant = data.value.find(q => q.id === qId)
   if (quadrant) {
     const task = quadrant.tasks.find(t => t.id === taskId)
     if (task) {
+      // 如果是普通计划(type=0)且要完成，显示确认对话框
+      if (task.type === 0 && task.status === 0) {
+        completingTaskId.value = taskId
+        completingQuadrantId.value = qId
+        showCompleteDialog.value = true
+        return
+      }
+
       // 乐观更新 UI
       task.status = task.status === 1 ? 0 : 1
       try {
@@ -125,8 +153,54 @@ const toggleTask = async (qId: string, taskId: number) => {
   }
 }
 
+// 确认完成任务
+const confirmComplete = async () => {
+  if (completingTaskId.value === null || completingQuadrantId.value === null) return
+
+  const quadrant = data.value.find(q => q.id === completingQuadrantId.value)
+  if (quadrant) {
+    const task = quadrant.tasks.find(t => t.id === completingTaskId.value)
+    if (task) {
+      task.status = 1
+      try {
+        await planApi.toggleStatus(completingTaskId.value)
+        toast.success('计划已完成')
+      } catch (error) {
+        task.status = 0
+        console.error('切换任务状态失败:', error)
+        toast.error('操作失败')
+      }
+    }
+  }
+
+  showCompleteDialog.value = false
+  completingTaskId.value = null
+  completingQuadrantId.value = null
+}
+
+// 取消完成
+const cancelComplete = () => {
+  showCompleteDialog.value = false
+  completingTaskId.value = null
+  completingQuadrantId.value = null
+}
+
 // 删除任务
-const deleteTask = async (qId: string, taskId: number) => {
+const deleteTask = (qId: string, taskId: number) => {
+  const quadrant = data.value.find(q => q.id === qId)
+  if (quadrant) {
+    const task = quadrant.tasks.find(t => t.id === taskId)
+    if (task) {
+      // 所有计划删除时都显示确认对话框
+      deletingTaskId.value = taskId
+      deletingQuadrantId.value = qId
+      showDeleteDialog.value = true
+    }
+  }
+}
+
+// 执行删除操作
+const performDelete = async (qId: string, taskId: number) => {
   const quadrant = data.value.find(q => q.id === qId)
   if (quadrant) {
     try {
@@ -138,6 +212,24 @@ const deleteTask = async (qId: string, taskId: number) => {
       toast.error('删除失败')
     }
   }
+}
+
+// 确认删除
+const confirmDelete = async () => {
+  if (deletingTaskId.value === null || deletingQuadrantId.value === null) return
+
+  await performDelete(deletingQuadrantId.value, deletingTaskId.value)
+
+  showDeleteDialog.value = false
+  deletingTaskId.value = null
+  deletingQuadrantId.value = null
+}
+
+// 取消删除
+const cancelDelete = () => {
+  showDeleteDialog.value = false
+  deletingTaskId.value = null
+  deletingQuadrantId.value = null
 }
 
 // 添加任务
@@ -321,6 +413,64 @@ onMounted(() => {
         </div>
       </div>
     </main>
+
+    <!-- 完成确认对话框 -->
+    <Dialog v-model:open="showCompleteDialog">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>确认完成</DialogTitle>
+          <DialogDescription>
+            <span class="font-semibold text-amber-600">该计划属于普通计划类型</span>，是否确认完成？
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter>
+          <Button
+            @click="cancelComplete"
+            variant="outline"
+          >
+            取消
+          </Button>
+          <Button
+            @click="confirmComplete"
+          >
+            确认完成
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- 删除确认对话框 -->
+    <Dialog v-model:open="showDeleteDialog">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>确认删除</DialogTitle>
+          <DialogDescription>
+            <template v-if="deletingTask?.type === 0">
+              <span class="font-semibold text-amber-600">该计划属于普通计划类型</span>，是否确认删除？
+            </template>
+            <template v-else>
+              是否确认删除此计划？
+            </template>
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter>
+          <Button
+            @click="cancelDelete"
+            variant="outline"
+          >
+            取消
+          </Button>
+          <Button
+            @click="confirmDelete"
+            variant="destructive"
+          >
+            确认删除
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 

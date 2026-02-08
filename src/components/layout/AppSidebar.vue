@@ -17,6 +17,7 @@ import {
 import { userApi } from '@/api/user'
 import { useUserStore } from '@/stores/user'
 import { toast } from 'vue-sonner'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -91,19 +92,27 @@ const handleNavigation = (viewId: string) => {
     ]"
   >
     <!-- 折叠按钮 - 绝对定位在右侧居中 -->
-    <button
-      @click.stop="emit('toggle')"
-      :class="[
-        'absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 p-2 rounded-full shadow-lg border border-black/5 transition-all z-50',
-        isOpen
-          ? 'bg-white text-neutral-400 hover:text-neutral-900 hover:bg-black/5'
-          : 'bg-white text-neutral-400 hover:text-neutral-900 hover:bg-black/5'
-      ]"
-      :title="isOpen ? '折叠侧边栏' : '展开侧边栏'"
-    >
-      <PanelLeftClose v-if="isOpen" :size="16" />
-      <PanelLeftOpen v-else :size="16" />
-    </button>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger as-child>
+          <button
+            @click.stop="emit('toggle')"
+            :class="[
+              'absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 p-2 rounded-full shadow-lg border border-black/5 transition-all z-50',
+              isOpen
+                ? 'bg-white text-neutral-400 hover:text-neutral-900 hover:bg-black/5'
+                : 'bg-white text-neutral-400 hover:text-neutral-900 hover:bg-black/5'
+            ]"
+          >
+            <PanelLeftClose v-if="isOpen" :size="16" />
+            <PanelLeftOpen v-else :size="16" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right">
+          <p>{{ isOpen ? '折叠侧边栏' : '展开侧边栏' }}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
 
     <div
       :class="[
