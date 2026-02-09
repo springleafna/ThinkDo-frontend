@@ -33,7 +33,7 @@ const emit = defineEmits<{
 const activeView = defineModel<string>('activeView')
 
 const navigation = [
-  { id: 'dashboard', label: '中控控制台', icon: LayoutDashboard },
+  { id: 'dashboard', label: '控制台', icon: LayoutDashboard },
   { id: 'ai-chat', label: 'AI 对话', icon: Sparkles },
   { id: 'knowledge-base', label: '知识库', icon: Library },
   { id: 'quadrant', label: '四象限分析', icon: Grid2x2 },

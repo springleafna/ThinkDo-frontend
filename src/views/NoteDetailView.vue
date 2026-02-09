@@ -11,14 +11,6 @@ import {
   Tag,
   Calendar,
   FolderOpen,
-  Bold,
-  Italic,
-  List,
-  Heading1,
-  Heading2,
-  Link as LinkIcon,
-  Code,
-  ListOrdered,
   Plus,
   X
 } from 'lucide-vue-next'
@@ -31,6 +23,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import TiptapEditor from '@/components/TiptapEditor.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -49,8 +42,6 @@ const noteId = computed(() => parseInt(route.params.id as string))
 const isEditing = ref(false)
 // 是否保存中
 const isSaving = ref(false)
-// 编辑模式下是否显示预览
-const showPreview = ref(true)
 // 是否显示删除确认对话框
 const showDeleteDialog = ref(false)
 // 是否正在删除
@@ -280,44 +271,6 @@ const cancelDelete = () => {
   showDeleteDialog.value = false
 }
 
-// 渲染 Markdown 内容（简单实现）
-const renderContent = computed(() => {
-  // 根据是否在编辑模式选择使用原始内容还是编辑中的内容
-  const content = isEditing.value ? form.value.content : note.value.content
-
-  // 简单的 Markdown 渲染
-  let html = content
-
-  // 标题
-  html = html.replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
-  html = html.replace(/^## (.*$)/gim, '<h2 class="text-xl font-semibold mt-6 mb-3">$1</h2>')
-  html = html.replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-6 mb-4">$1</h1>')
-
-  // 粗体和斜体
-  html = html.replace(/\*\*\*(.*?)\*\*\*/gim, '<strong><em>$1</em></strong>')
-  html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-  html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>')
-
-  // 代码块
-  html = html.replace(/```(\w+)?\n([\s\S]*?)```/gim, '<pre class="bg-black/5 p-4 rounded-lg my-3 overflow-x-auto"><code>$2</code></pre>')
-
-  // 行内代码
-  html = html.replace(/`([^`]+)`/gim, '<code class="bg-black/5 px-1.5 py-0.5 rounded text-sm">$1</code>')
-
-  // 待办事项
-  html = html.replace(/^- \[x\] (.*$)/gim, '<div class="flex items-center gap-2 my-1"><input type="checkbox" checked disabled class="rounded"><span class="line-through text-neutral-500">$1</span></div>')
-  html = html.replace(/^- \[ \] (.*$)/gim, '<div class="flex items-center gap-2 my-1"><input type="checkbox" disabled class="rounded"><span>$1</span></div>')
-
-  // 列表
-  html = html.replace(/^- (.*$)/gim, '<li class="ml-4">$1</li>')
-
-  // 段落
-  html = html.replace(/\n\n/g, '</p><p class="my-3 leading-relaxed">')
-  html = '<p class="my-3 leading-relaxed">' + html + '</p>'
-
-  return html
-})
-
 onMounted(() => {
   loadCategories()
   loadNoteDetail()
@@ -467,10 +420,11 @@ watch(() => route.params.id, () => {
             </div>
 
             <!-- 内容渲染 -->
-            <div
-              class="text-neutral-700 leading-relaxed"
-              v-html="renderContent"
-            ></div>
+            <TiptapEditor
+              v-model="note.content"
+              :editable="false"
+              placeholder="暂无内容"
+            />
           </div>
 
           <!-- 编辑模式 -->
@@ -554,124 +508,12 @@ watch(() => route.params.id, () => {
               </div>
             </div>
 
-            <!-- Markdown 工具栏 -->
+            <!-- 富文本编辑器 -->
             <div>
-              <div class="flex items-center justify-end mb-2">
-                <!-- 预览切换按钮 -->
-                <Button
-                  @click="showPreview = !showPreview"
-                  :variant="showPreview ? 'secondary' : 'outline'"
-                  size="sm"
-                >
-                  <span>{{ showPreview ? '隐藏预览' : '显示预览' }}</span>
-                </Button>
-              </div>
-
-              <div :class="showPreview ? 'grid grid-cols-2 gap-4' : ''">
-                <!-- 编辑区 -->
-                <Card class="border-black/10 overflow-hidden">
-                  <!-- 工具栏 -->
-                  <div class="flex items-center gap-1 px-3 py-1.5 bg-black/5 border-b border-black/10">
-                    <Button
-                      @click="form.content += '**粗体**'"
-                      variant="ghost"
-                      size="icon"
-                      class="h-8 w-8"
-                      title="粗体"
-                    >
-                      <Bold :size="16" class="text-neutral-600" />
-                    </Button>
-                    <Button
-                      @click="form.content += '*斜体*'"
-                      variant="ghost"
-                      size="icon"
-                      class="h-8 w-8"
-                      title="斜体"
-                    >
-                      <Italic :size="16" class="text-neutral-600" />
-                    </Button>
-                    <Button
-                      @click="form.content += '\n# 一级标题'"
-                      variant="ghost"
-                      size="icon"
-                      class="h-8 w-8"
-                      title="一级标题"
-                    >
-                      <Heading1 :size="16" class="text-neutral-600" />
-                    </Button>
-                    <Button
-                      @click="form.content += '\n## 二级标题'"
-                      variant="ghost"
-                      size="icon"
-                      class="h-8 w-8"
-                      title="二级标题"
-                    >
-                      <Heading2 :size="16" class="text-neutral-600" />
-                    </Button>
-                    <Button
-                      @click="form.content += '\n- 列表项'"
-                      variant="ghost"
-                      size="icon"
-                      class="h-8 w-8"
-                      title="无序列表"
-                    >
-                      <List :size="16" class="text-neutral-600" />
-                    </Button>
-                    <Button
-                      @click="form.content += '\n1. 列表项'"
-                      variant="ghost"
-                      size="icon"
-                      class="h-8 w-8"
-                      title="有序列表"
-                    >
-                      <ListOrdered :size="16" class="text-neutral-600" />
-                    </Button>
-                    <Button
-                      @click="form.content += '\n```\n代码块\n```'"
-                      variant="ghost"
-                      size="icon"
-                      class="h-8 w-8"
-                      title="代码块"
-                    >
-                      <Code :size="16" class="text-neutral-600" />
-                    </Button>
-                    <Button
-                      @click="form.content += '[链接文本](url)'"
-                      variant="ghost"
-                      size="icon"
-                      class="h-8 w-8"
-                      title="链接"
-                    >
-                      <LinkIcon :size="16" class="text-neutral-600" />
-                    </Button>
-                  </div>
-
-                  <!-- 编辑区 -->
-                  <textarea
-                    v-model="form.content"
-                    placeholder="在这里输入笔记内容，支持 Markdown 格式..."
-                    :class="showPreview ? 'min-h-[700px]' : 'min-h-[800px]'"
-                    class="w-full px-4 py-2 bg-white text-sm leading-relaxed focus:outline-none resize-none font-mono border-0 rounded-none"
-                  ></textarea>
-                </Card>
-
-                <!-- 预览区 -->
-                <Card
-                  v-if="showPreview"
-                  class="border-black/10 overflow-hidden custom-scrollbar"
-                  :class="showPreview ? 'min-h-[700px] max-h-[800px]' : ''"
-                >
-                  <CardHeader class="pb-3 border-b border-black/5">
-                    <CardTitle class="text-xs font-medium text-neutral-400">预览</CardTitle>
-                  </CardHeader>
-                  <CardContent class="pt-4 overflow-y-auto">
-                    <div
-                      class="prose prose-neutral prose-sm max-w-none"
-                      v-html="renderContent"
-                    ></div>
-                  </CardContent>
-                </Card>
-              </div>
+              <TiptapEditor
+                v-model="form.content"
+                placeholder="在这里输入笔记内容..."
+              />
             </div>
           </div>
         </div>
@@ -711,73 +553,6 @@ watch(() => route.params.id, () => {
 </template>
 
 <style scoped>
-.prose h1 {
-  font-size: 2em;
-  font-weight: bold;
-  margin-top: 1.5em;
-  margin-bottom: 0.5em;
-  line-height: 1.2;
-}
-
-.prose h2 {
-  font-size: 1.5em;
-  font-weight: 600;
-  margin-top: 1.2em;
-  margin-bottom: 0.4em;
-  line-height: 1.3;
-}
-
-.prose h3 {
-  font-size: 1.25em;
-  font-weight: 600;
-  margin-top: 1em;
-  margin-bottom: 0.3em;
-  line-height: 1.4;
-}
-
-.prose p {
-  margin-top: 0.75em;
-  margin-bottom: 0.75em;
-  line-height: 1.75;
-}
-
-.prose code {
-  background-color: rgba(0, 0, 0, 0.05);
-  padding: 0.2em 0.4em;
-  border-radius: 0.25em;
-  font-size: 0.875em;
-  font-family: 'Monaco', 'Menlo', monospace;
-}
-
-.prose pre {
-  background-color: rgba(0, 0, 0, 0.05);
-  padding: 1em;
-  border-radius: 0.5em;
-  overflow-x: auto;
-  margin: 0.75em 0;
-}
-
-.prose pre code {
-  background-color: transparent;
-  padding: 0;
-}
-
-.prose ul {
-  list-style-type: disc;
-  padding-left: 1.5em;
-  margin: 0.75em 0;
-}
-
-.prose ol {
-  list-style-type: decimal;
-  padding-left: 1.5em;
-  margin: 0.75em 0;
-}
-
-.prose li {
-  margin: 0.25em 0;
-}
-
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
