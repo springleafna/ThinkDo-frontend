@@ -101,6 +101,12 @@ export interface PlanQuadrantResp {
   notImportantNotUrgent: PlanQuadrantInfo[]
 }
 
+// AI创建计划请求参数
+export interface AiCreatePlanParams {
+  description: string
+  type?: number
+}
+
 // 计划相关 API
 export const planApi = {
   /**
@@ -173,5 +179,13 @@ export const planApi = {
    */
   getListByCategoryId(categoryId: number) {
     return request.get<Plan[]>(`/plan/plan/list/category/${categoryId}`)
+  },
+
+  /**
+   * AI创建计划
+   * POST /plan/plan/aiCreate
+   */
+  aiCreate(data: AiCreatePlanParams) {
+    return request.post<number>('/plan/plan/aiCreate', data)
   }
 }
