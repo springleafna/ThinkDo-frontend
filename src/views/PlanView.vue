@@ -988,49 +988,45 @@ const handleAiCreate = async () => {
       <div class="flex-1 overflow-y-auto p-8 md:p-12 pt-8 custom-scrollbar relative z-10">
         <div class="max-w-7xl mx-auto space-y-10 pb-12 section-reveal">
           <!-- 头部 -->
-          <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div>
-              <p class="text-sm text-neutral-400 mt-1 italic">分阶段拆解宏大目标，保持战略定力。</p>
-            </div>
-            <div class="flex items-center gap-3 flex-1 max-w-2xl">
-              <div class="flex-1 flex items-center gap-3 bg-[#f8f8f8] border border-[#e0e0e0] rounded-2xl px-4 py-3 hover:border-[#c0c0c0] focus-within:border-[#4a90e2] transition-all">
-                <Target :size="20" class="text-gray-400 shrink-0" />
-                <input
-                  v-model="aiCreateDescription"
-                  type="text"
-                  placeholder="输入一句话创建计划... 例如: '明年初精通架构设计 #技能 #系统'"
-                  maxlength="2000"
-                  class="flex-1 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none"
-                  :disabled="aiCreating"
-                  @keydown.enter="handleAiCreate"
-                />
-                <button
-                  @click="handleAiCreate"
-                  :disabled="aiCreating || !aiCreateDescription.trim()"
-                  :class="[
-                    'w-9 h-9 rounded-full flex items-center justify-center transition-all shrink-0 border',
-                    aiCreating || !aiCreateDescription.trim()
-                      ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 hover:border-gray-400'
-                  ]"
-                >
-                  <div v-if="aiCreating" class="w-4 h-4 border-2 border-gray-400/30 border-t-gray-500 rounded-full animate-spin" />
-                  <div v-else class="flex items-center justify-center">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                  </div>
-                </button>
-              </div>
+          <div class="flex flex-col md:flex-row md:items-center gap-12">
+            <p class="text-sm text-neutral-400 italic whitespace-nowrap">分阶段拆解宏大目标，保持战略定力。</p>
+            <div class="flex-1 flex items-center gap-3 bg-[#f8f8f8] border border-[#e0e0e0] rounded-2xl px-4 py-3 hover:border-[#c0c0c0] focus-within:border-[#4a90e2] transition-all">
+              <Target :size="20" class="text-gray-400 shrink-0" />
+              <input
+                v-model="aiCreateDescription"
+                type="text"
+                placeholder="输入一句话创建计划... 例如: '明年初精通架构设计 #技能 #系统'"
+                maxlength="2000"
+                class="flex-1 bg-transparent text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none min-w-0"
+                :disabled="aiCreating"
+                @keydown.enter="handleAiCreate"
+              />
               <button
-                @click="showPlanModal = true"
-                class="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-2xl text-[12px] font-bold tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10"
+                @click="handleAiCreate"
+                :disabled="aiCreating || !aiCreateDescription.trim()"
+                :class="[
+                  'w-9 h-9 rounded-full flex items-center justify-center transition-all shrink-0 border',
+                  aiCreating || !aiCreateDescription.trim()
+                    ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 hover:border-gray-400'
+                ]"
               >
-                <Plus :size="16" />
-                <span>新建计划</span>
+                <div v-if="aiCreating" class="w-4 h-4 border-2 border-gray-400/30 border-t-gray-500 rounded-full animate-spin" />
+                <div v-else class="flex items-center justify-center">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22 2L11 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
+                </div>
               </button>
             </div>
+            <button
+              @click="showPlanModal = true"
+              class="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-2xl text-[12px] font-bold tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10 shrink-0"
+            >
+              <Plus :size="16" />
+              <span>新建计划</span>
+            </button>
           </div>
 
           <!-- 主内容区域 -->
