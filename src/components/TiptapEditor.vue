@@ -95,14 +95,9 @@ const editor = useEditor({
   ],
   editorProps: {
     attributes: {
-      // 使用 Tailwind Typography (prose) 自动处理排版样式
       class: [
-        'prose prose-neutral prose-sm max-w-none', // 基础排版
-        'focus:outline-none', // 移除默认聚焦边框
-        'min-h-[300px] px-6 py-4', // 尺寸与内边距
-        'prose-p:my-2 prose-headings:mb-2 prose-headings:mt-4', // 间距微调
-        'prose-img:m-0', // 图片间距由 extension 控制
-        'prose-code:bg-neutral-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-violet-600 prose-code:before:content-none prose-code:after:content-none' // 行内代码样式
+        'focus:outline-none',
+        'min-h-[300px] px-6 py-4'
       ].join(' ')
     }
   },
@@ -218,9 +213,103 @@ const toggle = (action: () => void) => action()
 </template>
 
 <style scoped>
-/* Placeholder 样式 */
+/* ========== 富文本基础样式 ========== */
+
+/* 标题样式 */
+:deep(.ProseMirror h1) {
+  font-size: 2.25rem;
+  font-weight: 700;
+  line-height: 2.5rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+:deep(.ProseMirror h2) {
+  font-size: 1.875rem;
+  font-weight: 600;
+  line-height: 2.25rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+:deep(.ProseMirror h3) {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 2rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+/* 段落样式 */
+:deep(.ProseMirror p) {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* 引用样式 */
+:deep(.ProseMirror blockquote) {
+  border-left: 4px solid #e5e5e5;
+  padding-left: 1rem;
+  color: #737373;
+  font-style: italic;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* 列表样式 */
+:deep(.ProseMirror ul),
+:deep(.ProseMirror ol) {
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+:deep(.ProseMirror ul) {
+  list-style-type: disc;
+}
+
+:deep(.ProseMirror ol) {
+  list-style-type: decimal;
+}
+
+:deep(.ProseMirror li) {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+:deep(.ProseMirror li p) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* 代码块样式 */
+:deep(.ProseMirror pre) {
+  background-color: #f5f5f5;
+  border-radius: 0.375rem;
+  padding: 1rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 0.875rem;
+}
+
+:deep(.ProseMirror code) {
+  background-color: #f5f5f5;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.875em;
+}
+
+:deep(.ProseMirror pre code) {
+  background-color: transparent;
+  padding: 0;
+}
+
+/* ========== Placeholder 样式 ========== */
 :deep(.ProseMirror p.is-editor-empty:first-child::before) {
-  color: #a3a3a3; /* text-neutral-400 */
+  color: #a3a3a3;
   content: attr(data-placeholder);
   float: left;
   height: 0;
