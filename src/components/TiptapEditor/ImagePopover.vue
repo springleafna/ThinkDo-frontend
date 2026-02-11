@@ -4,8 +4,13 @@ import { Editor } from '@tiptap/vue-3'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
-import { Image as ImageIcon, Link as LinkIcon } from 'lucide-vue-next'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { 
+  Image as ImageIcon, 
+  UploadCloud, 
+  Link as LinkIcon,
+  ArrowRight
+} from 'lucide-vue-next'
 
 interface Props {
   editor: Editor
@@ -15,22 +20,62 @@ const props = defineProps<Props>()
 
 const isOpen = ref(false)
 const imageUrl = ref('')
+const activeTab = ref('upload')
+const fileInput = ref<HTMLInputElement | null>(null)
+const isDragging = ref(false)
 
+// 打开菜单
 const openMenu = () => {
-  imageUrl.value = ''
   isOpen.value = true
-}
-
-const closeMenu = () => {
-  isOpen.value = false
   imageUrl.value = ''
+  activeTab.value = 'upload'
 }
 
-const confirmImage = () => {
-  if (imageUrl.value && props.editor) {
-    props.editor.chain().focus().setImage({ src: imageUrl.value }).run()
+// 触发文件选择
+const triggerFileInput = () => {
+  fileInput.value?.click()
+}
+
+// 处理文件选择
+const handleFileSelect = (event: Event) => {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (file) processFile(file)
+}
+
+// 拖拽相关逻辑
+const handleDragOver = (e: DragEvent) => {
+  e.preventDefault()
+  isDragging.value = true
+}
+const handleDragLeave = (e: DragEvent) => {
+  e.preventDefault()
+  isDragging.value = false
+}
+const handleDrop = (e: DragEvent) => {
+  e.preventDefault()
+  isDragging.value = false
+  const file = e.dataTransfer?.files[0]
+  if (file) processFile(file)
+}
+
+// 处理文件上传 (模拟)
+const processFile = (file: File) => {
+  if (!file.type.startsWith('image/')) return
+  
+  // TODO: 替换为真实上传逻辑
+  const reader = new FileReader()
+  reader.readAsDataURL(file)
+  reader.onload = (e) => {
+    insertImage(e.target?.result as string)
   }
-  closeMenu()
+}
+
+// 插入图片
+const insertImage = (url: string) => {
+  if (url && props.editor) {
+    props.editor.chain().focus().setImage({ src: url }).run()
+  }
+  isOpen.value = false
 }
 </script>
 
@@ -41,48 +86,98 @@ const confirmImage = () => {
         @click="openMenu"
         variant="ghost"
         size="icon"
-        class="h-8 w-8"
+        class="h-8 w-8 transition-colors"
+        :class="[
+          props.editor.isActive('image') 
+            ? 'bg-violet-100 text-violet-600' 
+            : 'text-neutral-600 hover:bg-neutral-100'
+        ]"
         title="插入图片"
       >
-        <ImageIcon :size="16" class="text-neutral-600" />
+        <ImageIcon :size="18" />
       </Button>
     </PopoverTrigger>
 
-    <PopoverContent as-child align="start" side="bottom" class="w-80 p-0">
-      <div class="space-y-3">
-        <!-- 图片地址输入 -->
-        <div class="space-y-2">
-          <label class="text-xs font-medium text-neutral-600">图片地址</label>
-          <Input
-            v-model="imageUrl"
-            placeholder="https://example.com/image.jpg"
-            @keyup.enter="confirmImage"
-            class="h-8"
-          />
+    <PopoverContent align="start" side="bottom" class="w-[400px] p-0 overflow-hidden shadow-xl rounded-xl border-neutral-200">
+      <Tabs v-model="activeTab" class="w-full">
+        <!-- 顶部 Tab 切换 -->
+        <div class="px-4 pt-3 pb-0">
+          <TabsList class="grid w-full grid-cols-2 h-9 bg-neutral-100 p-1 rounded-lg">
+            <TabsTrigger value="upload" class="text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md transition-all">本地上传</TabsTrigger>
+            <TabsTrigger value="url" class="text-xs font-medium data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-md transition-all">网络图片</TabsTrigger>
+          </TabsList>
         </div>
 
-        <!-- 提示信息 -->
-        <div class="text-xs text-neutral-500 p-2 bg-neutral-50 rounded">
-          <p class="font-medium mb-1">💡 提示</p>
-          <ul class="space-y-1 text-neutral-600">
-            <li>• 支持 JPG、PNG、GIF、WebP 等格式</li>
-            <li>• 建议使用图片 URL 而非本地上传</li>
-            <li>• 可直接粘贴图片地址</li>
-          </ul>
+        <div class="p-4">
+          <!-- 1. 本地上传 Tab -->
+          <TabsContent value="upload" class="mt-0">
+            <div
+              class="relative flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl transition-all duration-200 cursor-pointer bg-neutral-50/50 group"
+              :class="[
+                isDragging 
+                  ? 'border-violet-500 bg-violet-50' 
+                  : 'border-violet-200 hover:border-violet-400 hover:bg-violet-50/50'
+              ]"
+              @click="triggerFileInput"
+              @dragover="handleDragOver"
+              @dragleave="handleDragLeave"
+              @drop="handleDrop"
+            >
+              <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="handleFileSelect" />
+              
+              <!-- 统一的图标容器样式 -->
+              <div class="mb-3 p-3 bg-white rounded-full shadow-sm ring-1 ring-neutral-100 group-hover:scale-110 transition-transform duration-200">
+                <div class="bg-violet-100 text-violet-600 rounded-full p-2">
+                   <UploadCloud :size="20" />
+                </div>
+              </div>
+
+              <div class="text-center space-y-1">
+                <p class="text-sm text-neutral-600 font-medium">
+                  点击或拖拽上传
+                </p>
+                <p class="text-[10px] text-neutral-400">
+                  支持 JPG, PNG, GIF, WebP (Max 5MB)
+                </p>
+              </div>
+            </div>
+          </TabsContent>
+
+          <!-- 2. 网络图片 Tab (样式已统一) -->
+          <TabsContent value="url" class="mt-0">
+            <div class="flex flex-col items-center justify-center w-full h-40 border border-neutral-200 rounded-xl bg-white p-4 space-y-4">
+              
+              <!-- 统一的图标容器样式 -->
+              <div class="p-3 bg-neutral-50 rounded-full shadow-sm ring-1 ring-neutral-100">
+                <div class="bg-violet-100 text-violet-600 rounded-full p-2">
+                   <LinkIcon :size="20" />
+                </div>
+              </div>
+
+              <!-- 输入区域组合 -->
+              <div class="w-full flex items-center gap-2">
+                <Input
+                  v-model="imageUrl"
+                  placeholder="https://..."
+                  class="h-9 flex-1 bg-neutral-50 border-neutral-200 focus-visible:ring-violet-500 text-sm"
+                  @keyup.enter="insertImage(imageUrl)"
+                  auto-focus
+                />
+                <Button 
+                  size="icon" 
+                  class="h-9 w-9 bg-violet-600 hover:bg-violet-700 text-white shrink-0"
+                  :disabled="!imageUrl"
+                  @click="insertImage(imageUrl)"
+                  title="确认插入"
+                >
+                  <ArrowRight :size="16" />
+                </Button>
+              </div>
+
+            </div>
+          </TabsContent>
         </div>
-
-        <Separator />
-
-        <!-- 确认按钮 -->
-        <Button
-          @click="confirmImage"
-          size="sm"
-          class="w-full"
-        >
-          <LinkIcon :size="14" class="mr-1" />
-          确定
-        </Button>
-      </div>
+      </Tabs>
     </PopoverContent>
   </Popover>
 </template>
