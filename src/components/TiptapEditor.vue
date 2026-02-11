@@ -28,6 +28,8 @@ import {
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import LinkPopover from './TiptapEditor/LinkPopover.vue'
+import ImagePopover from './TiptapEditor/ImagePopover.vue'
 
 interface Props {
   modelValue: string
@@ -51,7 +53,7 @@ const editor = useEditor({
   extensions: [
     StarterKit.configure({
       codeBlock: false,
-      link: false // 禁用 StarterKit 中的默认 link 扩展
+      link: false
     }),
     Placeholder.configure({
       placeholder: props.placeholder
@@ -113,20 +115,6 @@ const canUndo = () => {
 
 const canRedo = () => {
   return editor.value?.can().redo() || false
-}
-
-const addLink = () => {
-  const url = window.prompt('请输入链接地址:')
-  if (url && editor.value) {
-    editor.value.chain().focus().setLink({ href: url }).run()
-  }
-}
-
-const addImage = () => {
-  const url = window.prompt('请输入图片地址:')
-  if (url && editor.value) {
-    editor.value.chain().focus().setImage({ src: url }).run()
-  }
 }
 
 const setParagraph = () => {
@@ -339,25 +327,8 @@ const redo = () => {
       <Separator orientation="vertical" class="h-6 mx-1" />
 
       <!-- 插入 -->
-      <Button
-        @click="addLink"
-        variant="ghost"
-        size="icon"
-        class="h-8 w-8"
-        :class="{ 'bg-black/10': isActive('link') }"
-        title="插入链接"
-      >
-        <LinkIcon :size="16" class="text-neutral-600" />
-      </Button>
-      <Button
-        @click="addImage"
-        variant="ghost"
-        size="icon"
-        class="h-8 w-8"
-        title="插入图片"
-      >
-        <ImageIcon :size="16" class="text-neutral-600" />
-      </Button>
+      <LinkPopover v-if="editor" :editor="editor" />
+      <ImagePopover v-if="editor" :editor="editor" />
     </div>
 
     <!-- 编辑器内容区 -->
@@ -438,13 +409,13 @@ const redo = () => {
 :deep(.ProseMirror ul) {
   list-style-type: disc;
   padding-left: 1.5em;
-  margin: 0.5em 0;
+  margin: 0.75em 0;
 }
 
 :deep(.ProseMirror ol) {
   list-style-type: decimal;
   padding-left: 1.5em;
-  margin: 0.5em 0;
+  margin: 0.75em 0;
 }
 
 :deep(.ProseMirror li) {
@@ -486,40 +457,24 @@ const redo = () => {
 }
 
 :deep(.hljs-keyword),
-:deep(.hljs-selector-tag),
-:deep(.hljs-subst) {
+:deep(.hljs-selector-tag) {
   color: #a626a4;
 }
 
 :deep(.hljs-number),
-:deep(.hljs-literal),
-:deep(.hljs-variable),
-:deep(.hljs-template-variable),
-:deep(.hljs-tag .hljs-attr) {
+:deep(.hljs-literal) {
   color: #e45649;
 }
 
-:deep(.hljs-string),
-:deep(.hljs-doctag) {
-  color: #50a14f;
-}
-
-:deep(.hljs-title),
-:deep(.hljs-section),
-:deep(.hljs-selector-id) {
-  color: #4078f2;
-  font-weight: bold;
+:deep(.hljs-variable),
+:deep(.hljs-template-variable) {
+  color: #986801;
+  font-weight: normal;
 }
 
 :deep(.hljs-type),
-:deep(.hljs-class .hljs-title) {
+:deep(.hljs-title) {
   color: #c18401;
-}
-
-:deep(.hljs-tag),
-:deep(.hljs-name),
-:deep(.hljs-attribute) {
-  color: #986801;
   font-weight: normal;
 }
 
