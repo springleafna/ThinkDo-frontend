@@ -119,12 +119,14 @@ const handleItemClick = (pos: number) => {
       <div 
         v-else 
         class="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-neutral-100 p-4 w-64 origin-top-right"
+        style="max-height: 70vh;"
       >
         <div class="mb-3 pb-2 border-b border-neutral-100">
            <span class="text-xs font-bold text-violet-600 uppercase tracking-wider select-none">目录</span>
         </div>
 
-        <nav class="max-h-[60vh] overflow-y-auto custom-scrollbar flex flex-col gap-0.5">
+        <div style="max-height: calc(70vh - 60px); overflow-y: auto;" class="custom-scrollbar">
+          <nav class="flex flex-col gap-0.5">
            <template v-if="items.length > 0">
             <button
               v-for="item in items"
@@ -139,7 +141,6 @@ const handleItemClick = (pos: number) => {
                 item.level === 1 && activeItemId !== item.id ? 'text-violet-600/90' : ''
               ]"
               :style="{
-                // 使用 Padding 实现阶梯式缩进，比 Margin 更整齐
                 paddingLeft: `${(item.level - 1) * 12 + 8}px`
               }"
             >
@@ -156,7 +157,8 @@ const handleItemClick = (pos: number) => {
            <div v-else class="text-xs text-neutral-400 text-center py-4">
              Start typing headers to create a TOC
            </div>
-        </nav>
+          </nav>
+        </div>
       </div>
 
     </Transition>
