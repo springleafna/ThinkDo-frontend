@@ -61,6 +61,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger
 } from '@/components/ui/collapsible'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from '@/components/ui/tooltip'
 
 const router = useRouter()
 const layoutStore = useLayoutStore()
@@ -983,10 +989,11 @@ const handleAiCreate = async () => {
     <AppSidebar v-model:active-view="activeView" :is-open="isSidebarOpen" @toggle="toggleSidebar" />
 
     <main class="flex-1 flex flex-col min-w-0 z-10">
-      <AppHeader :active-view="activeView" />
+      <TooltipProvider>
+        <AppHeader :active-view="activeView" />
 
-      <div class="flex-1 overflow-y-auto p-8 md:p-12 pt-8 custom-scrollbar relative z-10">
-        <div class="max-w-7xl mx-auto space-y-10 pb-12 section-reveal">
+        <div class="flex-1 overflow-y-auto p-8 md:p-12 pt-8 custom-scrollbar relative z-10">
+          <div class="max-w-7xl mx-auto space-y-10 pb-12 section-reveal">
           <!-- 头部 -->
           <div class="flex flex-col md:flex-row md:items-center gap-12">
             <p class="text-sm text-neutral-400 italic whitespace-nowrap">分阶段拆解宏大目标，保持战略定力。</p>
@@ -1282,7 +1289,7 @@ const handleAiCreate = async () => {
                 </div>
 
                 <!-- 右侧:执行详情 (可展开) -->
-                <div class="flex-1 p-8 flex flex-col bg-stone-50/20">
+                <div class="flex-1 p-8 flex flex-col bg-stone-50/20 min-w-0">
                   <!-- 没有子任务的情况：直接显示暂无子项 -->
                   <div
                     v-if="plan.subTasks.length === 0"
@@ -1307,12 +1314,12 @@ const handleAiCreate = async () => {
                     <!-- 子任务列表 -->
                     <Collapsible v-model:open="expandedPlans[plan.id]">
                       <!-- 未展开时显示前2项 -->
-                      <div class="space-y-3">
+                      <div class="space-y-3 min-w-0">
                         <div
                           v-for="st in (isPlanExpanded(plan.id) ? plan.subTasks : plan.subTasks.slice(0, 2))"
                           :key="st.id"
                           :class="[
-                            'flex items-center gap-4 p-4 rounded-2xl transition-all border group/task',
+                            'flex items-center gap-4 p-4 rounded-2xl transition-all border group/task min-w-0',
                             plan.completed
                               ? 'bg-emerald-50/50 border-transparent'
                               : 'bg-white hover:bg-stone-50 border-black/[0.02] shadow-sm'
@@ -1353,16 +1360,23 @@ const handleAiCreate = async () => {
                           </div>
                           <!-- 显示模式 -->
                           <template v-else>
-                            <span
-                              @click="toggleSubTask(plan.id, st.id)"
-                              :class="[
-                                'text-sm truncate flex-1 cursor-pointer',
-                                (st.completed || plan.completed) ? 'text-neutral-400 line-through' : 'text-neutral-700 font-medium'
-                              ]"
-                            >
-                              {{ st.title }}
-                            </span>
-                            <div class="flex items-center gap-1 opacity-0 group-hover/task:opacity-100 transition-opacity">
+                            <Tooltip>
+                              <TooltipTrigger as-child>
+                                <span
+                                  @click="toggleSubTask(plan.id, st.id)"
+                                  :class="[
+                                    'text-sm truncate flex-1 cursor-pointer overflow-hidden whitespace-nowrap',
+                                    (st.completed || plan.completed) ? 'text-neutral-400 line-through' : 'text-neutral-700 font-medium'
+                                  ]"
+                                >
+                                  {{ st.title }}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{{ st.title }}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <div class="flex items-center gap-1 opacity-0 group-hover/task:opacity-100 transition-opacity shrink-0">
                               <button
                                 @click.stop="startEditingSubTask(plan.id, st.id, st.title)"
                                 :disabled="plan.completed"
@@ -1464,6 +1478,7 @@ const handleAiCreate = async () => {
           </div>
         </div>
       </div>
+      </TooltipProvider>
     </main>
   </div>
 
