@@ -280,10 +280,14 @@ onMounted(() => {
   loadNoteDetail()
 })
 
-// 监听笔记加载完成，如果是新建笔记则自动进入编辑模式
-watch(() => [note.value.title, note.value.content, loading.value], () => {
+// 监听笔记加载完成，如果是新建笔记或URL参数要求编辑则自动进入编辑模式
+watch(() => [note.value.title, note.value.content, loading.value, route.query.edit], () => {
   // 如果不在编辑模式、不是加载中、标题是默认的"新建笔记"且内容为空，则自动进入编辑模式
   if (!isEditing.value && !loading.value && note.value.title === '新建笔记' && !note.value.content) {
+    startEdit()
+  }
+  // 如果URL参数中有edit=true且不是加载中，则自动进入编辑模式
+  if (!isEditing.value && !loading.value && route.query.edit === 'true') {
     startEdit()
   }
 }, { deep: true })

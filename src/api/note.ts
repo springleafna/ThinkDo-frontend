@@ -30,6 +30,19 @@ export interface Note {
   updatedAt: string
 }
 
+// 笔记列表项信息
+export interface NoteListItem {
+  id: number
+  title: string
+  preview: string
+  categoryId?: number
+  categoryName?: string
+  tags?: string
+  favorited: number
+  createdAt: string
+  updatedAt: string
+}
+
 // 笔记查询参数
 export interface NoteQueryParams {
   categoryId?: number
@@ -91,7 +104,7 @@ export const noteApi = {
    * GET /note/list
    */
   getList(params?: NoteQueryParams) {
-    return request.get<Note[]>('/note/list', { params })
+    return request.get<NoteListItem[]>('/note/list', { params })
   },
 
   /**
@@ -99,7 +112,7 @@ export const noteApi = {
    * GET /note/search
    */
   search(keyword: string) {
-    return request.get<Note[]>('/note/search', { params: { keyword } })
+    return request.get<NoteListItem[]>('/note/search', { params: { keyword } })
   },
 
   /**

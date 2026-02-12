@@ -97,7 +97,7 @@ const isDeleting = ref(false)
 interface Note {
   id: number
   title: string
-  content: string
+  preview: string
   category: string
   categoryId?: number
   tags: string[]
@@ -126,10 +126,10 @@ const loadNotes = async () => {
     }
 
     const response = await noteApi.getList(params)
-    notes.value = response.map((note: NoteType) => ({
+    notes.value = response.map((note: any) => ({
       id: note.id,
       title: note.title,
-      content: note.content,
+      preview: note.preview,
       category: note.categoryId?.toString() || '',
       categoryId: note.categoryId,
       tags: note.tags ? note.tags.split(',') : [],
@@ -301,6 +301,11 @@ const createCategory = async () => {
 // 查看笔记详情
 const viewNoteDetail = (noteId: number) => {
   router.push(`/notes/${noteId}`)
+}
+
+// 编辑笔记
+const editNote = (noteId: number) => {
+  router.push(`/notes/${noteId}?edit=true`)
 }
 
 // 监听搜索和筛选变化
@@ -477,7 +482,7 @@ if (typeof window !== 'undefined') {
 
                   <CardContent class="flex flex-col h-full pb-4">
                     <CardDescription class="text-sm line-clamp-3 leading-relaxed mb-3">
-                      {{ note.content }}
+                      {{ note.preview || '暂无内容' }}
                     </CardDescription>
 
                     <!-- 标签 -->
@@ -500,7 +505,7 @@ if (typeof window !== 'undefined') {
                       </div>
                       <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button
-                          @click.stop
+                          @click.stop="editNote(note.id)"
                           variant="ghost"
                           size="icon"
                           class="h-8 w-8"
@@ -558,7 +563,7 @@ if (typeof window !== 'undefined') {
                           {{ note.title }}
                         </h3>
                         <p class="text-xs text-neutral-500 line-clamp-2">
-                          {{ note.content }}
+                          {{ note.preview || '暂无内容' }}
                         </p>
                       </div>
 
@@ -600,7 +605,7 @@ if (typeof window !== 'undefined') {
                           />
                         </Button>
                         <Button
-                          @click.stop
+                          @click.stop="editNote(note.id)"
                           variant="ghost"
                           size="icon"
                           class="h-9 w-9"
