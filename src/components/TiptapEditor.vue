@@ -11,12 +11,14 @@ import css from 'highlight.js/lib/languages/css'
 import js from 'highlight.js/lib/languages/javascript'
 import ts from 'highlight.js/lib/languages/typescript'
 import html from 'highlight.js/lib/languages/xml'
+import type { Editor } from '@tiptap/vue-3'
 
 // UI Components
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import LinkPopover from './TiptapEditor/LinkPopover.vue'
 import ImagePopover from './TiptapEditor/ImagePopover.vue'
+import TableOfContents from './TiptapEditor/TableOfContents.vue'
 
 // Icons
 import {
@@ -97,7 +99,8 @@ const editor = useEditor({
     attributes: {
       class: [
         'focus:outline-none',
-        'min-h-[300px] px-6 py-4'
+        'min-h-[300px] px-6 py-4',
+        'w-full'
       ].join(' ')
     }
   },
@@ -125,10 +128,15 @@ onBeforeUnmount(() => {
 
 // 工具函数
 const toggle = (action: () => void) => action()
+
+// 暴露 editor 实例供父组件使用
+defineExpose({
+  editor
+})
 </script>
 
 <template>
-  <div class="flex flex-col border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm transition-all focus-within:ring-2 focus-within:ring-violet-100 focus-within:border-violet-300">
+  <div class="flex flex-col border border-neutral-200 rounded-xl overflow-hidden bg-white shadow-sm transition-all focus-within:ring-2 focus-within:ring-violet-100 focus-within:border-violet-300 w-full">
     
     <!-- 工具栏 -->
     <div v-if="editable && editor" class="flex items-center flex-wrap gap-1 px-2 py-2 bg-neutral-50/50 border-b border-neutral-100">
@@ -208,7 +216,11 @@ const toggle = (action: () => void) => action()
     </div>
 
     <!-- 编辑器主体 -->
-    <EditorContent :editor="editor" class="flex-1 cursor-text" />
+    <div class="flex-1 cursor-text relative w-full">
+      <EditorContent :editor="editor" class="w-full" />
+      <!-- 目录组件 -->
+      <TableOfContents v-if="editor" :editor="editor" />
+    </div>
   </div>
 </template>
 
@@ -307,7 +319,6 @@ const toggle = (action: () => void) => action()
   padding: 0;
 }
 
-/* ========== Placeholder 样式 ========== */
 :deep(.ProseMirror p.is-editor-empty:first-child::before) {
   color: #a3a3a3;
   content: attr(data-placeholder);
@@ -319,14 +330,14 @@ const toggle = (action: () => void) => action()
 /*  代码高亮主题 */
 :deep(.hljs-comment),
 :deep(.hljs-quote) {
-  color: #6a737d; /* 灰色注释 */
+  color: #6a737d;
   font-style: italic;
 }
 
 :deep(.hljs-doctag),
 :deep(.hljs-keyword),
 :deep(.hljs-formula) {
-  color: #d73a49; /* 红色关键字 */
+  color: #d73a49;
 }
 
 :deep(.hljs-section),
@@ -334,11 +345,11 @@ const toggle = (action: () => void) => action()
 :deep(.hljs-selector-tag),
 :deep(.hljs-deletion),
 :deep(.hljs-subst) {
-  color: #22863a; /* 绿色 */
+  color: #22863a;
 }
 
 :deep(.hljs-literal) {
-  color: #005cc5; /* 蓝色 */
+  color: #005cc5;
 }
 
 :deep(.hljs-string),
@@ -346,12 +357,12 @@ const toggle = (action: () => void) => action()
 :deep(.hljs-addition),
 :deep(.hljs-attribute),
 :deep(.hljs-meta-string) {
-  color: #032f62; /* 深蓝字符串 */
+  color: #032f62;
 }
 
 :deep(.hljs-built_in),
 :deep(.hljs-class .hljs-title) {
-  color: #6f42c1; /* 紫色 */
+  color: #6f42c1;
 }
 
 :deep(.hljs-attr),
@@ -362,7 +373,7 @@ const toggle = (action: () => void) => action()
 :deep(.hljs-selector-attr),
 :deep(.hljs-selector-pseudo),
 :deep(.hljs-number) {
-  color: #e36209; /* 橙色 */
+  color: #e36209;
 }
 
 :deep(.hljs-symbol),
@@ -371,6 +382,6 @@ const toggle = (action: () => void) => action()
 :deep(.hljs-meta),
 :deep(.hljs-selector-id),
 :deep(.hljs-title) {
-  color: #005cc5; /* 蓝色 */
+  color: #005cc5;
 }
 </style>

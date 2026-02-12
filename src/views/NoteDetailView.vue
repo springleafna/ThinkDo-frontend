@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import TiptapEditor from '@/components/TiptapEditor.vue'
+import type { Editor } from '@tiptap/vue-3'
 
 const router = useRouter()
 const route = useRoute()
@@ -98,6 +99,9 @@ const form = ref({
 
 // 新标签输入
 const newTagInput = ref('')
+
+// TiptapEditor 引用
+const editorRef = ref<{ editor: Editor | null }>()
 
 // 添加标签
 const addTag = () => {
@@ -388,132 +392,145 @@ watch(() => route.params.id, () => {
 
       <!-- 内容区域 -->
       <div class="flex-1 overflow-y-auto custom-scrollbar">
-        <div :class="isEditing ? 'max-w-7xl' : 'max-w-4xl'" class="mx-auto px-8 py-8">
+        <div class="w-full px-6 sm:px-8 py-8 max-w-6xl mx-auto">
           <!-- 预览模式 -->
-          <div v-if="!isEditing" class="prose prose-neutral max-w-none">
-            <!-- 元信息 -->
-            <Card class="mb-6 border-black/5">
-              <CardContent class="py-3">
-                <div class="flex items-center gap-4">
-                  <div class="flex items-center gap-2 text-sm text-neutral-600">
-                    <FolderOpen :size="16" />
-                    <span>{{ categories.find(c => c.id === note.categoryId)?.name || '未分类' }}</span>
-                  </div>
-                  <div class="flex items-center gap-2 text-sm text-neutral-600">
-                    <Calendar :size="16" />
-                    <span>创建于 {{ formatTime(note.createdAt) }}</span>
-                  </div>
+          <div v-if="!isEditing" class="flex flex-col gap-8">
+            <!-- 主内容区 -->
+            <div class="flex-1 min-w-0">
+              <div class="max-w-4xl prose prose-neutral max-w-none">
+                <!-- 元信息 -->
+                <Card class="mb-6 border-black/5">
+                  <CardContent class="py-3">
+                    <div class="flex items-center gap-4">
+                      <div class="flex items-center gap-2 text-sm text-neutral-600">
+                        <FolderOpen :size="16" />
+                        <span>{{ categories.find(c => c.id === note.categoryId)?.name || '未分类' }}</span>
+                      </div>
+                      <div class="flex items-center gap-2 text-sm text-neutral-600">
+                        <Calendar :size="16" />
+                        <span>创建于 {{ formatTime(note.createdAt) }}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <!-- 标签 -->
+                <div v-if="note.tags.length > 0" class="flex flex-wrap gap-2 mb-6">
+                  <Badge
+                    v-for="tag in note.tags"
+                    :key="tag"
+                    variant="secondary"
+                    class="px-3 py-1 text-sm font-medium"
+                  >
+                    {{ tag }}
+                  </Badge>
                 </div>
-              </CardContent>
-            </Card>
 
-            <!-- 标签 -->
-            <div v-if="note.tags.length > 0" class="flex flex-wrap gap-2 mb-6">
-              <Badge
-                v-for="tag in note.tags"
-                :key="tag"
-                variant="secondary"
-                class="px-3 py-1 text-sm font-medium"
-              >
-                {{ tag }}
-              </Badge>
+                <!-- 内容渲染 -->
+                <TiptapEditor
+                  ref="editorRef"
+                  v-model="note.content"
+                  :editable="false"
+                  placeholder="暂无内容"
+                />
+              </div>
             </div>
-
-            <!-- 内容渲染 -->
-            <TiptapEditor
-              v-model="note.content"
-              :editable="false"
-              placeholder="暂无内容"
-            />
           </div>
 
           <!-- 编辑模式 -->
-          <div v-else class="space-y-4">
-            <!-- 标题编辑 -->
-            <div>
-              <label class="block text-sm font-medium text-neutral-700 mb-2">
-                笔记标题
-              </label>
-              <Input
-                v-model="form.title"
-                type="text"
-                placeholder="输入笔记标题..."
-                class="text-lg font-medium"
-              />
-            </div>
-
-            <!-- 分类和标签 -->
-            <div class="grid grid-cols-2 gap-6">
-              <!-- 分类选择 -->
+          <div v-else class="flex flex-col gap-8">
+            <!-- 主编辑区 -->
+            <div class="flex-1 min-w-0">
+              <div class="space-y-6">
+              <!-- 标题编辑 -->
               <div>
                 <label class="block text-sm font-medium text-neutral-700 mb-2">
-                  分类
+                  笔记标题
                 </label>
-                <Select v-model="form.categoryId">
-                  <SelectTrigger class="bg-white border-black/10 w-full">
-                    <SelectValue placeholder="未分类" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem v-for="cat in categories" :key="cat.id" :value="cat.id">
-                      {{ cat.name }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  v-model="form.title"
+                  type="text"
+                  placeholder="输入笔记标题..."
+                  class="text-lg font-medium"
+                />
               </div>
 
-              <!-- 标签输入 -->
-              <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-2">
-                  标签 <span class="text-neutral-400 font-normal">（最多3个）</span>
-                </label>
-                <div class="flex items-center gap-2 mb-2">
-                  <Input
-                    v-model="newTagInput"
-                    @keyup.enter="addTag"
-                    type="text"
-                    placeholder="输入标签后按回车或点击加号"
-                    :disabled="form.tags.length >= 3"
-                    class="flex-1"
-                  />
-                  <Button
-                    @click="addTag"
-                    :disabled="form.tags.length >= 3"
-                    variant="outline"
-                    size="icon"
-                    class="shrink-0"
-                  >
-                    <Plus :size="16" />
-                  </Button>
+              <!-- 分类和标签 -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 分类选择 -->
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-2">
+                    分类
+                  </label>
+                  <Select v-model="form.categoryId">
+                    <SelectTrigger class="bg-white border-black/10 w-full">
+                      <SelectValue placeholder="未分类" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem v-for="cat in categories" :key="cat.id" :value="cat.id">
+                        {{ cat.name }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <!-- 已选标签 -->
-                <div v-if="form.tags.length > 0" class="flex flex-wrap gap-2">
-                  <Badge
-                    v-for="tag in form.tags"
-                    :key="tag"
-                    variant="secondary"
-                    class="px-3 py-1 text-sm font-medium gap-1"
-                  >
-                    {{ tag }}
-                    <button
-                      @click="removeTag(tag)"
-                      class="ml-1 hover:text-red-600 transition-colors"
+
+                <!-- 标签输入 -->
+                <div>
+                  <label class="block text-sm font-medium text-neutral-700 mb-2">
+                    标签 <span class="text-neutral-400 font-normal">（最多3个）</span>
+                  </label>
+                  <div class="flex items-center gap-2 mb-2">
+                    <Input
+                      v-model="newTagInput"
+                      @keyup.enter="addTag"
+                      type="text"
+                      placeholder="输入标签后按回车或点击加号"
+                      :disabled="form.tags.length >= 3"
+                      class="flex-1"
+                    />
+                    <Button
+                      @click="addTag"
+                      :disabled="form.tags.length >= 3"
+                      variant="outline"
+                      size="icon"
+                      class="shrink-0"
                     >
-                      <X :size="12" />
-                    </button>
-                  </Badge>
+                      <Plus :size="16" />
+                    </Button>
+                  </div>
+                  <!-- 已选标签 -->
+                  <div v-if="form.tags.length > 0" class="flex flex-wrap gap-2">
+                    <Badge
+                      v-for="tag in form.tags"
+                      :key="tag"
+                      variant="secondary"
+                      class="px-3 py-1 text-sm font-medium gap-1"
+                    >
+                      {{ tag }}
+                      <button
+                        @click="removeTag(tag)"
+                        class="ml-1 hover:text-red-600 transition-colors"
+                      >
+                        <X :size="12" />
+                      </button>
+                    </Badge>
+                  </div>
+                  <p v-if="form.tags.length >= 3" class="text-xs text-neutral-400 mt-1">
+                    已达到标签数量上限
+                  </p>
                 </div>
-                <p v-if="form.tags.length >= 3" class="text-xs text-neutral-400 mt-1">
-                  已达到标签数量上限
-                </p>
               </div>
-            </div>
 
-            <!-- 富文本编辑器 -->
-            <div>
-              <TiptapEditor
-                v-model="form.content"
-                placeholder="在这里输入笔记内容..."
-              />
+              <!-- 富文本编辑器 -->
+              <div class="w-full">
+                <TiptapEditor
+                  ref="editorRef"
+                  v-model="form.content"
+                  placeholder="在这里输入笔记内容..."
+                  class="w-full"
+                />
+              </div>
+              </div>
             </div>
           </div>
         </div>
