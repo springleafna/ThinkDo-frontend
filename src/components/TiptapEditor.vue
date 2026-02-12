@@ -216,8 +216,8 @@ defineExpose({
     </div>
 
     <!-- 编辑器主体 -->
-    <div class="flex-1 cursor-text relative w-full">
-      <EditorContent :editor="editor" class="w-full" />
+    <div class="flex-1 cursor-text relative w-full overflow-hidden">
+      <EditorContent :editor="editor" class="w-full h-full" />
       <!-- 目录组件 -->
       <TableOfContents v-if="editor" :editor="editor" />
     </div>
@@ -225,6 +225,32 @@ defineExpose({
 </template>
 
 <style scoped>
+/* ========== 编辑器容器固定 ========== */
+
+/* 编辑器容器固定高度，内容超出时内部滚动 */
+:deep(.ProseMirror) {
+  max-height: calc(100vh - 320px);
+  overflow-y: auto;
+}
+
+/* 自定义编辑器滚动条样式 */
+:deep(.ProseMirror::-webkit-scrollbar) {
+  width: 6px;
+}
+
+:deep(.ProseMirror::-webkit-scrollbar-track) {
+  background: transparent;
+}
+
+:deep(.ProseMirror::-webkit-scrollbar-thumb) {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+
+:deep(.ProseMirror::-webkit-scrollbar-thumb:hover) {
+  background: rgba(0, 0, 0, 0.2);
+}
+
 /* ========== 富文本基础样式 ========== */
 
 /* 标题样式 */
