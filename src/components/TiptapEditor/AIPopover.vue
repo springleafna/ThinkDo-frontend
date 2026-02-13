@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { Wand2, CornerDownLeft, Plus, Copy } from 'lucide-vue-next'
 import { streamAiTransform, type AiAction } from '@/api/ai'
 import { toast } from 'vue-sonner'
+import { Switch } from '@/components/ui/switch'
 
 interface Props { editor: Editor }
 const props = defineProps<Props>()
@@ -20,6 +21,10 @@ const preview = ref('')
 const isHtml = ref(false)
 const source = ref('')
 const range = ref<{ from: number; to: number } | null>(null)
+const tone = ref<'neutral'|'formal'|'friendly'>('neutral')
+const targetLength = ref<'light'|'medium'|'heavy'>('medium')
+const language = ref<'zh'|'en'>('zh')
+const preserveMarkup = ref(false)
 
 const openMenu = () => {
   isOpen.value = true
@@ -108,10 +113,10 @@ const generate = async () => {
     action: toBackendAction(action.value),
     text,
     options: {
-      tone: '',
-      targetLength: '',
-      language: '',
-      preserveMarkup: false,
+      tone: tone.value,
+      targetLength: targetLength.value,
+      language: language.value,
+      preserveMarkup: preserveMarkup.value,
     },
     context: ''
   }
@@ -177,7 +182,7 @@ const copyPreview = async () => {
       </Button>
     </PopoverTrigger>
 
-    <PopoverContent align="start" side="bottom" class="w-[420px] p-0 overflow-hidden shadow-xl rounded-xl border-neutral-200">
+    <PopoverContent align="start" side="bottom" class="w-[440px] p-0 overflow-hidden shadow-xl rounded-xl border-neutral-200">
       <div class="px-4 pt-3 pb-0">
         <Tabs v-model="action" class="w-full">
           <TabsList class="grid w-full grid-cols-4 h-9 bg-neutral-100 p-1 rounded-lg">
@@ -190,6 +195,41 @@ const copyPreview = async () => {
       </div>
 
       <div class="p-4 space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex items-center gap-3">
+            <div class="text-[11px] text-neutral-500 shrink-0">语气</div>
+            <Tabs v-model="tone" class="w-auto shrink-0">
+              <TabsList class="h-7 bg-neutral-100 p-1 rounded-md w-fit">
+                <TabsTrigger value="neutral" class="text-xs px-2 data-[state=active]:bg-white rounded">中性</TabsTrigger>
+                <TabsTrigger value="formal" class="text-xs px-2 data-[state=active]:bg-white rounded">正式</TabsTrigger>
+                <TabsTrigger value="friendly" class="text-xs px-2 data-[state=active]:bg-white rounded">亲和</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="text-[11px] text-neutral-500 shrink-0">长度</div>
+            <Tabs v-model="targetLength" class="w-auto shrink-0">
+              <TabsList class="h-7 bg-neutral-100 p-1 rounded-md w-fit">
+                <TabsTrigger value="light" class="text-xs px-2 data-[state=active]:bg-white rounded">轻微</TabsTrigger>
+                <TabsTrigger value="medium" class="text-xs px-2 data-[state=active]:bg-white rounded">适中</TabsTrigger>
+                <TabsTrigger value="heavy" class="text-xs px-2 data-[state=active]:bg-white rounded">更多</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="text-[11px] text-neutral-500 shrink-0">语言</div>
+            <Tabs v-model="language" class="w-auto shrink-0">
+              <TabsList class="h-7 bg-neutral-100 p-1 rounded-md w-fit">
+                <TabsTrigger value="zh" class="text-xs px-2 data-[state=active]:bg-white rounded">中文</TabsTrigger>
+                <TabsTrigger value="en" class="text-xs px-2 data-[state=active]:bg-white rounded">英文</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="text-[11px] text-neutral-500 shrink-0">保留标记</div>
+            <Switch v-model:checked="preserveMarkup" />
+          </div>
+        </div>
         <div class="flex items-center gap-1">
           <Button @click="setScope('selection')" variant="ghost" size="sm" class="h-7 px-3" :class="scope==='selection' ? 'bg-neutral-100 text-neutral-900' : 'text-neutral-600'">选区</Button>
           <Button @click="setScope('paragraph')" variant="ghost" size="sm" class="h-7 px-3" :class="scope==='paragraph' ? 'bg-neutral-100 text-neutral-900' : 'text-neutral-600'">段落</Button>
