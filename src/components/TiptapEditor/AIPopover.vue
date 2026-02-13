@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { Wand2, CornerDownLeft, Plus, Copy } from 'lucide-vue-next'
-import { streamAiTransform, type AiAction } from '@/api/ai'
+import { streamAiTransform, type AiAction } from '@/api/note'
 import { toast } from 'vue-sonner'
 import { Switch } from '@/components/ui/switch'
 
@@ -173,12 +173,14 @@ const copyPreview = async () => {
       <Button
         @click="openMenu"
         variant="ghost"
-        size="icon"
-        class="h-8 w-8 transition-colors"
-        :class="'text-neutral-600 hover:bg-neutral-100'"
+        size="sm"
+        class="h-8 px-2 rounded-lg bg-violet-50 text-violet-700 ring-1 ring-violet-200 hover:bg-violet-100 hover:text-violet-800 shadow-sm flex items-center gap-1 relative"
         title="智能编辑"
+        aria-label="智能编辑 AI"
       >
-        <Wand2 :size="18" />
+        <Wand2 :size="16" />
+        <span class="text-xs font-semibold">AI</span>
+        <span class="absolute -top-0.5 -right-0.5 w-2 h-2 bg-violet-400 rounded-full ring-2 ring-white"></span>
       </Button>
     </PopoverTrigger>
 
