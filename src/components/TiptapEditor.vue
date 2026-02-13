@@ -19,6 +19,7 @@ import { Separator } from '@/components/ui/separator'
 import LinkPopover from './TiptapEditor/LinkPopover.vue'
 import ImagePopover from './TiptapEditor/ImagePopover.vue'
 import TableOfContents from './TiptapEditor/TableOfContents.vue'
+import AIPopover from './TiptapEditor/AIPopover.vue'
 
 // Icons
 import {
@@ -209,6 +210,7 @@ defineExpose({
 
       <!-- 5. 插入对象 (组件集成) -->
       <div class="flex items-center gap-0.5">
+        <AIPopover :editor="editor" />
         <LinkPopover :editor="editor" />
         <ImagePopover :editor="editor" />
       </div>

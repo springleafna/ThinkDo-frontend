@@ -155,7 +155,7 @@ const handleItemClick = (pos: number) => {
            </template>
            
            <div v-else class="text-xs text-neutral-400 text-center py-4">
-             Start typing headers to create a TOC
+             开始输入大标题以创建目录
            </div>
           </nav>
         </div>
