@@ -211,5 +211,9 @@ export const noteApi = {
    */
   getStatistics() {
     return request.get<NoteStatistics>('/note/statistics')
+  },
+
+  getRecentNotes() {
+    return request.get<NoteListItem[]>('/note/recent')
   }
 }

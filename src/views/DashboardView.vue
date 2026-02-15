@@ -19,6 +19,8 @@ import {
   Check
 } from 'lucide-vue-next'
 import { memoApi, type Memo } from '@/api/memo'
+import { noteApi } from '@/api/note'
+import type { NoteListItem } from '@/api/note'
 
 const router = useRouter()
 const isSidebarOpen = ref(true)
@@ -46,9 +48,20 @@ const fetchLatestMemos = async () => {
   }
 }
 
+const fetchRecentNotes = async () => {
+  try {
+    const res = await noteApi.getRecentNotes()
+    insightNotes.value = res || []
+  } catch (error) {
+    console.error('获取最近笔记失败:', error)
+    insightNotes.value = []
+  }
+}
+
 // 页面加载时获取便签数据
 onMounted(() => {
   fetchLatestMemos()
+  fetchRecentNotes()
 })
 
 // 格式化日期
@@ -155,22 +168,7 @@ interface InsightNote {
 }
 
 // 思维笔记静态数据
-const insightNotes = ref<InsightNote[]>([
-  {
-    id: 1,
-    title: '关于"编织美学"的交互实验结论',
-    tag: '设计',
-    content: '通过叠加噪点纹理与非对称网格，可以显著提升数字界面的物质感，减少用户在长时间使用过程中的视觉疲劳...',
-    updatedAt: '2026-01-17T10:30:00'
-  },
-  {
-    id: 2,
-    title: '分布式锁的实现方案讨论',
-    tag: '后端',
-    content: '"界面不仅仅是像素，它是情绪的载体..."',
-    updatedAt: '2026-01-16T15:45:00'
-  }
-])
+const insightNotes = ref<NoteListItem[]>([])
 
 // 新任务输入
 const newTaskInput = ref('')
@@ -202,7 +200,7 @@ const navigateToPlans = () => {
 
 // 导航到笔记页面
 const navigateToNotes = () => {
-  activeView.value = 'notes'
+  router.push('/notes')
 }
 
 // 导航到便签页面
@@ -215,8 +213,10 @@ const currentDate = computed(() => {
   const now = new Date()
   const month = now.getMonth() + 1
   const day = now.getDate()
-  return `${month}月${day}日`
+  return `${month}月${day}`
 })
+
+const placeholderCount = computed(() => Math.max(0, 2 - insightNotes.value.length))
 </script>
 
 <template>
@@ -295,6 +295,12 @@ const currentDate = computed(() => {
                 <!-- 笔记列表 -->
                 <div class="space-y-6 relative z-10">
                   <div
+                    v-if="insightNotes.length === 0"
+                    class="absolute inset-0 flex items-center justify-center text-center"
+                  >
+                    <p class="text-base md:text-lg text-white/60 italic">您还没有创建笔记</p>
+                  </div>
+                  <div
                     v-for="(note, index) in insightNotes"
                     :key="note.id"
                     :class="index < insightNotes.length - 1 ? 'border-b border-white/5 pb-6' : 'pb-2'"
@@ -304,19 +310,32 @@ const currentDate = computed(() => {
                         {{ note.title }}
                       </h4>
                       <Badge
-                        v-if="note.tag"
+                        v-if="note.categoryName"
                         variant="secondary"
                         class="text-[10px] px-2 py-0 h-auto bg-white/10 text-white/80 hover:bg-white/20"
                       >
-                        {{ note.tag }}
+                        {{ note.categoryName }}
                       </Badge>
                     </div>
                     <p class="text-xs text-white/40 leading-relaxed line-clamp-2">
-                      {{ note.content }}
+                      {{ note.preview && note.preview.trim() ? note.preview : '暂无内容' }}
                     </p>
                     <p v-if="note.updatedAt" class="text-[10px] text-white/20 mono mt-2">
                       {{ formatDate(note.updatedAt) }}
                     </p>
+                  </div>
+
+                  <div
+                    v-for="i in placeholderCount"
+                    :key="'placeholder-' + i"
+                    :class="(i < placeholderCount) ? 'border-b border-white/5 pb-6' : 'pb-2'"
+                    class="opacity-0"
+                  >
+                    <div class="flex items-center gap-2 mb-2">
+                      <h4 class="text-sm font-medium">—</h4>
+                    </div>
+                    <p class="text-xs leading-relaxed line-clamp-2">—</p>
+                    <p class="text-[10px] mono mt-2">—</p>
                   </div>
                 </div>
 
