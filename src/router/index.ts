@@ -74,6 +74,12 @@ const router = createRouter({
       name: 'knowledge-files',
       component: () => import('@/views/KnowledgeFilesView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: () => import('@/views/SettingsView.vue'),
+      meta: { requiresAuth: true }
     }
   ],
 })

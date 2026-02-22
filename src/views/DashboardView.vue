@@ -3,7 +3,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
-import MemoView from './MemoView.vue'
 import { Badge } from '@/components/ui/badge'
 import {
   Target,
@@ -157,15 +156,6 @@ const dailyTasks = ref([
   { time: '14:00 - 16:00', task: '核心代码编写', done: false },
   { time: '16:30', task: '健身房', done: false }
 ])
-
-// 思维笔记接口
-interface InsightNote {
-  id: number
-  title: string
-  tag?: string
-  content: string
-  updatedAt: string
-}
 
 // 思维笔记静态数据
 const insightNotes = ref<NoteListItem[]>([])

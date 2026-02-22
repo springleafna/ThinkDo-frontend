@@ -12,7 +12,8 @@ import {
   User,
   LogOut,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Settings
 } from 'lucide-vue-next'
 import { userApi } from '@/api/user'
 import { useUserStore } from '@/stores/user'
@@ -34,13 +35,14 @@ const activeView = defineModel<string>('activeView')
 
 const navigation = [
   { id: 'dashboard', label: '控制台', icon: LayoutDashboard },
-  { id: 'ai-chat', label: 'AI 对话', icon: Sparkles },
-  { id: 'knowledge-base', label: '知识库', icon: Library },
-  { id: 'quadrant', label: '四象限分析', icon: Grid2x2 },
   { id: 'long-term', label: '我的计划', icon: Target },
   { id: 'daily', label: '每日清单', icon: CalendarCheck },
+  { id: 'quadrant', label: '四象限分析', icon: Grid2x2 },
   { id: 'notes', label: '思维笔记', icon: BookText },
-  { id: 'sticky', label: '灵感便签', icon: StickyNote }
+  { id: 'sticky', label: '灵感便签', icon: StickyNote },
+  { id: 'knowledge-base', label: '知识库', icon: Library },
+  { id: 'ai-chat', label: 'AI 对话', icon: Sparkles },
+  { id: 'settings', label: '设置', icon: Settings },
 ]
 
 const handleLogout = async () => {
@@ -74,7 +76,8 @@ const handleNavigation = (viewId: string) => {
     'knowledge-base': '/knowledge-base',
     'quadrant': '/quadrant',
     'daily': '/daily',
-    'notes': '/notes'
+    'notes': '/notes',
+    'settings': '/settings'
   }
 
   const route = routeMap[viewId]
