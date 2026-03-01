@@ -21,11 +21,26 @@ import {
   FolderOpen,
   Filter,
   Check,
-  X
+  X,
+  Loader2
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
+import { knowledgeBaseApi, type KnowledgeBase } from '@/api/knowledgeBase'
+import { knowledgeDocumentApi, type KnowledgeDocument } from '@/api/knowledgeDocument'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Link } from 'lucide-vue-next'
 
 const router = useRouter()
 const route = useRoute()
@@ -39,7 +54,23 @@ const toggleSidebar = () => {
 }
 
 // 获取知识库 ID
-const knowledgeBaseId = computed(() => Number(route.params.id))
+const knowledgeBaseId = computed(() => route.params.id as string)
+
+// 加载状态
+const isLoading = ref(false)
+const isLoadingKB = ref(false)
+
+// 上传对话框
+const showUploadDialog = ref(false)
+const isUploading = ref(false)
+const uploadType = ref<'file' | 'url'>('file')
+const selectedFile = ref<File | null>(null)
+const urlInput = ref('')
+
+// 删除确认对话框
+const showDeleteDialog = ref(false)
+const isDeleting = ref(false)
+const deletingFile = ref<FileInfo | null>(null)
 
 // 视图模式：网格或列表
 const viewMode = ref<'grid' | 'list'>('grid')
@@ -61,98 +92,88 @@ const fileTypes = ref([
 ])
 
 // 知识库信息
-const knowledgeBase = ref({
-  id: 1,
-  name: '前端开发资料',
-  description: 'Vue3、React、TypeScript 等前端技术文档和教程'
-})
+const knowledgeBase = ref<KnowledgeBase | null>(null)
 
-// 文件数据接口
-interface FileInfo {
-  id: number
-  name: string
-  type: string
-  size: string
-  uploadedAt: string
-  thumbnail?: string
+// 文件数据接口（扩展后端返回的类型）
+interface FileInfo extends KnowledgeDocument {
+  uiType: string // UI显示的文件类型分类
+  uiSize: string // 格式化后的文件大小
 }
 
-// 模拟文件数据
-const files = ref<FileInfo[]>([
-  {
-    id: 1,
-    name: 'Vue3 官方文档.pdf',
-    type: 'document',
-    size: '2.4 MB',
-    uploadedAt: '2024-01-15T10:30:00'
-  },
-  {
-    id: 2,
-    name: 'React Hooks 详解.md',
-    type: 'document',
-    size: '156 KB',
-    uploadedAt: '2024-01-14T14:20:00'
-  },
-  {
-    id: 3,
-    name: 'TypeScript 入门教程.pdf',
-    type: 'document',
-    size: '1.8 MB',
-    uploadedAt: '2024-01-13T20:15:00'
-  },
-  {
-    id: 4,
-    name: '前端架构设计.png',
-    type: 'image',
-    size: '456 KB',
-    uploadedAt: '2024-01-12T16:45:00'
-  },
-  {
-    id: 5,
-    name: '组件库使用指南.docx',
-    type: 'document',
-    size: '890 KB',
-    uploadedAt: '2024-01-11T09:00:00'
-  },
-  {
-    id: 6,
-    name: '性能优化实践.mp4',
-    type: 'video',
-    size: '156 MB',
-    uploadedAt: '2024-01-10T22:30:00'
-  },
-  {
-    id: 7,
-    name: '设计规范文档.pdf',
-    type: 'document',
-    size: '3.2 MB',
-    uploadedAt: '2024-01-09T15:20:00'
-  },
-  {
-    id: 8,
-    name: '项目配置文件.zip',
-    type: 'archive',
-    size: '1.1 MB',
-    uploadedAt: '2024-01-08T11:10:00'
-  },
-  {
-    id: 9,
-    name: 'UI 设计稿.fig',
-    type: 'image',
-    size: '12.4 MB',
-    uploadedAt: '2024-01-07T08:45:00'
-  },
-  {
-    id: 10,
-    name: 'API 接口文档.xlsx',
-    type: 'document',
-    size: '234 KB',
-    uploadedAt: '2024-01-06T13:30:00'
+// 文件数据
+const files = ref<FileInfo[]>([])
+
+// 获取知识库详情
+const fetchKnowledgeBase = async () => {
+  try {
+    isLoadingKB.value = true
+    const data = await knowledgeBaseApi.getById(knowledgeBaseId.value)
+    knowledgeBase.value = data
+  } catch (error) {
+    console.error('获取知识库详情失败：', error)
+    toast.error('获取知识库详情失败')
+  } finally {
+    isLoadingKB.value = false
   }
-])
+}
+
+// 获取文档列表
+const fetchDocuments = async () => {
+  try {
+    isLoading.value = true
+    const data = await knowledgeDocumentApi.getPage(knowledgeBaseId.value, {
+      pageNo: 1,
+      pageSize: 1000
+    })
+
+    // 格式化文件数据
+    files.value = (data.records || []).map(doc => {
+      const fileType = doc.fileType?.toLowerCase() || ''
+      let uiType = 'document'
+
+      if (fileType.includes('pdf') || fileType.includes('doc') || fileType.includes('text') || fileType.includes('md')) {
+        uiType = 'document'
+      } else if (fileType.includes('image') || fileType.includes('png') || fileType.includes('jpg') || fileType.includes('gif')) {
+        uiType = 'image'
+      } else if (fileType.includes('video') || fileType.includes('mp4')) {
+        uiType = 'video'
+      } else if (fileType.includes('audio') || fileType.includes('mp3')) {
+        uiType = 'audio'
+      } else if (fileType.includes('zip') || fileType.includes('archive') || fileType.includes('rar')) {
+        uiType = 'archive'
+      }
+
+      // 格式化文件大小
+      const size = doc.fileSize || 0
+      let uiSize = '0 B'
+      if (size < 1024) {
+        uiSize = `${size} B`
+      } else if (size < 1024 * 1024) {
+        uiSize = `${(size / 1024).toFixed(1)} KB`
+      } else if (size < 1024 * 1024 * 1024) {
+        uiSize = `${(size / (1024 * 1024)).toFixed(1)} MB`
+      } else {
+        uiSize = `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`
+      }
+
+      return {
+        ...doc,
+        uiType,
+        uiSize
+      }
+    })
+
+    updateFileTypeCount()
+  } catch (error) {
+    console.error('获取文档列表失败：', error)
+    toast.error('获取文档列表失败')
+  } finally {
+    isLoading.value = false
+  }
+}
 
 // 选中的文件
-const selectedFiles = ref<Set<number>>(new Set())
+const selectedFiles = ref<Set<string>>(new Set())
 
 // 格式化时间
 const formatTime = (dateString: string) => {
@@ -198,14 +219,14 @@ const filteredFiles = computed(() => {
 
   // 按文件类型筛选
   if (selectedFileType.value !== 'all') {
-    result = result.filter(file => file.type === selectedFileType.value)
+    result = result.filter(file => file.uiType === selectedFileType.value)
   }
 
   // 按关键词搜索
   if (searchKeyword.value) {
     const keyword = searchKeyword.value.toLowerCase()
     result = result.filter(file =>
-      file.name.toLowerCase().includes(keyword)
+      file.docName.toLowerCase().includes(keyword)
     )
   }
 
@@ -218,7 +239,7 @@ const updateFileTypeCount = () => {
     if (type.id === 'all') {
       type.count = files.value.length
     } else {
-      type.count = files.value.filter(f => f.type === type.id).length
+      type.count = files.value.filter(f => f.uiType === type.id).length
     }
   })
 }
@@ -233,7 +254,7 @@ const toggleSelectAll = () => {
 }
 
 // 切换文件选中状态
-const toggleFileSelection = (fileId: number) => {
+const toggleFileSelection = (fileId: string) => {
   if (selectedFiles.value.has(fileId)) {
     selectedFiles.value.delete(fileId)
   } else {
@@ -242,31 +263,105 @@ const toggleFileSelection = (fileId: number) => {
 }
 
 // 删除文件
-const deleteFile = (fileId: number) => {
-  const index = files.value.findIndex(f => f.id === fileId)
-  if (index !== -1) {
-    files.value.splice(index, 1)
+const deleteFile = (file: FileInfo) => {
+  deletingFile.value = file
+  showDeleteDialog.value = true
+}
+
+// 确认删除文件
+const handleConfirmDelete = async () => {
+  if (!deletingFile.value) return
+
+  try {
+    isDeleting.value = true
+    await knowledgeDocumentApi.delete(deletingFile.value.id)
     toast.success('文件已删除')
-    updateFileTypeCount()
+    showDeleteDialog.value = false
+    deletingFile.value = null
+    await fetchDocuments()
+  } catch (error) {
+    console.error('删除文件失败：', error)
+    toast.error('删除文件失败')
+  } finally {
+    isDeleting.value = false
   }
 }
 
 // 批量删除
-const deleteSelectedFiles = () => {
+const deleteSelectedFiles = async () => {
   if (selectedFiles.value.size === 0) {
     toast.warning('请先选择要删除的文件')
     return
   }
 
-  files.value = files.value.filter(f => !selectedFiles.value.has(f.id))
-  selectedFiles.value.clear()
-  toast.success('已删除选中的文件')
-  updateFileTypeCount()
+  try {
+    // 逐个删除
+    for (const fileId of selectedFiles.value) {
+      await knowledgeDocumentApi.delete(fileId as string)
+    }
+    selectedFiles.value.clear()
+    toast.success('已删除选中的文件')
+    await fetchDocuments()
+  } catch (error) {
+    console.error('批量删除失败：', error)
+    toast.error('批量删除失败')
+  }
 }
 
 // 上传文件
 const uploadFiles = () => {
-  toast.success('上传文件功能开发中...')
+  uploadType.value = 'file'
+  selectedFile.value = null
+  urlInput.value = ''
+  showUploadDialog.value = true
+}
+
+// 处理文件选择
+const handleFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    const file = target.files[0]
+    if (file) {
+      selectedFile.value = file
+    }
+  }
+}
+
+// 上传文档
+const handleUpload = async () => {
+  if (uploadType.value === 'file') {
+    if (!selectedFile.value) {
+      toast.error('请选择文件')
+      return
+    }
+  } else {
+    if (!urlInput.value.trim()) {
+      toast.error('请输入URL地址')
+      return
+    }
+  }
+
+  try {
+    isUploading.value = true
+    await knowledgeDocumentApi.upload(
+      knowledgeBaseId.value,
+      {
+        sourceType: uploadType.value,
+        sourceLocation: uploadType.value === 'url' ? urlInput.value.trim() : undefined
+      },
+      uploadType.value === 'file' ? selectedFile.value || undefined : undefined
+    )
+    toast.success('上传成功')
+    showUploadDialog.value = false
+    selectedFile.value = null
+    urlInput.value = ''
+    await fetchDocuments()
+  } catch (error) {
+    console.error('上传文件失败：', error)
+    toast.error('上传文件失败')
+  } finally {
+    isUploading.value = false
+  }
 }
 
 // 返回知识库列表
@@ -275,7 +370,8 @@ const goBack = () => {
 }
 
 onMounted(() => {
-  updateFileTypeCount()
+  fetchKnowledgeBase()
+  fetchDocuments()
 })
 </script>
 
@@ -304,8 +400,8 @@ onMounted(() => {
                   <FolderOpen :size="28" class="text-neutral-600" />
                 </div>
                 <div>
-                  <h1 class="text-2xl font-bold text-neutral-900 mb-1">{{ knowledgeBase.name }}</h1>
-                  <p class="text-sm text-neutral-400">{{ knowledgeBase.description }}</p>
+                  <h1 class="text-2xl font-bold text-neutral-900 mb-1">{{ knowledgeBase?.name || '加载中...' }}</h1>
+                  <p class="text-sm text-neutral-400">向量空间：{{ knowledgeBase?.collectionName || '-' }}</p>
                 </div>
               </div>
               <button
@@ -436,21 +532,21 @@ onMounted(() => {
                   <!-- 文件图标 -->
                   <div class="flex items-center justify-center mb-3 h-24">
                     <div class="w-16 h-16 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-lg flex items-center justify-center">
-                      <component :is="getFileIcon(file.type)" :size="32" class="text-neutral-600" />
+                      <component :is="getFileIcon(file.uiType)" :size="32" class="text-neutral-600" />
                     </div>
                   </div>
 
                   <!-- 文件名 -->
                   <h3 class="text-sm font-medium text-neutral-900 mb-1 line-clamp-2">
-                    {{ file.name }}
+                    {{ file.docName }}
                   </h3>
 
                   <!-- 文件信息 -->
                   <div class="flex items-center justify-between text-xs text-neutral-400">
-                    <span>{{ file.size }}</span>
+                    <span>{{ file.uiSize }}</span>
                     <div class="flex items-center gap-1">
                       <Clock :size="12" />
-                      <span>{{ formatTime(file.uploadedAt) }}</span>
+                      <span>{{ formatTime(file.createdAt) }}</span>
                     </div>
                   </div>
 
@@ -464,7 +560,7 @@ onMounted(() => {
                       <span>下载</span>
                     </button>
                     <button
-                      @click.stop="deleteFile(file.id)"
+                      @click.stop="deleteFile(file)"
                       class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs hover:bg-rose-100 transition-colors"
                     >
                       <Trash2 :size="12" />
@@ -499,25 +595,25 @@ onMounted(() => {
 
                     <!-- 文件图标 -->
                     <div class="w-10 h-10 bg-gradient-to-br from-neutral-100 to-neutral-50 rounded-lg flex items-center justify-center shrink-0">
-                      <component :is="getFileIcon(file.type)" :size="20" class="text-neutral-600" />
+                      <component :is="getFileIcon(file.uiType)" :size="20" class="text-neutral-600" />
                     </div>
 
                     <!-- 文件信息 -->
                     <div class="flex-1 min-w-0">
                       <h3 class="text-sm font-medium text-neutral-900 line-clamp-1">
-                        {{ file.name }}
+                        {{ file.docName }}
                       </h3>
                     </div>
 
                     <!-- 文件大小 -->
                     <div class="hidden sm:block text-xs text-neutral-400 shrink-0">
-                      {{ file.size }}
+                      {{ file.uiSize }}
                     </div>
 
                     <!-- 上传时间 -->
                     <div class="hidden md:flex items-center gap-1 text-xs text-neutral-400 shrink-0">
                       <Clock :size="14" />
-                      <span>{{ formatTime(file.uploadedAt) }}</span>
+                      <span>{{ formatTime(file.createdAt) }}</span>
                     </div>
 
                     <!-- 操作按钮 -->
@@ -530,7 +626,7 @@ onMounted(() => {
                         <Download :size="16" class="text-neutral-400" />
                       </button>
                       <button
-                        @click.stop="deleteFile(file.id)"
+                        @click.stop="deleteFile(file)"
                         class="p-2 hover:bg-rose-50 rounded-lg transition-colors"
                         title="删除"
                       >
@@ -541,9 +637,18 @@ onMounted(() => {
                 </div>
               </div>
 
+              <!-- 加载状态 -->
+              <div
+                v-if="isLoading"
+                class="flex flex-col items-center justify-center py-20 text-neutral-400"
+              >
+                <Loader2 :size="48" class="mb-4 opacity-50 animate-spin" />
+                <p class="text-sm font-medium">加载中...</p>
+              </div>
+
               <!-- 空状态 -->
               <div
-                v-if="filteredFiles.length === 0"
+                v-else-if="filteredFiles.length === 0"
                 class="flex flex-col items-center justify-center py-20 text-neutral-400"
               >
                 <FolderOpen :size="48" class="mb-4 opacity-50" />
@@ -555,6 +660,126 @@ onMounted(() => {
         </div>
       </div>
     </main>
+
+    <!-- 上传文件对话框 -->
+    <Dialog v-model:open="showUploadDialog">
+      <DialogContent class="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle class="text-lg font-semibold text-neutral-900">上传文件</DialogTitle>
+          <DialogDescription class="text-sm text-neutral-500">
+            选择上传方式添加文件到知识库
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="space-y-4 py-4">
+          <!-- 上传方式切换 -->
+          <Tabs v-model="uploadType" class="w-full">
+            <TabsList class="grid w-full grid-cols-2">
+              <TabsTrigger value="file">本地上传</TabsTrigger>
+              <TabsTrigger value="url">URL上传</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <!-- 本地上传 -->
+          <div v-if="uploadType === 'file'" class="space-y-2">
+            <label class="text-sm font-medium text-neutral-700">选择文件</label>
+            <div class="relative">
+              <input
+                id="file"
+                type="file"
+                @change="handleFileSelect"
+                :disabled="isUploading"
+                class="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200"
+              />
+            </div>
+            <p v-if="selectedFile" class="text-xs text-neutral-500 mt-1">
+              已选择：{{ selectedFile.name }} ({{ ((selectedFile.size / 1024)).toFixed(1) }} KB)
+            </p>
+          </div>
+
+          <!-- URL上传 -->
+          <div v-else class="space-y-2">
+            <label class="text-sm font-medium text-neutral-700">URL地址</label>
+            <div class="relative">
+              <Link :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+              <Input
+                id="url"
+                v-model="urlInput"
+                placeholder="请输入文件URL地址"
+                :disabled="isUploading"
+                class="pl-10"
+              />
+            </div>
+            <p class="text-xs text-neutral-400">
+              支持HTTP/HTTPS协议，确保URL可公开访问
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            @click="showUploadDialog = false"
+            :disabled="isUploading"
+            class="flex-1"
+          >
+            取消
+          </Button>
+          <Button
+            @click="handleUpload"
+            :disabled="isUploading"
+            class="flex-1"
+          >
+            <Loader2 v-if="isUploading" :size="16" class="mr-2 animate-spin" />
+            {{ isUploading ? '上传中...' : '上传' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- 删除确认对话框 -->
+    <Dialog v-model:open="showDeleteDialog">
+      <DialogContent class="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle class="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+            <Trash2 :size="20" class="text-rose-500" />
+            确认删除文件
+          </DialogTitle>
+          <DialogDescription class="text-sm text-neutral-500">
+            此操作无法撤销
+          </DialogDescription>
+        </DialogHeader>
+
+        <div v-if="deletingFile" class="py-4">
+          <p class="text-neutral-700 mb-2">您确定要删除以下文件吗？</p>
+          <div class="p-4 bg-rose-50 rounded-xl border border-rose-100">
+            <p class="font-medium text-neutral-900">{{ deletingFile.docName }}</p>
+            <p class="text-xs text-neutral-500 mt-1">{{ deletingFile.uiSize }}</p>
+          </div>
+          <p class="text-xs text-rose-600 mt-3">删除后，文件相关的所有数据将被永久删除</p>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            @click="showDeleteDialog = false"
+            :disabled="isDeleting"
+            class="flex-1"
+          >
+            取消
+          </Button>
+          <Button
+            @click="handleConfirmDelete"
+            variant="destructive"
+            :disabled="isDeleting"
+            class="flex-1"
+          >
+            <Loader2 v-if="isDeleting" :size="16" class="mr-2 animate-spin" />
+            {{ isDeleting ? '删除中...' : '确认删除' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 

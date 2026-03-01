@@ -17,11 +17,23 @@ import {
   List,
   Library,
   Archive,
-  Star
+  Star,
+  Loader2
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
+import { knowledgeBaseApi, type KnowledgeBase } from '@/api/knowledgeBase'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 const router = useRouter()
 const layoutStore = useLayoutStore()
@@ -49,81 +61,83 @@ const categories = ref([
   { id: 'archive', name: '已归档', icon: Archive, count: 0 }
 ])
 
-// 知识库数据接口
-interface KnowledgeBase {
-  id: number
-  name: string
-  description: string
-  fileCount: number
-  category: string
-  isFavorite: boolean
-  createdAt: string
-  updatedAt: string
+// 加载状态
+const isLoading = ref(false)
+
+// 创建知识库对话框
+const showCreateDialog = ref(false)
+const isCreating = ref(false)
+const createForm = ref({
+  name: '',
+  collectionName: ''
+})
+
+// 删除知识库对话框
+const showDeleteDialog = ref(false)
+const isDeleting = ref(false)
+const deletingKB = ref<KnowledgeBaseUI | null>(null)
+
+// 扩展的知识库接口（包含UI需要的字段）
+interface KnowledgeBaseUI extends KnowledgeBase {
+  category?: string
+  isFavorite?: boolean
 }
 
-// 模拟知识库数据
-const knowledgeBases = ref<KnowledgeBase[]>([
-  {
-    id: 1,
-    name: '前端开发资料',
-    description: 'Vue3、React、TypeScript 等前端技术文档和教程',
-    fileCount: 28,
-    category: 'recent',
-    isFavorite: true,
-    createdAt: '2024-01-15T10:30:00',
-    updatedAt: '2024-01-15T10:30:00'
-  },
-  {
-    id: 2,
-    name: '产品设计灵感',
-    description: 'UI/UX 设计案例、配色方案、设计规范等',
-    fileCount: 15,
-    category: 'recent',
-    isFavorite: false,
-    createdAt: '2024-01-14T14:20:00',
-    updatedAt: '2024-01-14T14:20:00'
-  },
-  {
-    id: 3,
-    name: '项目文档',
-    description: '各个项目的需求文档、技术方案、会议记录',
-    fileCount: 42,
-    category: 'recent',
-    isFavorite: true,
-    createdAt: '2024-01-13T20:15:00',
-    updatedAt: '2024-01-13T20:15:00'
-  },
-  {
-    id: 4,
-    name: 'AI 学习笔记',
-    description: '机器学习、深度学习、LLM 相关资料',
-    fileCount: 19,
-    category: 'favorite',
-    isFavorite: true,
-    createdAt: '2024-01-12T16:45:00',
-    updatedAt: '2024-01-12T16:45:00'
-  },
-  {
-    id: 5,
-    name: '个人博客素材',
-    description: '技术博客文章草稿、图片素材、引用资料',
-    fileCount: 8,
-    category: 'archive',
-    isFavorite: false,
-    createdAt: '2024-01-11T09:00:00',
-    updatedAt: '2024-01-11T09:00:00'
-  },
-  {
-    id: 6,
-    name: '工具使用指南',
-    description: '各种开发工具、生产力工具的使用说明',
-    fileCount: 12,
-    category: 'archive',
-    isFavorite: false,
-    createdAt: '2024-01-10T22:30:00',
-    updatedAt: '2024-01-10T22:30:00'
+// 知识库数据
+const knowledgeBases = ref<KnowledgeBaseUI[]>([])
+
+// 获取知识库列表
+const fetchKnowledgeBases = async () => {
+  try {
+    isLoading.value = true
+    const data = await knowledgeBaseApi.getList()
+    knowledgeBases.value = data.records || []
+    updateCategoryCount()
+  } catch (error) {
+    console.error('获取知识库列表失败：', error)
+    toast.error('获取知识库列表失败')
+  } finally {
+    isLoading.value = false
   }
-])
+}
+
+// 打开创建对话框
+const openCreateDialog = () => {
+  createForm.value = {
+    name: '',
+    collectionName: ''
+  }
+  showCreateDialog.value = true
+}
+
+// 创建知识库
+const handleCreateKnowledgeBase = async () => {
+  if (!createForm.value.name.trim()) {
+    toast.error('请输入知识库名称')
+    return
+  }
+  if (!createForm.value.collectionName.trim()) {
+    toast.error('请输入向量空间名称')
+    return
+  }
+
+  try {
+    isCreating.value = true
+    await knowledgeBaseApi.create({
+      name: createForm.value.name.trim(),
+      embeddingModel: 'qwen3-embedding:8b-fp16',
+      collectionName: createForm.value.collectionName.trim()
+    })
+    toast.success('知识库创建成功')
+    showCreateDialog.value = false
+    await fetchKnowledgeBases()
+  } catch (error) {
+    console.error('创建知识库失败：', error)
+    toast.error('创建知识库失败')
+  } finally {
+    isCreating.value = false
+  }
+}
 
 // 格式化时间
 const formatTime = (dateString: string) => {
@@ -167,7 +181,7 @@ const filteredKnowledgeBases = computed(() => {
     const keyword = searchKeyword.value.toLowerCase()
     result = result.filter(kb =>
       kb.name.toLowerCase().includes(keyword) ||
-      kb.description.toLowerCase().includes(keyword)
+      kb.collectionName.toLowerCase().includes(keyword)
     )
   }
 
@@ -188,7 +202,7 @@ const updateCategoryCount = () => {
 }
 
 // 切换收藏状态
-const toggleFavorite = (kbId: number) => {
+const toggleFavorite = (kbId: string) => {
   const kb = knowledgeBases.value.find(k => k.id === kbId)
   if (kb) {
     kb.isFavorite = !kb.isFavorite
@@ -198,27 +212,42 @@ const toggleFavorite = (kbId: number) => {
 }
 
 // 删除知识库
-const deleteKnowledgeBase = (kbId: number) => {
-  const index = knowledgeBases.value.findIndex(k => k.id === kbId)
-  if (index !== -1) {
-    knowledgeBases.value.splice(index, 1)
+const deleteKnowledgeBase = (kb: KnowledgeBaseUI) => {
+  deletingKB.value = kb
+  showDeleteDialog.value = true
+}
+
+// 确认删除知识库
+const handleConfirmDelete = async () => {
+  if (!deletingKB.value) return
+
+  try {
+    isDeleting.value = true
+    await knowledgeBaseApi.delete(deletingKB.value.id)
     toast.success('知识库已删除')
-    updateCategoryCount()
+    showDeleteDialog.value = false
+    deletingKB.value = null
+    await fetchKnowledgeBases()
+  } catch (error) {
+    console.error('删除知识库失败：', error)
+    toast.error('删除知识库失败')
+  } finally {
+    isDeleting.value = false
   }
 }
 
 // 新建知识库
 const createKnowledgeBase = () => {
-  toast.success('创建知识库功能开发中...')
+  openCreateDialog()
 }
 
 // 查看知识库文件列表
-const viewKnowledgeBaseFiles = (kbId: number) => {
+const viewKnowledgeBaseFiles = (kbId: string) => {
   router.push(`/knowledge-base/${kbId}`)
 }
 
 onMounted(() => {
-  updateCategoryCount()
+  fetchKnowledgeBases()
 })
 </script>
 
@@ -363,9 +392,9 @@ onMounted(() => {
                     {{ kb.name }}
                   </h3>
 
-                  <!-- 知识库描述 -->
-                  <p class="text-sm text-neutral-600 mb-4 line-clamp-2 leading-relaxed">
-                    {{ kb.description }}
+                  <!-- 向量空间 -->
+                  <p class="text-sm text-neutral-600 mb-4 line-clamp-1 leading-relaxed">
+                    向量空间：{{ kb.collectionName }}
                   </p>
 
                   <!-- 底部信息 -->
@@ -373,7 +402,7 @@ onMounted(() => {
                     <div class="flex items-center gap-3">
                       <div class="flex items-center gap-1">
                         <FileText :size="14" />
-                        <span>{{ kb.fileCount }} 个文件</span>
+                        <span>{{ kb.documentCount }} 个文件</span>
                       </div>
                       <div class="flex items-center gap-1">
                         <Clock :size="14" />
@@ -389,7 +418,7 @@ onMounted(() => {
                         <Edit3 :size="14" />
                       </button>
                       <button
-                        @click.stop="deleteKnowledgeBase(kb.id)"
+                        @click.stop="deleteKnowledgeBase(kb)"
                         class="p-1.5 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors"
                         title="删除"
                       >
@@ -433,14 +462,14 @@ onMounted(() => {
                         {{ kb.name }}
                       </h3>
                       <p class="text-xs text-neutral-500 line-clamp-1">
-                        {{ kb.description }}
+                        向量空间：{{ kb.collectionName }}
                       </p>
                     </div>
 
                     <!-- 文件数量 -->
                     <div class="hidden sm:flex items-center gap-1 text-xs text-neutral-400 shrink-0">
                       <FileText :size="14" />
-                      <span>{{ kb.fileCount }}</span>
+                      <span>{{ kb.documentCount }}</span>
                     </div>
 
                     <!-- 时间 -->
@@ -473,7 +502,7 @@ onMounted(() => {
                         <Edit3 :size="16" class="text-neutral-400" />
                       </button>
                       <button
-                        @click.stop="deleteKnowledgeBase(kb.id)"
+                        @click.stop="deleteKnowledgeBase(kb)"
                         class="p-2 hover:bg-rose-50 rounded-lg transition-colors"
                       >
                         <Trash2 :size="16" class="text-neutral-400 hover:text-rose-600" />
@@ -483,9 +512,18 @@ onMounted(() => {
                 </div>
               </div>
 
+              <!-- 加载状态 -->
+              <div
+                v-if="isLoading"
+                class="flex flex-col items-center justify-center py-20 text-neutral-400"
+              >
+                <Loader2 :size="48" class="mb-4 opacity-50 animate-spin" />
+                <p class="text-sm font-medium">加载中...</p>
+              </div>
+
               <!-- 空状态 -->
               <div
-                v-if="filteredKnowledgeBases.length === 0"
+                v-else-if="filteredKnowledgeBases.length === 0"
                 class="flex flex-col items-center justify-center py-20 text-neutral-400"
               >
                 <FolderOpen :size="48" class="mb-4 opacity-50" />
@@ -497,6 +535,113 @@ onMounted(() => {
         </div>
       </div>
     </main>
+
+    <!-- 创建知识库对话框 -->
+    <Dialog v-model:open="showCreateDialog">
+      <DialogContent class="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle class="text-lg font-semibold text-neutral-900">创建知识库</DialogTitle>
+          <DialogDescription class="text-sm text-neutral-500">
+            填写信息创建一个新的知识库
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="space-y-4 py-4">
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-neutral-700">知识库名称</label>
+            <Input
+              v-model="createForm.name"
+              placeholder="请输入知识库名称"
+              :disabled="isCreating"
+              @keyup.enter="handleCreateKnowledgeBase"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-neutral-700">向量空间名称</label>
+            <Input
+              v-model="createForm.collectionName"
+              placeholder="请输入向量空间名称"
+              :disabled="isCreating"
+              @keyup.enter="handleCreateKnowledgeBase"
+            />
+            <p class="text-xs text-neutral-400">
+              用于向量数据库的集合名称，建议使用英文字母、数字和下划线
+            </p>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-neutral-700">嵌入模型</label>
+            <div class="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-600">
+              qwen3-embedding:8b-fp16
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            @click="showCreateDialog = false"
+            :disabled="isCreating"
+            class="flex-1"
+          >
+            取消
+          </Button>
+          <Button
+            @click="handleCreateKnowledgeBase"
+            :disabled="isCreating"
+            class="flex-1"
+          >
+            <Loader2 v-if="isCreating" :size="16" class="mr-2 animate-spin" />
+            {{ isCreating ? '创建中...' : '创建' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- 删除确认对话框 -->
+    <Dialog v-model:open="showDeleteDialog">
+      <DialogContent class="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle class="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+            <Trash2 :size="20" class="text-rose-500" />
+            确认删除知识库
+          </DialogTitle>
+          <DialogDescription class="text-sm text-neutral-500">
+            此操作无法撤销
+          </DialogDescription>
+        </DialogHeader>
+
+        <div v-if="deletingKB" class="py-4">
+          <p class="text-neutral-700 mb-2">您确定要删除以下知识库吗？</p>
+          <div class="p-4 bg-rose-50 rounded-xl border border-rose-100">
+            <p class="font-medium text-neutral-900">{{ deletingKB.name }}</p>
+            <p class="text-xs text-neutral-500 mt-1">向量空间：{{ deletingKB.collectionName }}</p>
+          </div>
+          <p class="text-xs text-rose-600 mt-3">删除后，知识库中的所有文档和数据将被永久删除</p>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            @click="showDeleteDialog = false"
+            :disabled="isDeleting"
+            class="flex-1"
+          >
+            取消
+          </Button>
+          <Button
+            @click="handleConfirmDelete"
+            variant="destructive"
+            :disabled="isDeleting"
+            class="flex-1"
+          >
+            <Loader2 v-if="isDeleting" :size="16" class="mr-2 animate-spin" />
+            {{ isDeleting ? '删除中...' : '确认删除' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
