@@ -66,11 +66,16 @@ const isUploading = ref(false)
 const uploadType = ref<'file' | 'url'>('file')
 const selectedFile = ref<File | null>(null)
 const urlInput = ref('')
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 // 删除确认对话框
 const showDeleteDialog = ref(false)
 const isDeleting = ref(false)
 const deletingFile = ref<FileInfo | null>(null)
+
+// 批量删除确认对话框
+const showBatchDeleteDialog = ref(false)
+const isBatchDeleting = ref(false)
 
 // 视图模式：网格或列表
 const viewMode = ref<'grid' | 'list'>('grid')
@@ -288,23 +293,31 @@ const handleConfirmDelete = async () => {
 }
 
 // 批量删除
-const deleteSelectedFiles = async () => {
+const deleteSelectedFiles = () => {
   if (selectedFiles.value.size === 0) {
     toast.warning('请先选择要删除的文件')
     return
   }
+  showBatchDeleteDialog.value = true
+}
 
+// 确认批量删除
+const handleConfirmBatchDelete = async () => {
   try {
+    isBatchDeleting.value = true
     // 逐个删除
     for (const fileId of selectedFiles.value) {
       await knowledgeDocumentApi.delete(fileId as string)
     }
     selectedFiles.value.clear()
     toast.success('已删除选中的文件')
+    showBatchDeleteDialog.value = false
     await fetchDocuments()
   } catch (error) {
     console.error('批量删除失败：', error)
     toast.error('批量删除失败')
+  } finally {
+    isBatchDeleting.value = false
   }
 }
 
@@ -314,6 +327,11 @@ const uploadFiles = () => {
   selectedFile.value = null
   urlInput.value = ''
   showUploadDialog.value = true
+}
+
+// 触发文件选择
+const triggerFileSelect = () => {
+  fileInputRef.value?.click()
 }
 
 // 处理文件选择
@@ -683,17 +701,30 @@ onMounted(() => {
           <!-- 本地上传 -->
           <div v-if="uploadType === 'file'" class="space-y-2">
             <label class="text-sm font-medium text-neutral-700">选择文件</label>
-            <div class="relative">
+            <div class="flex items-center gap-2">
               <input
-                id="file"
+                ref="fileInputRef"
                 type="file"
                 @change="handleFileSelect"
                 :disabled="isUploading"
-                class="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-neutral-100 file:text-neutral-700 hover:file:bg-neutral-200"
+                class="hidden"
               />
+              <Button
+                type="button"
+                @click="triggerFileSelect"
+                :disabled="isUploading"
+                variant="outline"
+                class="flex-1"
+              >
+                <Upload :size="16" class="mr-2" />
+                {{ selectedFile ? '已选择文件' : '选择文件' }}
+              </Button>
             </div>
             <p v-if="selectedFile" class="text-xs text-neutral-500 mt-1">
               已选择：{{ selectedFile.name }} ({{ ((selectedFile.size / 1024)).toFixed(1) }} KB)
+            </p>
+            <p v-else class="text-xs text-neutral-400 mt-1">
+              支持上传各种文档、图片、视频等格式
             </p>
           </div>
 
@@ -776,6 +807,49 @@ onMounted(() => {
           >
             <Loader2 v-if="isDeleting" :size="16" class="mr-2 animate-spin" />
             {{ isDeleting ? '删除中...' : '确认删除' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- 批量删除确认对话框 -->
+    <Dialog v-model:open="showBatchDeleteDialog">
+      <DialogContent class="sm:max-w-[400px]">
+        <DialogHeader>
+          <DialogTitle class="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+            <Trash2 :size="20" class="text-rose-500" />
+            确认批量删除文件
+          </DialogTitle>
+          <DialogDescription class="text-sm text-neutral-500">
+            此操作无法撤销
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="py-4">
+          <p class="text-neutral-700 mb-2">您确定要删除选中的 {{ selectedFiles.size }} 个文件吗？</p>
+          <div class="p-4 bg-rose-50 rounded-xl border border-rose-100">
+            <p class="font-medium text-neutral-900">{{ selectedFiles.size }} 个文件将被删除</p>
+            <p class="text-xs text-neutral-500 mt-1">删除后，文件相关的所有数据将被永久删除</p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            @click="showBatchDeleteDialog = false"
+            :disabled="isBatchDeleting"
+            class="flex-1"
+          >
+            取消
+          </Button>
+          <Button
+            @click="handleConfirmBatchDelete"
+            variant="destructive"
+            :disabled="isBatchDeleting"
+            class="flex-1"
+          >
+            <Loader2 v-if="isBatchDeleting" :size="16" class="mr-2 animate-spin" />
+            {{ isBatchDeleting ? '删除中...' : '确认删除' }}
           </Button>
         </DialogFooter>
       </DialogContent>

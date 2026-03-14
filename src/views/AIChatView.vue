@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, computed } from 'vue'
-import { Send, Bot, User, Trash2, Plus, MessageSquare, Clock } from 'lucide-vue-next'
+import { Send, Bot, User, Trash2, Plus, MessageSquare, Clock, Pencil } from 'lucide-vue-next'
 import { useLayoutStore } from '@/stores/layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import {
@@ -14,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { aiChatApi, type ConversationInfo, type MessageInfo } from '@/api/ai'
 
 interface ChatMessage {
   role: 'user' | 'model'
@@ -43,6 +45,11 @@ const currentSessionId = ref<string>('')
 const chatSessions = ref<ChatSession[]>([])
 const showDeleteDialog = ref(false)
 const deleteSessionId = ref<string>('')
+const isLoading = ref(false)
+const isLoadingSessions = ref(false)
+const showEditDialog = ref(false)
+const editSessionId = ref<string>('')
+const editDialogTitle = ref('')
 
 const messages = ref<ChatMessage[]>([
   {
@@ -53,11 +60,6 @@ const messages = ref<ChatMessage[]>([
 ])
 const input = ref('')
 const isTyping = ref(false)
-
-// 获取当前会话
-const currentSession = computed(() => {
-  return chatSessions.value.find(s => s.id === currentSessionId.value)
-})
 
 // 生成会话标题
 const generateSessionTitle = (firstUserMessage: string) => {
@@ -87,15 +89,82 @@ const createNewSession = () => {
   chatSessions.value.unshift(newSession)
   currentSessionId.value = newSession.id
   messages.value = [...newSession.messages]
-  saveSessionsToStorage()
+}
+
+// 转换 API 消息格式到本地格式
+const convertApiMessage = (msg: MessageInfo): ChatMessage => ({
+  role: msg.role === 'assistant' ? 'model' : 'user',
+  text: msg.content,
+  timestamp: parseDateTime(msg.createdAt)
+})
+
+// 转换 API 会话格式到本地格式
+const convertApiSession = (conv: ConversationInfo): ChatSession => ({
+  id: conv.conversationId,
+  title: conv.title,
+  messages: [], // 消息需要单独加载
+  createdAt: parseDateTime(conv.createdAt),
+  updatedAt: parseDateTime(conv.updatedAt)
+})
+
+// 解析后端返回的时间格式 (yyyy-MM-ddTHH:mm:ss)
+const parseDateTime = (dateStr: string): Date => {
+  if (!dateStr) return new Date()
+  // 确保添加时区信息，防止被解析为 UTC
+  return new Date(dateStr.endsWith('Z') ? dateStr : dateStr + '+08:00')
+}
+
+// 加载会话列表
+const loadSessionsFromApi = async () => {
+  try {
+    isLoadingSessions.value = true
+    const data = await aiChatApi.getConversationList()
+    chatSessions.value = data.map(convertApiSession)
+
+    if (chatSessions.value.length > 0) {
+      const firstSession = chatSessions.value[0]
+      if (firstSession) {
+        await switchSession(firstSession.id)
+      } else {
+        createNewSession()
+      }
+    } else {
+      createNewSession()
+    }
+  } catch (error) {
+    console.error('加载会话列表失败:', error)
+    createNewSession()
+  } finally {
+    isLoadingSessions.value = false
+  }
 }
 
 // 切换会话
-const switchSession = (sessionId: string) => {
+const switchSession = async (sessionId: string) => {
   const session = chatSessions.value.find(s => s.id === sessionId)
   if (session) {
     currentSessionId.value = sessionId
-    messages.value = [...session.messages]
+
+    // 如果会话消息未加载，从 API 加载
+    if (session.messages.length === 0) {
+      try {
+        isLoading.value = true
+        const apiMessages = await aiChatApi.getMessagesByConversationId(sessionId)
+        session.messages = (apiMessages || []).map(convertApiMessage)
+        messages.value = [...session.messages]
+      } catch (error) {
+        console.error('加载消息失败:', error)
+        messages.value = [{
+          role: 'model',
+          text: '加载消息失败，请重试',
+          timestamp: new Date()
+        }]
+      } finally {
+        isLoading.value = false
+      }
+    } else {
+      messages.value = [...session.messages]
+    }
     scrollToBottom()
   }
 }
@@ -107,68 +176,58 @@ const openDeleteDialog = (sessionId: string) => {
 }
 
 // 确认删除会话
-const confirmDeleteSession = () => {
+const confirmDeleteSession = async () => {
   if (deleteSessionId.value) {
-    chatSessions.value = chatSessions.value.filter(s => s.id !== deleteSessionId.value)
-    if (currentSessionId.value === deleteSessionId.value) {
-      if (chatSessions.value.length > 0) {
-        const firstSession = chatSessions.value[0]
-        if (firstSession) {
-          switchSession(firstSession.id)
+    try {
+      await aiChatApi.deleteConversation(deleteSessionId.value)
+      chatSessions.value = chatSessions.value.filter(s => s.id !== deleteSessionId.value)
+      if (currentSessionId.value === deleteSessionId.value) {
+        if (chatSessions.value.length > 0) {
+          const firstSession = chatSessions.value[0]
+          if (firstSession) {
+            await switchSession(firstSession.id)
+          } else {
+            createNewSession()
+          }
         } else {
           createNewSession()
         }
-      } else {
-        createNewSession()
       }
+    } catch (error) {
+      console.error('删除会话失败:', error)
+    } finally {
+      showDeleteDialog.value = false
+      deleteSessionId.value = ''
     }
-    saveSessionsToStorage()
-    showDeleteDialog.value = false
-    deleteSessionId.value = ''
   }
 }
 
-// 保存到本地存储
-const saveSessionsToStorage = () => {
-  try {
-    localStorage.setItem('chat-sessions', JSON.stringify(chatSessions.value))
-  } catch (error) {
-    console.error('保存对话历史失败:', error)
+// 打开编辑标题对话框
+const openEditDialog = (sessionId: string) => {
+  const session = chatSessions.value.find(s => s.id === sessionId)
+  if (session) {
+    editSessionId.value = sessionId
+    editDialogTitle.value = session.title
+    showEditDialog.value = true
   }
 }
 
-// 从本地存储加载
-const loadSessionsFromStorage = () => {
-  try {
-    const saved = localStorage.getItem('chat-sessions')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      chatSessions.value = parsed.map((s: any) => ({
-        ...s,
-        createdAt: new Date(s.createdAt),
-        updatedAt: new Date(s.updatedAt),
-        messages: s.messages.map((m: any) => ({
-          ...m,
-          timestamp: new Date(m.timestamp)
-        }))
-      }))
-      if (chatSessions.value.length > 0) {
-        const firstSession = chatSessions.value[0]
-        if (firstSession) {
-          currentSessionId.value = firstSession.id
-          messages.value = [...firstSession.messages]
-        } else {
-          createNewSession()
-        }
-      } else {
-        createNewSession()
+// 确认更新会话标题
+const confirmUpdateTitle = async () => {
+  if (editSessionId.value && editDialogTitle.value.trim()) {
+    try {
+      await aiChatApi.updateConversation({
+        conversationId: editSessionId.value,
+        title: editDialogTitle.value.trim()
+      })
+      const session = chatSessions.value.find(s => s.id === editSessionId.value)
+      if (session) {
+        session.title = editDialogTitle.value.trim()
       }
-    } else {
-      createNewSession()
+      showEditDialog.value = false
+    } catch (error) {
+      console.error('更新会话标题失败:', error)
     }
-  } catch (error) {
-    console.error('加载对话历史失败:', error)
-    createNewSession()
   }
 }
 
@@ -196,12 +255,11 @@ const updateCurrentSession = () => {
     // 移动到顶部
     chatSessions.value.splice(sessionIndex, 1)
     chatSessions.value.unshift(session)
-    saveSessionsToStorage()
   }
 }
 
 onMounted(() => {
-  loadSessionsFromStorage()
+  loadSessionsFromApi()
 })
 
 const scrollToBottom = () => {
@@ -357,13 +415,22 @@ const formatTime = (date: Date) => {
                         {{ formatTime(session.updatedAt) }}
                       </p>
                     </div>
-                    <button
-                      @click.stop="openDeleteDialog(session.id)"
-                      class="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
-                      title="删除对话"
-                    >
-                      <Trash2 :size="14" />
-                    </button>
+                    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <button
+                        @click.stop="openEditDialog(session.id)"
+                        class="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-stone-100 rounded-lg"
+                        title="重命名"
+                      >
+                        <Pencil :size="14" />
+                      </button>
+                      <button
+                        @click.stop="openDeleteDialog(session.id)"
+                        class="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                        title="删除对话"
+                      >
+                        <Trash2 :size="14" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -477,6 +544,33 @@ const formatTime = (date: Date) => {
           </Button>
           <Button variant="destructive" @click="confirmDeleteSession">
             删除
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- 编辑标题对话框 -->
+    <Dialog v-model:open="showEditDialog">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>重命名对话</DialogTitle>
+          <DialogDescription>
+            为这个对话设置一个新标题
+          </DialogDescription>
+        </DialogHeader>
+        <div class="py-4">
+          <Input
+            v-model="editDialogTitle"
+            placeholder="请输入对话标题"
+            @keydown.enter="confirmUpdateTitle"
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" @click="showEditDialog = false">
+            取消
+          </Button>
+          <Button @click="confirmUpdateTitle">
+            确定
           </Button>
         </DialogFooter>
       </DialogContent>
