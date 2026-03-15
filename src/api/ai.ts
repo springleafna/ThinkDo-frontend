@@ -102,6 +102,16 @@ export const aiChatApi = {
   },
 
   /**
+   * 停止指定的对话任务
+   * POST /ai/chat/stop
+   */
+  stopTask(taskId: string) {
+    return request.post<void>('/ai/chat/stop', undefined, {
+      params: { taskId }
+    })
+  },
+
+  /**
    * 流式对话 (SSE)
    * GET /ai/chat/sse
    */

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, computed } from 'vue'
-import { Send, Bot, User, Trash2, Plus, MessageSquare, Clock, Pencil, Copy, ThumbsUp, ThumbsDown, Sparkles, Compass, Database, Brain } from 'lucide-vue-next'
+import { Send, Bot, User, Trash2, Plus, MessageSquare, Clock, Pencil, Copy, ThumbsUp, ThumbsDown, Sparkles, Compass, Database, Brain, Square } from 'lucide-vue-next'
 import { useLayoutStore } from '@/stores/layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -60,6 +60,9 @@ const aiFeedback = ref<Record<number, 'up' | 'down'>>({})
 const inputRef = ref<HTMLTextAreaElement>()
 const enableKnowledgeBase = ref(false)
 const enableDeepThinking = ref(false)
+const currentTaskId = ref('')
+const activeStreamCancel = ref<(() => void) | null>(null)
+const isStopping = ref(false)
 const quickPrompts = [
   '帮我总结今天的工作重点',
   '给我一个本周学习计划',
@@ -86,6 +89,29 @@ const useQuickPrompt = (prompt: string) => {
   nextTick(() => {
     inputRef.value?.focus()
   })
+}
+
+const handleStopGenerating = async () => {
+  if (!isTyping.value || isStopping.value) return
+
+  isStopping.value = true
+  try {
+    if (currentTaskId.value) {
+      await aiChatApi.stopTask(currentTaskId.value)
+    }
+    activeStreamCancel.value?.()
+    activeStreamCancel.value = null
+    currentTaskId.value = ''
+    isTyping.value = false
+    showTypingIndicator.value = false
+    updateCurrentSession()
+    toast.success('已停止生成')
+  } catch (error) {
+    console.error('停止对话失败:', error)
+    toast.error('停止失败，请重试')
+  } finally {
+    isStopping.value = false
+  }
 }
 
 // 生成会话标题
@@ -555,12 +581,13 @@ const handleSend = async () => {
 
   try {
     // 调用流式 API
-    aiChatApi.streamChat({
+    activeStreamCancel.value = aiChatApi.streamChat({
       question: userQuestion,
       conversationId: isNewSession ? undefined : currentSessionId.value,
       deepThinking: false
     }, {
       onMeta: (data) => {
+        currentTaskId.value = data.taskId || currentTaskId.value
         // 收到 meta 事件，更新会话 ID
         if (isNewSession && data.conversationId) {
           const session = chatSessions.value.find(s => s.id === currentSessionId.value)
@@ -608,12 +635,18 @@ const handleSend = async () => {
         // 连接关闭，更新会话
         isTyping.value = false
         showTypingIndicator.value = false
+        activeStreamCancel.value = null
+        currentTaskId.value = ''
+        isStopping.value = false
         updateCurrentSession()
       },
       onError: (error) => {
         console.error('流式对话错误:', error)
         isTyping.value = false
         showTypingIndicator.value = false
+        activeStreamCancel.value = null
+        currentTaskId.value = ''
+        isStopping.value = false
         if (aiMessageIndex === -1) {
           const errorMsg: ChatMessage = {
             role: 'model',
@@ -628,6 +661,9 @@ const handleSend = async () => {
     console.error('发送消息失败:', error)
     isTyping.value = false
     showTypingIndicator.value = false
+    activeStreamCancel.value = null
+    currentTaskId.value = ''
+    isStopping.value = false
     if (aiMessageIndex === -1) {
       const errorMsg: ChatMessage = {
         role: 'model',
@@ -928,13 +964,16 @@ const formatTime = (date: Date) => {
                     </button>
                   </div>
                   <Button
-                    @click="handleSend"
-                    :disabled="!input.trim() || isTyping"
+                    @click="isTyping ? handleStopGenerating() : handleSend()"
+                    :disabled="isTyping ? isStopping : !input.trim()"
                     size="icon"
                     class="absolute right-2 bottom-2 h-8 w-8"
-                    :class="input.trim() && !isTyping ? 'bg-neutral-900 hover:bg-neutral-800' : ''"
+                    :class="isTyping
+                      ? 'bg-rose-600 hover:bg-rose-500'
+                      : (input.trim() ? 'bg-neutral-900 hover:bg-neutral-800' : '')"
                   >
-                    <Send :size="16" />
+                    <Square v-if="isTyping" :size="14" />
+                    <Send v-else :size="16" />
                   </Button>
                 </div>
               </div>
