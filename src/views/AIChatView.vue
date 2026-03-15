@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, computed } from 'vue'
-import { Send, Bot, User, Trash2, Plus, MessageSquare, Clock, Pencil } from 'lucide-vue-next'
+import { Send, Bot, User, Trash2, Plus, MessageSquare, Clock, Pencil, Copy, ThumbsUp, ThumbsDown } from 'lucide-vue-next'
 import { useLayoutStore } from '@/stores/layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -16,6 +16,7 @@ import {
   DialogTitle
 } from '@/components/ui/dialog'
 import { aiChatApi, type ConversationInfo, type MessageInfo } from '@/api/ai'
+import { toast } from 'vue-sonner'
 
 interface ChatMessage {
   role: 'user' | 'model'
@@ -51,15 +52,25 @@ const showEditDialog = ref(false)
 const editSessionId = ref<string>('')
 const editDialogTitle = ref('')
 
-const messages = ref<ChatMessage[]>([
-  {
-    role: 'model',
-    text: '您好，我是 ThinkDo 智能助手。我可以协助您整理计划、分析任务优先级或进行深度思维发散。今天有什么我可以帮您的？',
-    timestamp: new Date()
-  }
-])
+const messages = ref<ChatMessage[]>([])
 const input = ref('')
 const isTyping = ref(false)
+const showTypingIndicator = ref(false)
+const aiFeedback = ref<Record<number, 'up' | 'down'>>({})
+
+const copyMessage = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.success('复制成功')
+  } catch (error) {
+    console.error('复制失败:', error)
+    toast.error('复制失败')
+  }
+}
+
+const setAiFeedback = (index: number, value: 'up' | 'down') => {
+  aiFeedback.value[index] = value
+}
 
 // 生成会话标题
 const generateSessionTitle = (firstUserMessage: string) => {
@@ -73,22 +84,18 @@ const generateSessionTitle = (firstUserMessage: string) => {
 
 // 创建新会话
 const createNewSession = () => {
+  // 使用临时 ID 标记新会话
+  const tempId = 'temp_' + Date.now()
   const newSession: ChatSession = {
-    id: Date.now().toString(),
+    id: tempId,
     title: '新对话',
-    messages: [
-      {
-        role: 'model',
-        text: '您好，我是 ThinkDo 智能助手。我可以协助您整理计划、分析任务优先级或进行深度思维发散。今天有什么我可以帮您的？',
-        timestamp: new Date()
-      }
-    ],
+    messages: [],
     createdAt: new Date(),
     updatedAt: new Date()
   }
   chatSessions.value.unshift(newSession)
-  currentSessionId.value = newSession.id
-  messages.value = [...newSession.messages]
+  currentSessionId.value = tempId
+  messages.value = []
 }
 
 // 转换 API 消息格式到本地格式
@@ -112,6 +119,231 @@ const parseDateTime = (dateStr: string): Date => {
   if (!dateStr) return new Date()
   // 确保添加时区信息，防止被解析为 UTC
   return new Date(dateStr.endsWith('Z') ? dateStr : dateStr + '+08:00')
+}
+
+const escapeHtml = (text: string) => {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+const parseInlineMarkdown = (text: string) => {
+  let html = escapeHtml(text)
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
+  html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+  html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>')
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>')
+  html = html.replace(/_([^_]+)_/g, '<em>$1</em>')
+  html = html.replace(/~~([^~]+)~~/g, '<del>$1</del>')
+  return html
+}
+
+const splitTableCells = (line: string) => {
+  const cleaned = line.trim().replace(/^\|/, '').replace(/\|$/, '')
+  return cleaned.split('|').map(cell => cell.trim())
+}
+
+const isTableSeparatorLine = (line: string) => {
+  const cells = splitTableCells(line)
+  return cells.length > 1 && cells.every(cell => /^:?-{3,}:?$/.test(cell))
+}
+
+const getTableAlign = (separatorCell: string) => {
+  if (separatorCell.startsWith(':') && separatorCell.endsWith(':')) return 'center'
+  if (separatorCell.endsWith(':')) return 'right'
+  return 'left'
+}
+
+const renderMarkdown = (text: string) => {
+  const lines = text.replace(/\r\n/g, '\n').split('\n')
+  const htmlParts: string[] = []
+  const paragraphLines: string[] = []
+  const listItems: string[] = []
+  let listType: 'ul' | 'ol' | null = null
+  let inCodeBlock = false
+  let codeFenceChar = ''
+  let codeFenceLength = 0
+  let codeLang = ''
+  const codeLines: string[] = []
+
+  const flushParagraph = () => {
+    if (paragraphLines.length === 0) return
+    const content = paragraphLines.map(line => parseInlineMarkdown(line)).join('<br />')
+    htmlParts.push(`<p>${content}</p>`)
+    paragraphLines.length = 0
+  }
+
+  const flushList = () => {
+    if (!listType || listItems.length === 0) {
+      listType = null
+      listItems.length = 0
+      return
+    }
+    htmlParts.push(`<${listType}>${listItems.join('')}</${listType}>`)
+    listType = null
+    listItems.length = 0
+  }
+
+  const flushCodeBlock = () => {
+    if (!inCodeBlock) return
+    const langClass = codeLang ? ` class="language-${escapeHtml(codeLang)}"` : ''
+    htmlParts.push(`<pre><code${langClass}>${escapeHtml(codeLines.join('\n'))}</code></pre>`)
+    inCodeBlock = false
+    codeFenceChar = ''
+    codeFenceLength = 0
+    codeLang = ''
+    codeLines.length = 0
+  }
+
+  let index = 0
+  while (index < lines.length) {
+    const line = lines[index] ?? ''
+    const codeFence = line.match(/^\s*([`~]{3,})\s*([^\s`~]*)\s*$/)
+    if (codeFence) {
+      flushParagraph()
+      flushList()
+      if (inCodeBlock) {
+        const closeFenceChar = codeFence[1]?.[0] ?? ''
+        const closeFenceLength = codeFence[1]?.length ?? 0
+        if (closeFenceChar === codeFenceChar && closeFenceLength >= codeFenceLength) {
+          flushCodeBlock()
+        } else {
+          codeLines.push(line)
+        }
+      } else {
+        const openFence = codeFence[1] ?? '```'
+        inCodeBlock = true
+        codeFenceChar = openFence[0] ?? '`'
+        codeFenceLength = openFence.length
+        codeLang = codeFence[2] ?? ''
+      }
+      index += 1
+      continue
+    }
+
+    if (inCodeBlock) {
+      codeLines.push(line)
+      index += 1
+      continue
+    }
+
+    const trimmed = line.trim()
+    if (!trimmed) {
+      flushParagraph()
+      flushList()
+      index += 1
+      continue
+    }
+
+    const nextLine = lines[index + 1]?.trim() ?? ''
+    if (trimmed.includes('|') && nextLine && isTableSeparatorLine(nextLine)) {
+      flushParagraph()
+      flushList()
+
+      const headers = splitTableCells(trimmed)
+      const separatorCells = splitTableCells(nextLine)
+      const aligns = headers.map((_, cellIndex) => {
+        return getTableAlign(separatorCells[cellIndex] ?? '---')
+      })
+      const headerHtml = headers
+        .map((header, cellIndex) => `<th style="text-align:${aligns[cellIndex]}">${parseInlineMarkdown(header)}</th>`)
+        .join('')
+
+      const rowHtmlList: string[] = []
+      index += 2
+
+      while (index < lines.length) {
+        const bodyLine = lines[index] ?? ''
+        const bodyTrimmed = bodyLine.trim()
+        if (!bodyTrimmed || !bodyTrimmed.includes('|')) break
+
+        const cells = splitTableCells(bodyTrimmed)
+        if (cells.length === 0) break
+
+        const rowHtml = headers
+          .map((_, cellIndex) => {
+            const cellText = cells[cellIndex] ?? ''
+            return `<td style="text-align:${aligns[cellIndex]}">${parseInlineMarkdown(cellText)}</td>`
+          })
+          .join('')
+        rowHtmlList.push(`<tr>${rowHtml}</tr>`)
+        index += 1
+      }
+
+      htmlParts.push(`<table><thead><tr>${headerHtml}</tr></thead><tbody>${rowHtmlList.join('')}</tbody></table>`)
+      continue
+    }
+
+    const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)$/)
+    if (headingMatch) {
+      flushParagraph()
+      flushList()
+      const headingLevelToken = headingMatch[1] ?? '#'
+      const headingText = headingMatch[2] ?? ''
+      const level = headingLevelToken.length
+      htmlParts.push(`<h${level}>${parseInlineMarkdown(headingText)}</h${level}>`)
+      index += 1
+      continue
+    }
+
+    if (/^([-*_])\1{2,}$/.test(trimmed)) {
+      flushParagraph()
+      flushList()
+      htmlParts.push('<hr />')
+      index += 1
+      continue
+    }
+
+    const blockquoteMatch = trimmed.match(/^>\s?(.*)$/)
+    if (blockquoteMatch) {
+      flushParagraph()
+      flushList()
+      const blockquoteText = blockquoteMatch[1] ?? ''
+      htmlParts.push(`<blockquote><p>${parseInlineMarkdown(blockquoteText)}</p></blockquote>`)
+      index += 1
+      continue
+    }
+
+    const unorderedMatch = trimmed.match(/^[-*+]\s+(.*)$/)
+    if (unorderedMatch) {
+      flushParagraph()
+      if (listType !== 'ul') {
+        flushList()
+        listType = 'ul'
+      }
+      const unorderedText = unorderedMatch[1] ?? ''
+      listItems.push(`<li>${parseInlineMarkdown(unorderedText)}</li>`)
+      index += 1
+      continue
+    }
+
+    const orderedMatch = trimmed.match(/^\d+\.\s+(.*)$/)
+    if (orderedMatch) {
+      flushParagraph()
+      if (listType !== 'ol') {
+        flushList()
+        listType = 'ol'
+      }
+      const orderedText = orderedMatch[1] ?? ''
+      listItems.push(`<li>${parseInlineMarkdown(orderedText)}</li>`)
+      index += 1
+      continue
+    }
+
+    flushList()
+    paragraphLines.push(line)
+    index += 1
+  }
+
+  flushParagraph()
+  flushList()
+  flushCodeBlock()
+
+  return htmlParts.join('')
 }
 
 // 加载会话列表
@@ -273,52 +505,125 @@ const scrollToBottom = () => {
   })
 }
 
+// 流式对话
 const handleSend = async () => {
   if (!input.value.trim() || isTyping.value) return
 
+  const userQuestion = input.value.trim()
+  input.value = ''
+
+  // 添加用户消息
   const userMessage: ChatMessage = {
     role: 'user',
-    text: input.value,
+    text: userQuestion,
     timestamp: new Date()
   }
-
   messages.value.push(userMessage)
-  input.value = ''
-  isTyping.value = true
   scrollToBottom()
 
-  // 模拟 AI 响应
-  setTimeout(() => {
-    const responses = [
-      '这是一个很好的问题！让我帮你分析一下...',
-      '我理解你的需求。根据我的分析...',
-      '这个问题很有趣！从我的角度来看...',
-      '感谢你的提问！让我提供一些建议...',
-      '明白你想要达到的目标。这里有几个思路...'
-    ]
+  // 判断是否为新会话（临时 ID 或没有消息）
+  const currentSession = chatSessions.value.find(s => s.id === currentSessionId.value)
+  const isNewSession = !currentSessionId.value ||
+                       currentSessionId.value.startsWith('temp_') ||
+                       (currentSession && currentSession.messages.length === 0)
 
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)] || '好的，我明白了。'
+  // 用于存储完整的响应文本
+  let fullResponse = ''
+  let aiMessageIndex = -1
 
-    const modelMessage: ChatMessage = {
-      role: 'model',
-      text: randomResponse,
-      timestamp: new Date()
-    }
+  // 开始流式输出
+  isTyping.value = true
+  showTypingIndicator.value = true
 
-    messages.value.push(modelMessage)
+  try {
+    // 调用流式 API
+    aiChatApi.streamChat({
+      question: userQuestion,
+      conversationId: isNewSession ? undefined : currentSessionId.value,
+      deepThinking: false
+    }, {
+      onMeta: (data) => {
+        // 收到 meta 事件，更新会话 ID
+        if (isNewSession && data.conversationId) {
+          const session = chatSessions.value.find(s => s.id === currentSessionId.value)
+          if (session) {
+            session.id = data.conversationId
+            currentSessionId.value = data.conversationId
+          }
+        }
+      },
+      onMessage: (data) => {
+        // 收到消息增量
+        if (data.type === 'response' && typeof data.delta === 'string') {
+          fullResponse += data.delta
+
+          // 如果还没有创建 AI 消息，先创建
+          if (aiMessageIndex === -1) {
+            if (!fullResponse.trim()) {
+              return
+            }
+
+            const aiMessage: ChatMessage = {
+              role: 'model',
+              text: fullResponse,
+              timestamp: new Date()
+            }
+            messages.value.push(aiMessage)
+            aiMessageIndex = messages.value.length - 1
+            showTypingIndicator.value = false
+          } else {
+            // 追加内容
+            const msg = messages.value[aiMessageIndex]
+            if (msg) {
+              msg.text = fullResponse
+            }
+          }
+          scrollToBottom()
+        }
+      },
+      onFinish: () => {
+        // 流式输出完成
+        isTyping.value = false
+        showTypingIndicator.value = false
+      },
+      onDone: () => {
+        // 连接关闭，更新会话
+        isTyping.value = false
+        showTypingIndicator.value = false
+        updateCurrentSession()
+      },
+      onError: (error) => {
+        console.error('流式对话错误:', error)
+        isTyping.value = false
+        showTypingIndicator.value = false
+        if (aiMessageIndex === -1) {
+          const errorMsg: ChatMessage = {
+            role: 'model',
+            text: '抱歉，发生了错误，请重试。',
+            timestamp: new Date()
+          }
+          messages.value.push(errorMsg)
+        }
+      }
+    })
+  } catch (error) {
+    console.error('发送消息失败:', error)
     isTyping.value = false
-    updateCurrentSession()
-    scrollToBottom()
-  }, 1000)
+    showTypingIndicator.value = false
+    if (aiMessageIndex === -1) {
+      const errorMsg: ChatMessage = {
+        role: 'model',
+        text: '抱歉，发送消息失败，请重试。',
+        timestamp: new Date()
+      }
+      messages.value.push(errorMsg)
+    }
+  }
 }
 
 const clearChat = () => {
   if (window.confirm('确定要清空当前对话的所有内容吗？')) {
-    messages.value = [{
-      role: 'model',
-      text: '对话已重置。我是 ThinkDo 智库 AI，随时准备协助您。',
-      timestamp: new Date()
-    }]
+    messages.value = []
     updateCurrentSession()
   }
 }
@@ -470,23 +775,64 @@ const formatTime = (date: Date) => {
                         ? 'bg-neutral-900 text-white'
                         : 'bg-stone-50 text-neutral-800 border border-black/[0.03]'"
                     >
-                      <p
-                        v-for="(line, idx) in msg.text.split('\n')"
-                        :key="idx"
-                        :class="idx > 0 ? 'mt-2' : ''"
-                      >
-                        {{ line }}
-                      </p>
+                      <template v-if="msg.role === 'user'">
+                        <p
+                          v-for="(line, idx) in msg.text.split('\n')"
+                          :key="idx"
+                          :class="idx > 0 ? 'mt-2' : ''"
+                        >
+                          {{ line }}
+                        </p>
+                      </template>
+                      <div
+                        v-else
+                        class="prose prose-sm max-w-none overflow-x-auto prose-neutral prose-p:my-2 prose-headings:my-3 prose-pre:my-3 prose-pre:overflow-x-auto prose-pre:rounded-lg prose-pre:bg-neutral-900 prose-pre:text-neutral-100 prose-code:before:content-none prose-code:after:content-none prose-code:bg-neutral-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-4 prose-blockquote:border-neutral-300 prose-blockquote:text-neutral-700 prose-table:my-3 prose-table:w-full prose-th:border prose-th:border-neutral-300 prose-th:bg-neutral-100 prose-th:px-2 prose-th:py-1 prose-th:font-semibold prose-td:border prose-td:border-neutral-200 prose-td:px-2 prose-td:py-1"
+                        v-html="renderMarkdown(msg.text)"
+                      ></div>
                     </div>
-                    <p class="text-[10px] text-neutral-400">
-                      {{ msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}
-                    </p>
+                    <div
+                      class="flex items-center gap-2"
+                      :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
+                    >
+                      <p class="text-[10px] text-neutral-400">
+                        {{ msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }) }}
+                      </p>
+                      <button
+                        type="button"
+                        class="h-5 w-5 inline-flex items-center justify-center rounded text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                        @click="copyMessage(msg.text)"
+                      >
+                        <Copy :size="12" />
+                      </button>
+                      <template v-if="msg.role === 'model'">
+                        <button
+                          type="button"
+                          class="h-5 w-5 inline-flex items-center justify-center rounded transition-colors"
+                          :class="aiFeedback[i] === 'up'
+                            ? 'text-emerald-600 bg-emerald-50'
+                            : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'"
+                          @click="setAiFeedback(i, 'up')"
+                        >
+                          <ThumbsUp :size="12" />
+                        </button>
+                        <button
+                          type="button"
+                          class="h-5 w-5 inline-flex items-center justify-center rounded transition-colors"
+                          :class="aiFeedback[i] === 'down'
+                            ? 'text-rose-600 bg-rose-50'
+                            : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'"
+                          @click="setAiFeedback(i, 'down')"
+                        >
+                          <ThumbsDown :size="12" />
+                        </button>
+                      </template>
+                    </div>
                   </div>
                 </div>
 
                 <!-- 输入中状态 -->
                 <div
-                  v-if="isTyping"
+                  v-if="isTyping && showTypingIndicator"
                   class="flex gap-3"
                 >
                   <div class="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center shrink-0">
