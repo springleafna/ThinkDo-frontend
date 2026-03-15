@@ -50,6 +50,7 @@ export interface SseMessageData {
 // SSE finish 事件数据
 export interface SseFinishData {
   messageId: string
+  title?: string
 }
 
 // SSE 事件

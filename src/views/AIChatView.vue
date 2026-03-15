@@ -63,6 +63,7 @@ const enableDeepThinking = ref(false)
 const currentTaskId = ref('')
 const activeStreamCancel = ref<(() => void) | null>(null)
 const isStopping = ref(false)
+const pendingFinishTitle = ref('')
 const quickPrompts = [
   '帮我总结今天的工作重点',
   '给我一个本周学习计划',
@@ -129,6 +130,7 @@ const createNewSession = () => {
   currentSessionId.value = ''
   messages.value = []
   showTypingIndicator.value = false
+  pendingFinishTitle.value = ''
 }
 
 // 转换 API 消息格式到本地格式
@@ -509,10 +511,15 @@ const updateCurrentSession = () => {
     session.updatedAt = new Date()
 
     // 首次问答完成后，为新会话更新标题
-    const firstUserMessage = messages.value.find(m => m.role === 'user')
-    const hasModelReply = messages.value.some(m => m.role === 'model' && m.text.trim().length > 0)
-    if (session.title === '新对话' && firstUserMessage && hasModelReply) {
-      session.title = generateSessionTitle(firstUserMessage.text)
+    if (session.title === '新对话' && pendingFinishTitle.value.trim()) {
+      session.title = pendingFinishTitle.value.trim()
+      pendingFinishTitle.value = ''
+    } else {
+      const firstUserMessage = messages.value.find(m => m.role === 'user')
+      const hasModelReply = messages.value.some(m => m.role === 'model' && m.text.trim().length > 0)
+      if (session.title === '新对话' && firstUserMessage && hasModelReply) {
+        session.title = generateSessionTitle(firstUserMessage.text)
+      }
     }
 
     // 移动到顶部
@@ -542,6 +549,7 @@ const handleSend = async () => {
 
   const userQuestion = input.value.trim()
   input.value = ''
+  pendingFinishTitle.value = ''
 
   if (!currentSessionId.value) {
     const tempId = 'temp_' + Date.now()
@@ -626,7 +634,10 @@ const handleSend = async () => {
           scrollToBottom()
         }
       },
-      onFinish: () => {
+      onFinish: (data) => {
+        if (data.title?.trim()) {
+          pendingFinishTitle.value = data.title.trim()
+        }
         // 流式输出完成
         isTyping.value = false
         showTypingIndicator.value = false
@@ -647,6 +658,7 @@ const handleSend = async () => {
         activeStreamCancel.value = null
         currentTaskId.value = ''
         isStopping.value = false
+        pendingFinishTitle.value = ''
         if (aiMessageIndex === -1) {
           const errorMsg: ChatMessage = {
             role: 'model',
@@ -664,6 +676,7 @@ const handleSend = async () => {
     activeStreamCancel.value = null
     currentTaskId.value = ''
     isStopping.value = false
+    pendingFinishTitle.value = ''
     if (aiMessageIndex === -1) {
       const errorMsg: ChatMessage = {
         role: 'model',
