@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, computed } from 'vue'
-import { Send, Bot, User, Trash2, Plus, MessageSquare, Clock, Pencil, Copy, ThumbsUp, ThumbsDown } from 'lucide-vue-next'
+import { Send, Bot, User, Trash2, Plus, MessageSquare, Clock, Pencil, Copy, ThumbsUp, ThumbsDown, Sparkles, Compass, Database, Brain } from 'lucide-vue-next'
 import { useLayoutStore } from '@/stores/layout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -57,6 +57,15 @@ const input = ref('')
 const isTyping = ref(false)
 const showTypingIndicator = ref(false)
 const aiFeedback = ref<Record<number, 'up' | 'down'>>({})
+const inputRef = ref<HTMLTextAreaElement>()
+const enableKnowledgeBase = ref(false)
+const enableDeepThinking = ref(false)
+const quickPrompts = [
+  '帮我总结今天的工作重点',
+  '给我一个本周学习计划',
+  '把这个需求拆分为可执行任务',
+  '用简单例子解释一下 RAG'
+]
 
 const copyMessage = async (text: string) => {
   try {
@@ -72,6 +81,13 @@ const setAiFeedback = (index: number, value: 'up' | 'down') => {
   aiFeedback.value[index] = value
 }
 
+const useQuickPrompt = (prompt: string) => {
+  input.value = prompt
+  nextTick(() => {
+    inputRef.value?.focus()
+  })
+}
+
 // 生成会话标题
 const generateSessionTitle = (firstUserMessage: string) => {
   const maxLength = 20
@@ -84,18 +100,9 @@ const generateSessionTitle = (firstUserMessage: string) => {
 
 // 创建新会话
 const createNewSession = () => {
-  // 使用临时 ID 标记新会话
-  const tempId = 'temp_' + Date.now()
-  const newSession: ChatSession = {
-    id: tempId,
-    title: '新对话',
-    messages: [],
-    createdAt: new Date(),
-    updatedAt: new Date()
-  }
-  chatSessions.value.unshift(newSession)
-  currentSessionId.value = tempId
+  currentSessionId.value = ''
   messages.value = []
+  showTypingIndicator.value = false
 }
 
 // 转换 API 消息格式到本地格式
@@ -475,13 +482,11 @@ const updateCurrentSession = () => {
     session.messages = [...messages.value]
     session.updatedAt = new Date()
 
-    // 如果是第一条用户消息，更新标题
-    const userMessages = messages.value.filter(m => m.role === 'user')
-    if (userMessages.length === 1 && messages.value.filter(m => m.role === 'model').length === 2) {
-      const firstUserMessage = userMessages[0]
-      if (firstUserMessage) {
-        session.title = generateSessionTitle(firstUserMessage.text)
-      }
+    // 首次问答完成后，为新会话更新标题
+    const firstUserMessage = messages.value.find(m => m.role === 'user')
+    const hasModelReply = messages.value.some(m => m.role === 'model' && m.text.trim().length > 0)
+    if (session.title === '新对话' && firstUserMessage && hasModelReply) {
+      session.title = generateSessionTitle(firstUserMessage.text)
     }
 
     // 移动到顶部
@@ -511,6 +516,19 @@ const handleSend = async () => {
 
   const userQuestion = input.value.trim()
   input.value = ''
+
+  if (!currentSessionId.value) {
+    const tempId = 'temp_' + Date.now()
+    const newSession: ChatSession = {
+      id: tempId,
+      title: '新对话',
+      messages: [],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+    chatSessions.value.unshift(newSession)
+    currentSessionId.value = tempId
+  }
 
   // 添加用户消息
   const userMessage: ChatMessage = {
@@ -753,6 +771,32 @@ const formatTime = (date: Date) => {
                 class="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar"
               >
                 <div
+                  v-if="messages.length === 0"
+                  class="h-full min-h-[340px] flex items-center justify-center"
+                >
+                  <div class="w-full max-w-2xl rounded-2xl border border-black/5 bg-white/80 px-8 py-10 text-center shadow-sm">
+                    <div class="mx-auto mb-4 h-12 w-12 rounded-xl bg-stone-100 flex items-center justify-center">
+                      <Sparkles :size="22" class="text-neutral-600" />
+                    </div>
+                    <h3 class="text-lg font-semibold text-neutral-800">开始一个新的对话</h3>
+                    <p class="mt-2 text-sm text-neutral-500">可以直接输入问题，或先试试下面的快捷提问</p>
+                    <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+                      <button
+                        v-for="prompt in quickPrompts"
+                        :key="prompt"
+                        type="button"
+                        class="group rounded-xl border border-black/5 bg-white px-4 py-3 text-sm text-neutral-700 transition-all hover:border-neutral-300 hover:bg-stone-50"
+                        @click="useQuickPrompt(prompt)"
+                      >
+                        <span class="flex items-start gap-2">
+                          <Compass :size="14" class="mt-0.5 shrink-0 text-neutral-400 group-hover:text-neutral-600" />
+                          <span>{{ prompt }}</span>
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div
                   v-for="(msg, i) in messages"
                   :key="i"
                   class="flex gap-3"
@@ -852,17 +896,42 @@ const formatTime = (date: Date) => {
               <div class="p-3 bg-stone-50/30">
                 <div class="relative">
                   <textarea
+                    ref="inputRef"
                     v-model="input"
                     @keydown="handleKeyDown"
                     placeholder="输入消息..."
-                    class="w-full bg-white border border-black/5 rounded-lg px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-200 transition-all resize-none min-h-[44px] max-h-32 custom-scrollbar"
-                    rows="1"
+                    class="w-full bg-white border border-black/5 rounded-lg px-4 pt-3 pb-11 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-200 transition-all resize-none min-h-[88px] max-h-40 custom-scrollbar"
+                    rows="2"
                   />
+                  <div class="absolute left-3 bottom-2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      class="h-7 px-2.5 rounded-md text-xs inline-flex items-center gap-1.5 transition-colors"
+                      :class="enableKnowledgeBase
+                        ? 'bg-neutral-900 text-white'
+                        : 'bg-white text-neutral-600 border border-black/10 hover:bg-stone-50'"
+                      @click="enableKnowledgeBase = !enableKnowledgeBase"
+                    >
+                      <Database :size="13" />
+                      <span>使用知识库</span>
+                    </button>
+                    <button
+                      type="button"
+                      class="h-7 px-2.5 rounded-md text-xs inline-flex items-center gap-1.5 transition-colors"
+                      :class="enableDeepThinking
+                        ? 'bg-neutral-900 text-white'
+                        : 'bg-white text-neutral-600 border border-black/10 hover:bg-stone-50'"
+                      @click="enableDeepThinking = !enableDeepThinking"
+                    >
+                      <Brain :size="13" />
+                      <span>深度思考</span>
+                    </button>
+                  </div>
                   <Button
                     @click="handleSend"
                     :disabled="!input.trim() || isTyping"
                     size="icon"
-                    class="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8"
+                    class="absolute right-2 bottom-2 h-8 w-8"
                     :class="input.trim() && !isTyping ? 'bg-neutral-900 hover:bg-neutral-800' : ''"
                   >
                     <Send :size="16" />
