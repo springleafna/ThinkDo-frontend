@@ -132,5 +132,13 @@ export const knowledgeDocumentApi = {
     return request.patch<void>(`/knowledge-base/docs/${docId}/enable`, null, {
       params: { value: enabled }
     })
+  },
+
+  /**
+   * 开始分块：抽取文本 -> 分块 -> 嵌入并写入向量库
+   * POST /knowledge-base/docs/{doc-id}/chunk
+   */
+  startChunk(docId: string) {
+    return request.post<void>(`/knowledge-base/docs/${docId}/chunk`)
   }
 }

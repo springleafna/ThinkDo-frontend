@@ -22,7 +22,8 @@ import {
   Filter,
   Check,
   X,
-  Loader2
+  Loader2,
+  Play
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
@@ -107,6 +108,7 @@ interface FileInfo extends KnowledgeDocument {
 
 // 文件数据
 const files = ref<FileInfo[]>([])
+const chunkingFileIds = ref<Set<string>>(new Set())
 
 // 获取知识库详情
 const fetchKnowledgeBase = async () => {
@@ -247,6 +249,47 @@ const updateFileTypeCount = () => {
       type.count = files.value.filter(f => f.uiType === type.id).length
     }
   })
+}
+
+const normalizeChunkStatus = (status?: string) => {
+  const normalized = status?.toLowerCase()
+  if (normalized === 'running' || normalized === 'failed' || normalized === 'success') {
+    return normalized
+  }
+  return 'pending'
+}
+
+const getChunkStatusLabel = (status?: string) => {
+  const normalized = normalizeChunkStatus(status)
+  if (normalized === 'running') return '向量化中'
+  if (normalized === 'failed') return '向量化失败'
+  if (normalized === 'success') return '向量化完成'
+  return '待向量化'
+}
+
+const getChunkStatusClass = (status?: string) => {
+  const normalized = normalizeChunkStatus(status)
+  if (normalized === 'running') return 'bg-amber-50 text-amber-700 border-amber-200'
+  if (normalized === 'failed') return 'bg-rose-50 text-rose-700 border-rose-200'
+  if (normalized === 'success') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  return 'bg-stone-50 text-neutral-600 border-black/10'
+}
+
+const handleStartChunk = async (file: FileInfo) => {
+  if (normalizeChunkStatus(file.status) !== 'pending' || chunkingFileIds.value.has(file.id)) return
+
+  try {
+    chunkingFileIds.value.add(file.id)
+    await knowledgeDocumentApi.startChunk(file.id)
+    file.status = 'running'
+    toast.success('已开始分块')
+    await fetchDocuments()
+  } catch (error) {
+    console.error('开始分块失败：', error)
+    toast.error('开始分块失败')
+  } finally {
+    chunkingFileIds.value.delete(file.id)
+  }
 }
 
 // 全选/取消全选
@@ -568,6 +611,27 @@ onMounted(() => {
                     </div>
                   </div>
 
+                  <div class="mt-2 flex items-center justify-between gap-2">
+                    <span
+                      class="inline-flex items-center rounded-md border px-2 py-0.5 text-[11px]"
+                      :class="getChunkStatusClass(file.status)"
+                    >
+                      {{ getChunkStatusLabel(file.status) }}
+                    </span>
+                    <button
+                      @click.stop="handleStartChunk(file)"
+                      :disabled="normalizeChunkStatus(file.status) !== 'pending' || chunkingFileIds.has(file.id)"
+                      class="h-6 px-2 rounded-md text-[11px] inline-flex items-center gap-1 transition-colors"
+                      :class="normalizeChunkStatus(file.status) === 'pending' && !chunkingFileIds.has(file.id)
+                        ? 'bg-black text-white hover:bg-neutral-800'
+                        : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'"
+                    >
+                      <Loader2 v-if="chunkingFileIds.has(file.id)" :size="11" class="animate-spin" />
+                      <Play v-else :size="11" />
+                      <span>{{ chunkingFileIds.has(file.id) ? '处理中' : '开始分块' }}</span>
+                    </button>
+                  </div>
+
                   <!-- 快捷操作按钮 -->
                   <div class="flex items-center gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
@@ -634,8 +698,28 @@ onMounted(() => {
                       <span>{{ formatTime(file.createdAt) }}</span>
                     </div>
 
+                    <div
+                      class="hidden lg:inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] shrink-0"
+                      :class="getChunkStatusClass(file.status)"
+                    >
+                      {{ getChunkStatusLabel(file.status) }}
+                    </div>
+
                     <!-- 操作按钮 -->
                     <div class="flex items-center gap-2 shrink-0">
+                      <button
+                        @click.stop="handleStartChunk(file)"
+                        :disabled="normalizeChunkStatus(file.status) !== 'pending' || chunkingFileIds.has(file.id)"
+                        class="px-2.5 py-1.5 rounded-lg text-xs inline-flex items-center gap-1 transition-colors"
+                        :class="normalizeChunkStatus(file.status) === 'pending' && !chunkingFileIds.has(file.id)
+                          ? 'bg-black text-white hover:bg-neutral-800'
+                          : 'bg-neutral-100 text-neutral-400 cursor-not-allowed'"
+                        title="开始分块"
+                      >
+                        <Loader2 v-if="chunkingFileIds.has(file.id)" :size="12" class="animate-spin" />
+                        <Play v-else :size="12" />
+                        <span>{{ chunkingFileIds.has(file.id) ? '处理中' : '开始分块' }}</span>
+                      </button>
                       <button
                         @click.stop
                         class="p-2 hover:bg-black/5 rounded-lg transition-colors"

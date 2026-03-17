@@ -125,7 +125,7 @@ const handleCreateKnowledgeBase = async () => {
     isCreating.value = true
     await knowledgeBaseApi.create({
       name: createForm.value.name.trim(),
-      embeddingModel: 'qwen3-embedding:8b-fp16',
+      embeddingModel: 'qwen-emb-8b',
       collectionName: createForm.value.collectionName.trim()
     })
     toast.success('知识库创建成功')
