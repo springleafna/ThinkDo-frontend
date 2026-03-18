@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLayoutStore } from '@/stores/layout'
+import { z } from 'zod'
 import {
   Plus,
   Search,
@@ -34,6 +35,18 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+
+// 表单验证schema
+const createKnowledgeBaseSchema = z.object({
+  name: z.string().min(1, '请输入知识库名称').max(50, '名称不能超过50个字符'),
+  collectionName: z
+    .string()
+    .min(1, '请输入Collection名称')
+    .max(50, '名称不能超过50个字符')
+    .regex(/^[a-z0-9]+$/, '只能包含小写英文字母和数字')
+})
+
+type CreateKnowledgeBaseForm = z.infer<typeof createKnowledgeBaseSchema>
 
 const router = useRouter()
 const layoutStore = useLayoutStore()
@@ -112,12 +125,13 @@ const openCreateDialog = () => {
 
 // 创建知识库
 const handleCreateKnowledgeBase = async () => {
-  if (!createForm.value.name.trim()) {
-    toast.error('请输入知识库名称')
-    return
-  }
-  if (!createForm.value.collectionName.trim()) {
-    toast.error('请输入向量空间名称')
+  // 表单验证
+  const result = createKnowledgeBaseSchema.safeParse(createForm.value)
+  if (!result.success) {
+    const firstError = result.error.issues[0]
+    if (firstError) {
+      toast.error(firstError.message)
+    }
     return
   }
 
@@ -566,7 +580,7 @@ onMounted(() => {
               @keyup.enter="handleCreateKnowledgeBase"
             />
             <p class="text-xs text-neutral-400">
-              用于向量数据库的集合名称，建议使用英文字母、数字和下划线
+              用于向量数据库的集合名称，只能包含小写英文字母和数字
             </p>
           </div>
 

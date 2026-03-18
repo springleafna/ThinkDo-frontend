@@ -4,6 +4,22 @@ import { request } from '@/utils/request'
 export interface UploadDocumentParams {
   sourceType: 'file' | 'url'
   sourceLocation?: string
+  // 分块策略：fixed_size / structure_aware
+  chunkStrategy?: 'fixed_size' | 'structure_aware'
+  // 分块参数JSON（可选，优先于下面字段）
+  chunkConfig?: string
+  // 固定大小分块：块大小
+  chunkSize?: number
+  // 固定大小分块：重叠大小
+  overlapSize?: number
+  // 结构感知：理想块大小
+  targetChars?: number
+  // 结构感知：块上限
+  maxChars?: number
+  // 结构感知：块下限
+  minChars?: number
+  // 结构感知：重叠大小
+  overlapChars?: number
 }
 
 // 更新文档请求参数
@@ -75,6 +91,30 @@ export const knowledgeDocumentApi = {
     formData.append('sourceType', params.sourceType)
     if (params.sourceLocation) {
       formData.append('sourceLocation', params.sourceLocation)
+    }
+    if (params.chunkStrategy) {
+      formData.append('chunkStrategy', params.chunkStrategy)
+    }
+    if (params.chunkConfig) {
+      formData.append('chunkConfig', params.chunkConfig)
+    }
+    if (params.chunkSize !== undefined) {
+      formData.append('chunkSize', String(params.chunkSize))
+    }
+    if (params.overlapSize !== undefined) {
+      formData.append('overlapSize', String(params.overlapSize))
+    }
+    if (params.targetChars !== undefined) {
+      formData.append('targetChars', String(params.targetChars))
+    }
+    if (params.maxChars !== undefined) {
+      formData.append('maxChars', String(params.maxChars))
+    }
+    if (params.minChars !== undefined) {
+      formData.append('minChars', String(params.minChars))
+    }
+    if (params.overlapChars !== undefined) {
+      formData.append('overlapChars', String(params.overlapChars))
     }
     if (file) {
       formData.append('file', file)

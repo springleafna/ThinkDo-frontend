@@ -23,7 +23,8 @@ import {
   Check,
   X,
   Loader2,
-  Play
+  Play,
+  RefreshCw
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
@@ -60,6 +61,7 @@ const knowledgeBaseId = computed(() => route.params.id as string)
 // 加载状态
 const isLoading = ref(false)
 const isLoadingKB = ref(false)
+const isRefreshing = ref(false)
 
 // 上传对话框
 const showUploadDialog = ref(false)
@@ -68,6 +70,15 @@ const uploadType = ref<'file' | 'url'>('file')
 const selectedFile = ref<File | null>(null)
 const urlInput = ref('')
 const fileInputRef = ref<HTMLInputElement | null>(null)
+
+// 分块配置参数
+const chunkStrategy = ref<'fixed_size' | 'structure_aware'>('fixed_size')
+const chunkSize = ref(512)
+const overlapSize = ref(128)
+const targetChars = ref(512)
+const maxChars = ref(600)
+const minChars = ref(128)
+const overlapChars = ref(0)
 
 // 删除确认对话框
 const showDeleteDialog = ref(false)
@@ -369,7 +380,29 @@ const uploadFiles = () => {
   uploadType.value = 'file'
   selectedFile.value = null
   urlInput.value = ''
+  // 重置分块配置
+  chunkStrategy.value = 'fixed_size'
+  chunkSize.value = 512
+  overlapSize.value = 128
+  targetChars.value = 512
+  maxChars.value = 600
+  minChars.value = 128
+  overlapChars.value = 0
   showUploadDialog.value = true
+}
+
+// 刷新文件列表
+const refreshFiles = async () => {
+  try {
+    isRefreshing.value = true
+    await fetchDocuments()
+    toast.success('刷新成功')
+  } catch (error) {
+    console.error('刷新文件列表失败：', error)
+    toast.error('刷新失败')
+  } finally {
+    isRefreshing.value = false
+  }
 }
 
 // 触发文件选择
@@ -404,11 +437,36 @@ const handleUpload = async () => {
 
   try {
     isUploading.value = true
+
+    // 生成chunkConfig JSON
+    let chunkConfig: string | null = null
+    if (chunkStrategy.value === 'fixed_size') {
+      chunkConfig = JSON.stringify({
+        chunkSize: chunkSize.value,
+        overlapSize: overlapSize.value
+      })
+    } else if (chunkStrategy.value === 'structure_aware') {
+      chunkConfig = JSON.stringify({
+        maxChars: maxChars.value,
+        minChars: minChars.value,
+        targetChars: targetChars.value,
+        overlapChars: overlapChars.value
+      })
+    }
+
     await knowledgeDocumentApi.upload(
       knowledgeBaseId.value,
       {
         sourceType: uploadType.value,
-        sourceLocation: uploadType.value === 'url' ? urlInput.value.trim() : undefined
+        sourceLocation: uploadType.value === 'url' ? urlInput.value.trim() : undefined,
+        chunkStrategy: chunkStrategy.value,
+        chunkConfig: chunkConfig ?? undefined,
+        chunkSize: chunkSize.value,
+        overlapSize: overlapSize.value,
+        targetChars: targetChars.value,
+        maxChars: maxChars.value,
+        minChars: minChars.value,
+        overlapChars: overlapChars.value
       },
       uploadType.value === 'file' ? selectedFile.value || undefined : undefined
     )
@@ -416,6 +474,14 @@ const handleUpload = async () => {
     showUploadDialog.value = false
     selectedFile.value = null
     urlInput.value = ''
+    // 重置分块配置
+    chunkStrategy.value = 'fixed_size'
+    chunkSize.value = 512
+    overlapSize.value = 128
+    targetChars.value = 512
+    maxChars.value = 600
+    minChars.value = 128
+    overlapChars.value = 0
     await fetchDocuments()
   } catch (error) {
     console.error('上传文件失败：', error)
@@ -465,13 +531,24 @@ onMounted(() => {
                   <p class="text-sm text-neutral-400">向量空间：{{ knowledgeBase?.collectionName || '-' }}</p>
                 </div>
               </div>
-              <button
-                @click="uploadFiles"
-                class="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-2xl text-[12px] font-bold tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10"
-              >
-                <Upload :size="16" />
-                <span>上传文件</span>
-              </button>
+              <div class="flex items-center gap-3">
+                <button
+                  @click="refreshFiles"
+                  :disabled="isRefreshing"
+                  class="flex items-center gap-2 px-4 py-3 bg-white border border-black/10 text-neutral-600 rounded-2xl text-[12px] font-medium hover:bg-black/5 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="刷新文件列表"
+                >
+                  <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
+                  <span class="hidden sm:inline">刷新</span>
+                </button>
+                <button
+                  @click="uploadFiles"
+                  class="flex items-center gap-2 px-6 py-3 bg-black text-white rounded-2xl text-[12px] font-bold tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-black/10"
+                >
+                  <Upload :size="16" />
+                  <span>上传文件</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -781,6 +858,98 @@ onMounted(() => {
               <TabsTrigger value="url">URL上传</TabsTrigger>
             </TabsList>
           </Tabs>
+
+          <!-- 分块配置 -->
+          <div class="space-y-3 pt-2 border-t border-black/5">
+            <h3 class="text-sm font-medium text-neutral-700">分块配置</h3>
+
+            <!-- 分块策略 -->
+            <div class="space-y-2">
+              <label class="text-xs font-medium text-neutral-600">分块策略</label>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  @click="chunkStrategy = 'fixed_size'"
+                  :class="[
+                    'flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all',
+                    chunkStrategy === 'fixed_size'
+                      ? 'bg-black text-white'
+                      : 'bg-white border border-black/10 text-neutral-600 hover:bg-black/5'
+                  ]"
+                >
+                  固定大小
+                </button>
+                <button
+                  type="button"
+                  @click="chunkStrategy = 'structure_aware'"
+                  :class="[
+                    'flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all',
+                    chunkStrategy === 'structure_aware'
+                      ? 'bg-black text-white'
+                      : 'bg-white border border-black/10 text-neutral-600 hover:bg-black/5'
+                  ]"
+                >
+                  结构感知
+                </button>
+              </div>
+            </div>
+
+            <!-- 固定大小参数 -->
+            <div v-if="chunkStrategy === 'fixed_size'" class="grid grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <label class="text-xs text-neutral-600">块大小</label>
+                <Input
+                  v-model.number="chunkSize"
+                  type="number"
+                  class="h-9"
+                />
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs text-neutral-600">重叠大小</label>
+                <Input
+                  v-model.number="overlapSize"
+                  type="number"
+                  class="h-9"
+                />
+              </div>
+            </div>
+
+            <!-- 结构感知参数 -->
+            <div v-if="chunkStrategy === 'structure_aware'" class="grid grid-cols-2 gap-3">
+              <div class="space-y-1">
+                <label class="text-xs text-neutral-600">理想块大小</label>
+                <Input
+                  v-model.number="targetChars"
+                  type="number"
+                  class="h-9"
+                />
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs text-neutral-600">块上限</label>
+                <Input
+                  v-model.number="maxChars"
+                  type="number"
+                  class="h-9"
+                />
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs text-neutral-600">块下限</label>
+                <Input
+                  v-model.number="minChars"
+                  type="number"
+                  class="h-9"
+                />
+              </div>
+              <div class="space-y-1">
+                <label class="text-xs text-neutral-600">重叠大小</label>
+                <Input
+                  v-model.number="overlapChars"
+                  type="number"
+                  class="h-9"
+                />
+              </div>
+            </div>
+          </div>
 
           <!-- 本地上传 -->
           <div v-if="uploadType === 'file'" class="space-y-2">
