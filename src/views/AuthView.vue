@@ -1,14 +1,12 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  Sparkles,
-  Lock,
   ArrowRight,
-  Github,
-  Chrome,
-  User,
-  ChevronLeft
+  ChevronLeft,
+  Lock,
+  ShieldCheck,
+  User
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { userApi, type LoginParams, type RegisterParams } from '@/api/user'
@@ -18,6 +16,7 @@ const router = useRouter()
 const userStore = useUserStore()
 
 type AuthMode = 'login' | 'register'
+
 const mode = ref<AuthMode>('login')
 const isLoading = ref(false)
 
@@ -33,7 +32,7 @@ const errors = ref({
   confirmPassword: ''
 })
 
-const validateForm = (): boolean => {
+const validateForm = () => {
   errors.value = {
     username: '',
     password: '',
@@ -51,13 +50,13 @@ const validateForm = (): boolean => {
     errors.value.password = '密码不能为空'
     isValid = false
   } else if (formData.value.password.length < 6 || formData.value.password.length > 20) {
-    errors.value.password = '密码长度必须在6-20位之间'
+    errors.value.password = '密码长度需要在 6 到 20 位之间'
     isValid = false
   }
 
   if (mode.value === 'register') {
     if (!formData.value.confirmPassword) {
-      errors.value.confirmPassword = '请确认密码'
+      errors.value.confirmPassword = '请再次输入密码'
       isValid = false
     } else if (formData.value.password !== formData.value.confirmPassword) {
       errors.value.confirmPassword = '两次输入的密码不一致'
@@ -68,8 +67,8 @@ const validateForm = (): boolean => {
   return isValid
 }
 
-const handleSubmit = async (e: Event) => {
-  e.preventDefault()
+const handleSubmit = async (event: Event) => {
+  event.preventDefault()
 
   if (!validateForm()) {
     return
@@ -79,7 +78,6 @@ const handleSubmit = async (e: Event) => {
 
   try {
     if (mode.value === 'login') {
-      // 登录
       const loginParams: LoginParams = {
         username: formData.value.username.trim(),
         password: formData.value.password
@@ -87,14 +85,12 @@ const handleSubmit = async (e: Event) => {
 
       const token = await userApi.login(loginParams)
 
-      // 保存 token 和用户名到 store
       userStore.setToken(token)
       userStore.setUsername(formData.value.username.trim())
 
       toast.success('登录成功')
       router.push('/dashboard')
     } else {
-      // 注册
       const registerParams: RegisterParams = {
         username: formData.value.username.trim(),
         password: formData.value.password
@@ -103,14 +99,11 @@ const handleSubmit = async (e: Event) => {
       await userApi.register(registerParams)
 
       toast.success('注册成功，请登录')
-
-      // 切换到登录模式
       mode.value = 'login'
       formData.value.password = ''
       formData.value.confirmPassword = ''
     }
   } catch (error) {
-    // 错误信息已经在 request.ts 的拦截器中处理
     console.error('认证失败:', error)
   } finally {
     isLoading.value = false
@@ -119,6 +112,10 @@ const handleSubmit = async (e: Event) => {
 
 const onBackToLanding = () => {
   router.push('/')
+}
+
+const onEnterAdmin = () => {
+  router.push('/admin')
 }
 
 const switchMode = (newMode: AuthMode) => {
@@ -133,159 +130,147 @@ const switchMode = (newMode: AuthMode) => {
 </script>
 
 <template>
-  <div class="min-h-screen w-full flex items-center justify-center p-6 bg-[#fcfaf7]">
-    <div class="w-full max-w-md section-reveal">
-      <button
-        @click="onBackToLanding"
-        class="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-neutral-400 hover:text-neutral-900 mb-8 transition-colors group"
-      >
-        <ChevronLeft :size="14" class="group-hover:-translate-x-1 transition-transform" />
-        返回首页
-      </button>
+  <div class="min-h-screen w-full bg-[#fcfaf7] p-6">
+    <div class="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-md items-center">
+      <section class="w-full section-reveal">
+        <button
+          @click="onBackToLanding"
+          class="mb-8 flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-neutral-400 transition-colors hover:text-neutral-900"
+        >
+          <ChevronLeft :size="14" />
+          返回首页
+        </button>
 
-      <div class="flex flex-col items-center mb-10 text-center">
-        <div class="bg-[#1c1917] text-white p-4 rounded-2xl shadow-xl shadow-black/10 mb-6 transform hover:scale-110 transition-transform">
-          <Sparkles :size="32" />
-        </div>
-        <h1 class="text-3xl font-light tracking-tight text-neutral-900">ThinkDo 认证中心</h1>
-      </div>
+        <div class="rounded-[2.5rem] border border-black/5 bg-white p-10 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)]">
+          <div class="mb-6 flex gap-8 border-b border-black/5 pb-1">
+            <button
+              @click="switchMode('login')"
+              :class="[
+                'relative pb-4 text-xs font-bold uppercase tracking-[0.2em] transition-all',
+                mode === 'login' ? 'text-neutral-900' : 'text-neutral-300 hover:text-neutral-500'
+              ]"
+            >
+              登录账号
+              <div
+                v-if="mode === 'login'"
+                class="absolute bottom-0 left-0 h-0.5 w-full rounded-full bg-indigo-600 animate-in fade-in slide-in-from-left-2"
+              ></div>
+            </button>
+            <button
+              @click="switchMode('register')"
+              :class="[
+                'relative pb-4 text-xs font-bold uppercase tracking-[0.2em] transition-all',
+                mode === 'register' ? 'text-neutral-900' : 'text-neutral-300 hover:text-neutral-500'
+              ]"
+            >
+              注册成员
+              <div
+                v-if="mode === 'register'"
+                class="absolute bottom-0 left-0 h-0.5 w-full rounded-full bg-indigo-600 animate-in fade-in slide-in-from-left-2"
+              ></div>
+            </button>
+          </div>
 
-      <div class="woven-border bg-white p-10 rounded-[2.5rem] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.05)] border border-black/5 relative overflow-hidden">
-        <div class="flex gap-8 mb-10 border-b border-black/5 pb-1">
-          <button
-            @click="switchMode('login')"
-            :class="[
-              'pb-4 text-xs font-bold uppercase tracking-[0.2em] transition-all relative',
-              mode === 'login' ? 'text-neutral-900' : 'text-neutral-300 hover:text-neutral-500'
-            ]"
-          >
-            登录账号
-            <div
-              v-if="mode === 'login'"
-              class="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 rounded-full animate-in fade-in slide-in-from-left-2"
-            ></div>
-          </button>
-          <button
-            @click="switchMode('register')"
-            :class="[
-              'pb-4 text-xs font-bold uppercase tracking-[0.2em] transition-all relative',
-              mode === 'register' ? 'text-neutral-900' : 'text-neutral-300 hover:text-neutral-500'
-            ]"
-          >
-            注册成员
+          <form class="space-y-5" @submit="handleSubmit">
+            <div class="space-y-1">
+              <label class="ml-1 text-[12px] font-bold uppercase tracking-widest text-neutral-400">用户名</label>
+              <div class="relative flex items-center">
+                <User class="absolute left-5 text-neutral-300" :size="16" />
+                <input
+                  v-model="formData.username"
+                  type="text"
+                  placeholder="输入你的用户名"
+                  :class="[
+                    'w-full rounded-2xl border bg-stone-50 py-3.5 pl-12 pr-4 text-sm transition-all placeholder:text-neutral-300 focus:outline-none focus:ring-4',
+                    errors.username
+                      ? 'border-red-300 focus:ring-red-100'
+                      : 'border-black/5 focus:ring-indigo-100'
+                  ]"
+                />
+              </div>
+              <p class="ml-1 min-h-[14px] text-[12px] text-red-500">{{ errors.username || '' }}</p>
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex items-center justify-between px-1">
+                <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400">密码</label>
+                <button
+                  v-if="mode === 'login'"
+                  type="button"
+                  class="text-[11px] font-bold uppercase tracking-tighter text-indigo-600 hover:underline"
+                >
+                  忘记密码？
+                </button>
+              </div>
+              <div class="relative flex items-center">
+                <Lock class="absolute left-5 text-neutral-300" :size="16" />
+                <input
+                  v-model="formData.password"
+                  type="password"
+                  placeholder="6 到 20 位密码"
+                  :class="[
+                    'w-full rounded-2xl border bg-stone-50 py-3.5 pl-12 pr-4 text-sm transition-all placeholder:text-neutral-300 focus:outline-none focus:ring-4',
+                    errors.password
+                      ? 'border-red-300 focus:ring-red-100'
+                      : 'border-black/5 focus:ring-indigo-100'
+                  ]"
+                />
+              </div>
+              <p class="ml-1 min-h-[14px] text-[10px] text-red-500">{{ errors.password || '' }}</p>
+            </div>
+
             <div
               v-if="mode === 'register'"
-              class="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 rounded-full animate-in fade-in slide-in-from-left-2"
-            ></div>
-          </button>
-        </div>
-
-        <form @submit="handleSubmit" class="space-y-6">
-          <div class="space-y-2">
-            <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">用户名</label>
-            <div class="relative flex items-center">
-              <User class="absolute left-5 text-neutral-300" :size="16" />
-              <input
-                v-model="formData.username"
-                type="text"
-                placeholder="你的用户名"
-                :class="[
-                  'w-full pl-12 pr-4 py-3.5 bg-stone-50 border rounded-2xl text-sm focus:outline-none focus:ring-4 transition-all placeholder:text-neutral-300',
-                  errors.username
-                    ? 'border-red-300 focus:ring-red-100'
-                    : 'border-black/5 focus:ring-indigo-100'
-                ]"
-              />
+              class="space-y-1 animate-in fade-in slide-in-from-top-2"
+            >
+              <label class="ml-1 text-[12px] font-bold uppercase tracking-widest text-neutral-400">确认密码</label>
+              <div class="relative flex items-center">
+                <Lock class="absolute left-5 text-neutral-300" :size="16" />
+                <input
+                  v-model="formData.confirmPassword"
+                  type="password"
+                  placeholder="再次输入密码"
+                  :class="[
+                    'w-full rounded-2xl border bg-stone-50 py-3.5 pl-12 pr-4 text-sm transition-all placeholder:text-neutral-300 focus:outline-none focus:ring-4',
+                    errors.confirmPassword
+                      ? 'border-red-300 focus:ring-red-100'
+                      : 'border-black/5 focus:ring-indigo-100'
+                  ]"
+                />
+              </div>
+              <p class="ml-1 min-h-[14px] text-[10px] text-red-500">{{ errors.confirmPassword || '' }}</p>
             </div>
-            <p class="text-[12px] text-red-500 ml-1 min-h-[14px]">{{ errors.username || '' }}</p>
-          </div>
 
-          <div class="space-y-2">
-            <div class="flex justify-between items-center px-1">
-              <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400">安全密钥</label>
-              <button
-                v-if="mode === 'login'"
-                type="button"
-                class="text-[11px] font-bold text-indigo-600 hover:underline uppercase tracking-tighter"
-              >
-                忘记密钥？
-              </button>
-            </div>
-            <div class="relative flex items-center">
-              <Lock class="absolute left-5 text-neutral-300" :size="16" />
-              <input
-                v-model="formData.password"
-                type="password"
-                placeholder="6-20位密码"
-                :class="[
-                  'w-full pl-12 pr-4 py-3.5 bg-stone-50 border rounded-2xl text-sm focus:outline-none focus:ring-4 transition-all placeholder:text-neutral-300',
-                  errors.password
-                    ? 'border-red-300 focus:ring-red-100'
-                    : 'border-black/5 focus:ring-indigo-100'
-                ]"
-              />
-            </div>
-            <p class="text-[10px] text-red-500 ml-1 min-h-[14px]">{{ errors.password || '' }}</p>
-          </div>
-
-          <div
-            v-if="mode === 'register'"
-            class="space-y-2 animate-in fade-in slide-in-from-top-2"
-          >
-            <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">确认密钥</label>
-            <div class="relative flex items-center">
-              <Lock class="absolute left-5 text-neutral-300" :size="16" />
-              <input
-                v-model="formData.confirmPassword"
-                type="password"
-                placeholder="再次输入密码"
-                :class="[
-                  'w-full pl-12 pr-4 py-3.5 bg-stone-50 border rounded-2xl text-sm focus:outline-none focus:ring-4 transition-all placeholder:text-neutral-300',
-                  errors.confirmPassword
-                    ? 'border-red-300 focus:ring-red-100'
-                    : 'border-black/5 focus:ring-indigo-100'
-                ]"
-              />
-            </div>
-            <p class="text-[10px] text-red-500 ml-1 min-h-[14px]">{{ errors.confirmPassword || '' }}</p>
-          </div>
-
-          <button
-            type="submit"
-            :disabled="isLoading"
-            :class="[
-              'w-full py-4 rounded-2xl bg-black text-white text-xs font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-black/10 overflow-hidden',
-              isLoading ? 'opacity-80 cursor-not-allowed' : ''
-            ]"
-          >
-            <div v-if="isLoading" class="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-            <template v-else>
-              {{ mode === 'login' ? '登录' : '注册' }}
-              <ArrowRight :size="16" />
-            </template>
-          </button>
-        </form>
-
-        <div class="mt-10">
-          <div class="relative flex items-center justify-center mb-8">
-            <div class="absolute inset-0 flex items-center">
-              <div class="w-full border-t border-black/5"></div>
-            </div>
-            <span class="relative bg-white px-4 text-[9px] mono uppercase tracking-widest text-neutral-300">第三方同步</span>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <button class="flex items-center justify-center gap-3 py-3 border border-black/5 rounded-2xl hover:bg-stone-50 transition-all">
-              <Github :size="18" class="text-neutral-900" />
-              <span class="text-[10px] font-bold uppercase tracking-widest">Github</span>
+            <button
+              type="submit"
+              :disabled="isLoading"
+              :class="[
+                'flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-black py-4 text-xs font-bold uppercase tracking-[0.2em] text-white shadow-xl shadow-black/10 transition-all hover:scale-[1.02] active:scale-95',
+                isLoading ? 'cursor-not-allowed opacity-80' : ''
+              ]"
+            >
+              <div
+                v-if="isLoading"
+                class="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white"
+              ></div>
+              <template v-else>
+                {{ mode === 'login' ? '登录' : '注册' }}
+                <ArrowRight :size="16" />
+              </template>
             </button>
-            <button class="flex items-center justify-center gap-3 py-3 border border-black/5 rounded-2xl hover:bg-stone-50 transition-all">
-              <Chrome :size="18" class="text-neutral-900" />
-              <span class="text-[10px] font-bold uppercase tracking-widest">Google</span>
+          </form>
+          <div v-if="mode === 'login'" class="mt-5">
+            <button
+              type="button"
+              @click="onEnterAdmin"
+              class="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-white py-3 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-50"
+            >
+              <ShieldCheck :size="16" />
+              进入管理员页面
             </button>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   </div>
 </template>

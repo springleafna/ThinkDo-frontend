@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+﻿import { createRouter, createWebHistory } from 'vue-router'
 import LandingView from '@/views/LandingView.vue'
 import { useUserStore } from '@/stores/user'
 
@@ -14,6 +14,70 @@ const router = createRouter({
       path: '/auth',
       name: 'auth',
       component: () => import('@/views/AuthView.vue')
+    },
+    {
+      path: '/admin',
+      component: () => import('@/views/admin/AdminLayoutView.vue'),
+      children: [
+        {
+          path: '',
+          redirect: '/admin/overview'
+        },
+        {
+          path: 'overview',
+          name: 'admin-overview',
+          component: () => import('@/views/admin/AdminOverviewView.vue'),
+          meta: {
+            title: '运营总览',
+            subtitle: '围绕用户、会话、知识库、笔记与计划等核心模块查看后台整体运行情况。'
+          }
+        },
+        {
+          path: 'users',
+          name: 'admin-users',
+          component: () => import('@/views/admin/AdminUsersView.vue'),
+          meta: {
+            title: '用户与权限',
+            subtitle: '对应 tb_user、tb_role、tb_user_role，查看账号、角色分配与权限治理。'
+          }
+        },
+        {
+          path: 'conversations',
+          name: 'admin-conversations',
+          component: () => import('@/views/admin/AdminConversationView.vue'),
+          meta: {
+            title: '会话消息',
+            subtitle: '对应 tb_conversation、tb_message，管理聊天会话、消息留存和 AI 对话链路。'
+          }
+        },
+        {
+          path: 'knowledge',
+          name: 'admin-knowledge',
+          component: () => import('@/views/admin/AdminKnowledgeView.vue'),
+          meta: {
+            title: '知识库与 RAG',
+            subtitle: '对应知识库、文档、分块、日志与意图树节点，管理 RAG 检索链路。'
+          }
+        },
+        {
+          path: 'content',
+          name: 'admin-content',
+          component: () => import('@/views/admin/AdminContentView.vue'),
+          meta: {
+            title: '内容资产',
+            subtitle: '对应笔记、分类、计划、步骤、每日清单与便签，查看内容沉淀与执行数据。'
+          }
+        },
+        {
+          path: 'system',
+          name: 'admin-system',
+          component: () => import('@/views/admin/AdminSettingsView.vue'),
+          meta: {
+            title: '系统策略',
+            subtitle: '结合项目能力查看模型路由、RAG 策略、文档处理链路与平台治理配置。'
+          }
+        }
+      ]
     },
     {
       path: '/dashboard',
@@ -81,31 +145,27 @@ const router = createRouter({
       component: () => import('@/views/SettingsView.vue'),
       meta: { requiresAuth: true }
     }
-  ],
+  ]
 })
 
-// 路由守卫
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
 
-  // 如果路由需要登录
   if (to.meta.requiresAuth) {
     if (!userStore.isLoggedIn()) {
-      // 未登录，跳转到登录页
       next({ name: 'auth', query: { redirect: to.fullPath } })
     } else {
-      // 已登录，正常访问
       next()
     }
-  } else {
-    // 不需要登录的页面
-    // 如果已登录且访问登录页，跳转到仪表盘
-    if (to.name === 'auth' && userStore.isLoggedIn()) {
-      next({ name: 'dashboard' })
-    } else {
-      next()
-    }
+    return
   }
+
+  if (to.name === 'auth' && userStore.isLoggedIn()) {
+    next({ name: 'dashboard' })
+    return
+  }
+
+  next()
 })
 
 export default router
