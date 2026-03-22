@@ -5,6 +5,7 @@ export interface CreateKnowledgeBaseParams {
   name: string
   embeddingModel: string
   collectionName: string
+  description?: string
 }
 
 // 更新知识库请求参数
@@ -19,6 +20,7 @@ export interface KnowledgeBase {
   name: string
   embeddingModel: string
   collectionName: string
+  description?: string
   documentCount: number
   createdBy: number
   createdAt: string

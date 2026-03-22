@@ -30,6 +30,7 @@ export interface StreamChatParams {
   question: string
   conversationId?: string
   deepThinking?: boolean
+  useKnowledgeBase?: boolean
 }
 
 // SSE 事件类型
@@ -122,7 +123,8 @@ export const aiChatApi = {
     // 构建 URL 参数
     const urlParams = new URLSearchParams({
       question: params.question,
-      deepThinking: String(params.deepThinking ?? false)
+      deepThinking: String(params.deepThinking ?? false),
+      useKnowledgeBase: String(params.useKnowledgeBase ?? false)
     })
 
     if (params.conversationId) {
@@ -130,7 +132,7 @@ export const aiChatApi = {
     }
 
     const baseURL = import.meta.env.VITE_API_BASE_URL || '/api'
-    const url = `${baseURL}/ai/chat/sse?${urlParams.toString()}`
+    const url = `${baseURL}/ai/chat/rag?${urlParams.toString()}`
 
     // 使用 fetch 处理 SSE
     const abortController = new AbortController()

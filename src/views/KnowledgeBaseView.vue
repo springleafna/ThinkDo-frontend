@@ -43,7 +43,8 @@ const createKnowledgeBaseSchema = z.object({
     .string()
     .min(1, '请输入Collection名称')
     .max(50, '名称不能超过50个字符')
-    .regex(/^[a-z0-9]+$/, '只能包含小写英文字母和数字')
+    .regex(/^[a-z0-9]+$/, '只能包含小写英文字母和数字'),
+  description: z.string().optional()
 })
 
 type CreateKnowledgeBaseForm = z.infer<typeof createKnowledgeBaseSchema>
@@ -82,7 +83,8 @@ const showCreateDialog = ref(false)
 const isCreating = ref(false)
 const createForm = ref({
   name: '',
-  collectionName: ''
+  collectionName: '',
+  description: ''
 })
 
 // 删除知识库对话框
@@ -118,7 +120,8 @@ const fetchKnowledgeBases = async () => {
 const openCreateDialog = () => {
   createForm.value = {
     name: '',
-    collectionName: ''
+    collectionName: '',
+    description: ''
   }
   showCreateDialog.value = true
 }
@@ -140,7 +143,8 @@ const handleCreateKnowledgeBase = async () => {
     await knowledgeBaseApi.create({
       name: createForm.value.name.trim(),
       embeddingModel: 'qwen-emb-8b',
-      collectionName: createForm.value.collectionName.trim()
+      collectionName: createForm.value.collectionName.trim(),
+      description: createForm.value.description.trim() || undefined
     })
     toast.success('知识库创建成功')
     showCreateDialog.value = false
@@ -582,6 +586,16 @@ onMounted(() => {
             <p class="text-xs text-neutral-400">
               用于向量数据库的集合名称，只能包含小写英文字母和数字
             </p>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-neutral-700">知识库描述</label>
+            <textarea
+              v-model="createForm.description"
+              placeholder="请输入知识库描述（可选）"
+              :disabled="isCreating"
+              class="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-200 transition-all resize-none min-h-[80px]"
+            />
           </div>
 
           <div class="space-y-2">

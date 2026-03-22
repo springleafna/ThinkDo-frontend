@@ -592,7 +592,8 @@ const handleSend = async () => {
     activeStreamCancel.value = aiChatApi.streamChat({
       question: userQuestion,
       conversationId: isNewSession ? undefined : currentSessionId.value,
-      deepThinking: false
+      deepThinking: enableDeepThinking.value,
+      useKnowledgeBase: enableKnowledgeBase.value
     }, {
       onMeta: (data) => {
         currentTaskId.value = data.taskId || currentTaskId.value
