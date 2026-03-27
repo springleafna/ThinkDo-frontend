@@ -1,7 +1,10 @@
 ﻿<script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, House } from 'lucide-vue-next'
+import { ArrowLeft, House, LogOut } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
+import { userApi } from '@/api/user'
+import { useUserStore } from '@/stores/user'
 
 defineProps<{
   title: string
@@ -9,6 +12,7 @@ defineProps<{
 }>()
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const goToAuth = () => {
   router.push('/auth')
@@ -16,6 +20,19 @@ const goToAuth = () => {
 
 const goToLanding = () => {
   router.push('/')
+}
+
+const handleLogout = async () => {
+  try {
+    await userApi.logout()
+    userStore.logout()
+    toast.success('已退出登录')
+    router.push('/auth')
+  } catch {
+    // 即使接口失败也清除本地状态
+    userStore.logout()
+    router.push('/auth')
+  }
 }
 </script>
 
@@ -38,6 +55,10 @@ const goToLanding = () => {
         <Button variant="outline" class="rounded-md border-slate-200 bg-white" @click="goToLanding">
           <House class="size-4" />
           返回首页
+        </Button>
+        <Button variant="outline" class="rounded-md border-slate-200 bg-white text-rose-600 hover:bg-rose-50 hover:text-rose-700" @click="handleLogout">
+          <LogOut class="size-4" />
+          退出登录
         </Button>
         <Button variant="outline" class="rounded-md border-slate-200 bg-white" @click="goToAuth">
           <ArrowLeft class="size-4" />
