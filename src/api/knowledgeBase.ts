@@ -4,7 +4,6 @@ import { request } from '@/utils/request'
 export interface CreateKnowledgeBaseParams {
   name: string
   embeddingModel: string
-  collectionName: string
   description?: string
 }
 
@@ -19,7 +18,6 @@ export interface KnowledgeBase {
   id: string
   name: string
   embeddingModel: string
-  collectionName: string
   description?: string
   documentCount: number
   createdBy: number

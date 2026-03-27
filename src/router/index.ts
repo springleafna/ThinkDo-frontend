@@ -18,6 +18,7 @@ const router = createRouter({
     {
       path: '/admin',
       component: () => import('@/views/admin/AdminLayoutView.vue'),
+      meta: { requiresAdmin: true },
       children: [
         {
           path: '',
@@ -75,6 +76,24 @@ const router = createRouter({
           meta: {
             title: '系统策略',
             subtitle: '结合项目能力查看模型路由、RAG 策略、文档处理链路与平台治理配置。'
+          }
+        },
+        {
+          path: 'intent-tree',
+          name: 'admin-intent-tree',
+          component: () => import('@/views/admin/AdminIntentTreeView.vue'),
+          meta: {
+            title: '意图树配置',
+            subtitle: '配置意图层级、类型和节点关系，管理意图树结构。'
+          }
+        },
+        {
+          path: 'intent-list',
+          name: 'admin-intent-list',
+          component: () => import('@/views/admin/AdminIntentListView.vue'),
+          meta: {
+            title: '意图列表',
+            subtitle: '分页查看和快速定位到意图树节点。'
           }
         }
       ]
@@ -151,6 +170,16 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
 
+  // 管理员页面鉴权
+  if (to.meta.requiresAdmin) {
+    if (!userStore.isLoggedIn() || !userStore.isAdmin()) {
+      next({ name: 'auth', query: { redirect: to.fullPath } })
+    } else {
+      next()
+    }
+    return
+  }
+
   if (to.meta.requiresAuth) {
     if (!userStore.isLoggedIn()) {
       next({ name: 'auth', query: { redirect: to.fullPath } })
@@ -161,7 +190,11 @@ router.beforeEach((to, from, next) => {
   }
 
   if (to.name === 'auth' && userStore.isLoggedIn()) {
-    next({ name: 'dashboard' })
+    if (userStore.isAdmin()) {
+      next({ name: 'admin-overview' })
+    } else {
+      next({ name: 'dashboard' })
+    }
     return
   }
 

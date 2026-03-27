@@ -4,6 +4,7 @@ import { ref } from 'vue'
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(localStorage.getItem('token') || '')
   const username = ref<string>(localStorage.getItem('username') || '')
+  const role = ref<string>(localStorage.getItem('role') || '')
 
   const setToken = (newToken: string) => {
     token.value = newToken
@@ -23,21 +24,38 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  const setRole = (newRole: string) => {
+    role.value = newRole
+    if (newRole) {
+      localStorage.setItem('role', newRole)
+    } else {
+      localStorage.removeItem('role')
+    }
+  }
+
   const logout = () => {
     setToken('')
     setUsername('')
+    setRole('')
   }
 
   const isLoggedIn = () => {
     return !!token.value
   }
 
+  const isAdmin = () => {
+    return role.value === 'ADMIN'
+  }
+
   return {
     token,
     username,
+    role,
     setToken,
     setUsername,
+    setRole,
     logout,
-    isLoggedIn
+    isLoggedIn,
+    isAdmin
   }
 })

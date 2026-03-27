@@ -39,11 +39,6 @@ import { Input } from '@/components/ui/input'
 // 表单验证schema
 const createKnowledgeBaseSchema = z.object({
   name: z.string().min(1, '请输入知识库名称').max(50, '名称不能超过50个字符'),
-  collectionName: z
-    .string()
-    .min(1, '请输入Collection名称')
-    .max(50, '名称不能超过50个字符')
-    .regex(/^[a-z0-9]+$/, '只能包含小写英文字母和数字'),
   description: z.string().optional()
 })
 
@@ -83,7 +78,6 @@ const showCreateDialog = ref(false)
 const isCreating = ref(false)
 const createForm = ref({
   name: '',
-  collectionName: '',
   description: ''
 })
 
@@ -120,7 +114,6 @@ const fetchKnowledgeBases = async () => {
 const openCreateDialog = () => {
   createForm.value = {
     name: '',
-    collectionName: '',
     description: ''
   }
   showCreateDialog.value = true
@@ -143,7 +136,6 @@ const handleCreateKnowledgeBase = async () => {
     await knowledgeBaseApi.create({
       name: createForm.value.name.trim(),
       embeddingModel: 'qwen-emb-8b',
-      collectionName: createForm.value.collectionName.trim(),
       description: createForm.value.description.trim() || undefined
     })
     toast.success('知识库创建成功')
@@ -198,8 +190,7 @@ const filteredKnowledgeBases = computed(() => {
   if (searchKeyword.value) {
     const keyword = searchKeyword.value.toLowerCase()
     result = result.filter(kb =>
-      kb.name.toLowerCase().includes(keyword) ||
-      kb.collectionName.toLowerCase().includes(keyword)
+      kb.name.toLowerCase().includes(keyword)
     )
   }
 
@@ -406,14 +397,9 @@ onMounted(() => {
                   </div>
 
                   <!-- 知识库名称 -->
-                  <h3 class="text-lg font-semibold text-neutral-900 mb-2 line-clamp-1">
+                  <h3 class="text-lg font-semibold text-neutral-900 mb-4 line-clamp-1">
                     {{ kb.name }}
                   </h3>
-
-                  <!-- 向量空间 -->
-                  <p class="text-sm text-neutral-600 mb-4 line-clamp-1 leading-relaxed">
-                    向量空间：{{ kb.collectionName }}
-                  </p>
 
                   <!-- 底部信息 -->
                   <div class="flex items-center justify-between text-xs text-neutral-400">
@@ -479,9 +465,6 @@ onMounted(() => {
                       <h3 class="text-sm font-semibold text-neutral-900 mb-1 line-clamp-1">
                         {{ kb.name }}
                       </h3>
-                      <p class="text-xs text-neutral-500 line-clamp-1">
-                        向量空间：{{ kb.collectionName }}
-                      </p>
                     </div>
 
                     <!-- 文件数量 -->
@@ -576,19 +559,6 @@ onMounted(() => {
           </div>
 
           <div class="space-y-2">
-            <label class="text-sm font-medium text-neutral-700">向量空间名称</label>
-            <Input
-              v-model="createForm.collectionName"
-              placeholder="请输入向量空间名称"
-              :disabled="isCreating"
-              @keyup.enter="handleCreateKnowledgeBase"
-            />
-            <p class="text-xs text-neutral-400">
-              用于向量数据库的集合名称，只能包含小写英文字母和数字
-            </p>
-          </div>
-
-          <div class="space-y-2">
             <label class="text-sm font-medium text-neutral-700">知识库描述</label>
             <textarea
               v-model="createForm.description"
@@ -644,7 +614,6 @@ onMounted(() => {
           <p class="text-neutral-700 mb-2">您确定要删除以下知识库吗？</p>
           <div class="p-4 bg-rose-50 rounded-xl border border-rose-100">
             <p class="font-medium text-neutral-900">{{ deletingKB.name }}</p>
-            <p class="text-xs text-neutral-500 mt-1">向量空间：{{ deletingKB.collectionName }}</p>
           </div>
           <p class="text-xs text-rose-600 mt-3">删除后，知识库中的所有文档和数据将被永久删除</p>
         </div>

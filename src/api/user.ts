@@ -37,6 +37,14 @@ export const userApi = {
   },
 
   /**
+   * 管理员登录
+   * POST /system/user/admin/login
+   */
+  adminLogin(data: LoginParams) {
+    return request.post<string>('/system/user/admin/login', data)
+  },
+
+  /**
    * 用户注册
    * POST /system/user/register
    */

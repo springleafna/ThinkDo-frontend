@@ -5,7 +5,9 @@ import {
   Activity,
   BookText,
   Database,
+  GitBranch,
   LayoutDashboard,
+  ListTree,
   MessageSquare,
   Settings2,
   UsersRound
@@ -39,6 +41,16 @@ const navItems = [
     to: '/admin/knowledge',
     icon: Database,
     hint: '管理知识库、文档分块与意图节点'
+  },
+  {
+    label: '意图管理',
+    to: '/admin/intent-tree',
+    icon: GitBranch,
+    hint: '配置意图层级、类型与节点关系',
+    children: [
+      { label: '意图树配置', to: '/admin/intent-tree', icon: ListTree, hint: '' },
+      { label: '意图列表', to: '/admin/intent-list', icon: ListTree, hint: '' }
+    ]
   },
   {
     label: '内容资产',

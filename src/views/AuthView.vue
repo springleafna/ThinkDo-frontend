@@ -1,9 +1,11 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import {
   ArrowRight,
   ChevronLeft,
+  Eye,
+  EyeOff,
   Lock,
   ShieldCheck,
   User
@@ -13,12 +15,17 @@ import { userApi, type LoginParams, type RegisterParams } from '@/api/user'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 
 type AuthMode = 'login' | 'register'
 
 const mode = ref<AuthMode>('login')
 const isLoading = ref(false)
+
+// 密码显示/隐藏状态
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
 
 const formData = ref({
   username: '',
@@ -67,9 +74,7 @@ const validateForm = () => {
   return isValid
 }
 
-const handleSubmit = async (event: Event) => {
-  event.preventDefault()
-
+const doLogin = async (isAdminLogin: boolean) => {
   if (!validateForm()) {
     return
   }
@@ -77,20 +82,49 @@ const handleSubmit = async (event: Event) => {
   isLoading.value = true
 
   try {
-    if (mode.value === 'login') {
-      const loginParams: LoginParams = {
-        username: formData.value.username.trim(),
-        password: formData.value.password
-      }
+    const loginParams: LoginParams = {
+      username: formData.value.username.trim(),
+      password: formData.value.password
+    }
 
-      const token = await userApi.login(loginParams)
+    const token = isAdminLogin
+      ? await userApi.adminLogin(loginParams)
+      : await userApi.login(loginParams)
 
-      userStore.setToken(token)
-      userStore.setUsername(formData.value.username.trim())
+    userStore.setToken(token)
+    userStore.setUsername(formData.value.username.trim())
+    userStore.setRole(isAdminLogin ? 'ADMIN' : 'USER')
 
-      toast.success('登录成功')
-      router.push('/dashboard')
+    toast.success(isAdminLogin ? '管理员登录成功' : '登录成功')
+
+    const redirect = (route.query.redirect as string) || undefined
+    if (redirect) {
+      router.push(redirect)
+    } else if (isAdminLogin) {
+      router.push('/admin/overview')
     } else {
+      router.push('/dashboard')
+    }
+  } catch (error) {
+    console.error('认证失败:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const handleSubmit = async (event: Event) => {
+  event.preventDefault()
+
+  if (mode.value === 'login') {
+    await doLogin(false)
+  } else {
+    if (!validateForm()) {
+      return
+    }
+
+    isLoading.value = true
+
+    try {
       const registerParams: RegisterParams = {
         username: formData.value.username.trim(),
         password: formData.value.password
@@ -102,20 +136,20 @@ const handleSubmit = async (event: Event) => {
       mode.value = 'login'
       formData.value.password = ''
       formData.value.confirmPassword = ''
+    } catch (error) {
+      console.error('认证失败:', error)
+    } finally {
+      isLoading.value = false
     }
-  } catch (error) {
-    console.error('认证失败:', error)
-  } finally {
-    isLoading.value = false
   }
+}
+
+const handleAdminLogin = async () => {
+  await doLogin(true)
 }
 
 const onBackToLanding = () => {
   router.push('/')
-}
-
-const onEnterAdmin = () => {
-  router.push('/admin')
 }
 
 const switchMode = (newMode: AuthMode) => {
@@ -126,6 +160,14 @@ const switchMode = (newMode: AuthMode) => {
     confirmPassword: ''
   }
   formData.value.confirmPassword = ''
+}
+
+const togglePasswordVisibility = () => {
+  showPassword.value = !showPassword.value
+}
+
+const toggleConfirmPasswordVisibility = () => {
+  showConfirmPassword.value = !showConfirmPassword.value
 }
 </script>
 
@@ -206,15 +248,24 @@ const switchMode = (newMode: AuthMode) => {
                 <Lock class="absolute left-5 text-neutral-300" :size="16" />
                 <input
                   v-model="formData.password"
-                  type="password"
+                  :type="showPassword ? 'text' : 'password'"
                   placeholder="6 到 20 位密码"
+                  autocomplete="new-password"
                   :class="[
-                    'w-full rounded-2xl border bg-stone-50 py-3.5 pl-12 pr-4 text-sm transition-all placeholder:text-neutral-300 focus:outline-none focus:ring-4',
+                    'w-full rounded-2xl border bg-stone-50 py-3.5 pl-12 pr-12 text-sm transition-all placeholder:text-neutral-300 focus:outline-none focus:ring-4',
                     errors.password
                       ? 'border-red-300 focus:ring-red-100'
                       : 'border-black/5 focus:ring-indigo-100'
                   ]"
                 />
+                <button
+                  type="button"
+                  @click="togglePasswordVisibility"
+                  class="absolute right-4 text-neutral-300 hover:text-neutral-500 transition-colors"
+                >
+                  <Eye v-if="!showPassword" :size="16" />
+                  <EyeOff v-else :size="16" />
+                </button>
               </div>
               <p class="ml-1 min-h-[14px] text-[10px] text-red-500">{{ errors.password || '' }}</p>
             </div>
@@ -228,20 +279,59 @@ const switchMode = (newMode: AuthMode) => {
                 <Lock class="absolute left-5 text-neutral-300" :size="16" />
                 <input
                   v-model="formData.confirmPassword"
-                  type="password"
+                  :type="showConfirmPassword ? 'text' : 'password'"
                   placeholder="再次输入密码"
                   :class="[
-                    'w-full rounded-2xl border bg-stone-50 py-3.5 pl-12 pr-4 text-sm transition-all placeholder:text-neutral-300 focus:outline-none focus:ring-4',
+                    'w-full rounded-2xl border bg-stone-50 py-3.5 pl-12 pr-12 text-sm transition-all placeholder:text-neutral-300 focus:outline-none focus:ring-4',
                     errors.confirmPassword
                       ? 'border-red-300 focus:ring-red-100'
                       : 'border-black/5 focus:ring-indigo-100'
                   ]"
                 />
+                <button
+                  type="button"
+                  @click="toggleConfirmPasswordVisibility"
+                  class="absolute right-4 text-neutral-300 hover:text-neutral-500 transition-colors"
+                >
+                  <Eye v-if="!showConfirmPassword" :size="16" />
+                  <EyeOff v-else :size="16" />
+                </button>
               </div>
               <p class="ml-1 min-h-[14px] text-[10px] text-red-500">{{ errors.confirmPassword || '' }}</p>
             </div>
 
+            <div v-if="mode === 'login'" class="flex flex-col gap-3">
+              <button
+                type="submit"
+                :disabled="isLoading"
+                :class="[
+                  'flex w-full items-center justify-center gap-3 overflow-hidden rounded-2xl bg-black py-4 text-xs font-bold uppercase tracking-[0.2em] text-white shadow-xl shadow-black/10 transition-all hover:scale-[1.02] active:scale-95',
+                  isLoading ? 'cursor-not-allowed opacity-80' : ''
+                ]"
+              >
+                <div
+                  v-if="isLoading"
+                  class="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white"
+                ></div>
+                <template v-else>
+                  用户登录
+                  <ArrowRight :size="16" />
+                </template>
+              </button>
+
+              <button
+                type="button"
+                :disabled="isLoading"
+                @click="handleAdminLogin"
+                class="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-white py-3 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-50"
+              >
+                <ShieldCheck :size="16" />
+                管理员登录
+              </button>
+            </div>
+
             <button
+              v-else
               type="submit"
               :disabled="isLoading"
               :class="[
@@ -254,21 +344,11 @@ const switchMode = (newMode: AuthMode) => {
                 class="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white"
               ></div>
               <template v-else>
-                {{ mode === 'login' ? '登录' : '注册' }}
+                注册
                 <ArrowRight :size="16" />
               </template>
             </button>
           </form>
-          <div v-if="mode === 'login'" class="mt-5">
-            <button
-              type="button"
-              @click="onEnterAdmin"
-              class="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-white py-3 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-50"
-            >
-              <ShieldCheck :size="16" />
-              进入管理员页面
-            </button>
-          </div>
         </div>
       </section>
     </div>
