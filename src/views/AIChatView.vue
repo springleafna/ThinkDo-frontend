@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, computed } from 'vue'
-import { Send, Bot, User, Trash2, Plus, MessageSquare, Clock, Pencil, Copy, ThumbsUp, ThumbsDown, Sparkles, Compass, Database, Brain, Square } from 'lucide-vue-next'
+import { Send, Bot, User, Trash2, Plus, MessageSquare, Clock, Pencil, Copy, ThumbsUp, ThumbsDown, Sparkles, Database, Brain, Square, Search, ChevronRight } from 'lucide-vue-next'
 import { useLayoutStore } from '@/stores/layout'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import {
@@ -727,273 +730,415 @@ const formatTime = (date: Date) => {
     <AppSidebar v-model:active-view="activeView" :is-open="isSidebarOpen" @toggle="toggleSidebar" />
 
     <!-- 主内容区域 -->
-    <main class="flex-1 flex flex-col min-w-0">
+    <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
       <!-- 顶栏 -->
       <AppHeader :active-view="activeView" />
 
-      <!-- 顶部工具栏 -->
-      <div class="px-2 pt-8 bg-white/50 backdrop-blur-sm">
-        <div class="flex items-center justify-between" style="padding-left: 96px; padding-right: 96px;">
-          <div style="margin-left: 0px;">
-            <p class="text-xs text-neutral-500">智能助手 · 随时待命</p>
-          </div>
+      <!-- 下方对话区域 -->
+      <div class="flex-1 flex min-h-0 overflow-hidden ml-2 mr-2 mb-2">
+        <!-- 左侧对话列表侧栏 -->
+        <aside class="w-64 max-h-[620px] mt-16 border-r border-black/5 bg-white/70 backdrop-blur-sm flex flex-col shrink-0 rounded-xl shadow-sm overflow-hidden">
+        <!-- 侧栏头部 -->
+        <div class="px-3 pt-3 pb-2">
           <Button
-            @click="clearChat"
-            variant="ghost"
-            size="sm"
-            class="text-neutral-500 hover:text-rose-600"
+            @click="createNewSession"
+            class="w-full gap-2 h-9 rounded-xl font-medium text-sm"
           >
-            <Trash2 :size="16" class="mr-2" />
-            清空对话
+            <Plus :size="16" />
+            新建对话
           </Button>
         </div>
-      </div>
 
-      <!-- 内容区域：对话列表 + 聊天区域 -->
-      <div class="flex-1 flex overflow-hidden px-24 pb-12 pt-2">
-        <!-- 左侧对话列表 -->
-        <aside class="w-64 mr-10">
-          <Card class="h-full bg-white/90 backdrop-blur-md border-black/5 shadow-xl">
-            <CardContent class="p-0 h-full flex flex-col">
-              <div class="p-4 border-b border-black/5">
-                <Button
-                  @click="createNewSession"
-                  class="w-full gap-2"
-                  variant="default"
-                >
-                  <Plus :size="16" />
-                  新对话
-                </Button>
-              </div>
+        <!-- 搜索框 -->
+        <div class="px-4 py-2">
+          <div class="relative">
+            <Search :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
+            <Input
+              placeholder="搜索对话..."
+              class="pl-9 h-8 text-sm bg-stone-50/80 border-black/5 rounded-lg focus:bg-white"
+            />
+          </div>
+        </div>
 
-              <div class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-1">
-                <div
-                  v-for="session in chatSessions"
-                  :key="session.id"
-                  @click="switchSession(session.id)"
-                  class="group relative rounded-lg p-3 cursor-pointer transition-all hover:bg-stone-50"
-                  :class="currentSessionId === session.id ? 'bg-stone-100' : ''"
-                >
-                  <div class="flex items-start gap-3">
-                    <MessageSquare :size="16" class="mt-0.5 shrink-0 text-neutral-400" />
-                    <div class="flex-1 min-w-0">
-                      <p
-                        class="text-sm font-medium truncate"
-                        :class="currentSessionId === session.id ? 'text-neutral-900' : 'text-neutral-700'"
-                      >
-                        {{ session.title }}
-                      </p>
-                      <p class="text-[11px] text-neutral-400 mt-1 flex items-center gap-1">
-                        <Clock :size="10" />
-                        {{ formatTime(session.updatedAt) }}
-                      </p>
-                    </div>
-                    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                      <button
-                        @click.stop="openEditDialog(session.id)"
-                        class="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-stone-100 rounded-lg"
-                        title="重命名"
-                      >
-                        <Pencil :size="14" />
-                      </button>
-                      <button
-                        @click.stop="openDeleteDialog(session.id)"
-                        class="p-1.5 text-neutral-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
-                        title="删除对话"
-                      >
-                        <Trash2 :size="14" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </aside>
-
-        <!-- 右侧聊天区域 -->
-        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <Card class="flex-1 flex flex-col overflow-hidden border-black/5 bg-white/90 backdrop-blur-md shadow-xl rounded-2xl">
-            <CardContent class="flex-1 flex flex-col p-0 rounded-2xl overflow-hidden">
-              <!-- 消息列表 -->
-              <div
-                ref="scrollRef"
-                class="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar"
-              >
-                <div
-                  v-if="messages.length === 0"
-                  class="h-full min-h-[340px] flex items-center justify-center"
-                >
-                  <div class="w-full max-w-2xl rounded-2xl border border-black/5 bg-white/80 px-8 py-10 text-center shadow-sm">
-                    <div class="mx-auto mb-4 h-12 w-12 rounded-xl bg-stone-100 flex items-center justify-center">
-                      <Sparkles :size="22" class="text-neutral-600" />
-                    </div>
-                    <h3 class="text-lg font-semibold text-neutral-800">开始一个新的对话</h3>
-                    <p class="mt-2 text-sm text-neutral-500">可以直接输入问题，或先试试下面的快捷提问</p>
-                    <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
-                      <button
-                        v-for="prompt in quickPrompts"
-                        :key="prompt"
-                        type="button"
-                        class="group rounded-xl border border-black/5 bg-white px-4 py-3 text-sm text-neutral-700 transition-all hover:border-neutral-300 hover:bg-stone-50"
-                        @click="useQuickPrompt(prompt)"
-                      >
-                        <span class="flex items-start gap-2">
-                          <Compass :size="14" class="mt-0.5 shrink-0 text-neutral-400 group-hover:text-neutral-600" />
-                          <span>{{ prompt }}</span>
-                        </span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <div
-                  v-for="(msg, i) in messages"
-                  :key="i"
-                  class="flex gap-3"
-                  :class="msg.role === 'user' ? 'flex-row-reverse' : ''"
-                >
-                  <div
-                    class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                    :class="msg.role === 'user' ? 'bg-neutral-900 text-white' : 'bg-stone-100 text-neutral-600'"
+        <!-- 对话列表 -->
+        <ScrollArea class="flex-1 min-h-0 overflow-hidden px-3">
+          <div class="space-y-0.5 py-1">
+            <button
+              v-for="session in chatSessions"
+              :key="session.id"
+              @click="switchSession(session.id)"
+              class="w-full group relative rounded-xl px-3 py-2.5 cursor-pointer transition-all text-left"
+              :class="currentSessionId === session.id
+                ? 'bg-zinc-100 shadow-sm'
+                : 'hover:bg-stone-50'"
+            >
+              <div class="flex items-center gap-2.5">
+                <MessageSquare :size="14" class="shrink-0" :class="currentSessionId === session.id ? 'text-zinc-700' : 'text-neutral-300'" />
+                <div class="flex-1 min-w-0">
+                  <p
+                    class="text-[13px] truncate leading-snug"
+                    :class="currentSessionId === session.id ? 'font-semibold text-neutral-900' : 'text-neutral-600'"
                   >
-                    <User v-if="msg.role === 'user'" :size="16" />
-                    <Bot v-else :size="16" />
-                  </div>
-                  <div
-                    class="max-w-[80%] space-y-1"
-                    :class="msg.role === 'user' ? 'text-right' : ''"
-                  >
-                    <div
-                      class="rounded-xl px-4 py-3 text-sm leading-relaxed"
-                      :class="msg.role === 'user'
-                        ? 'bg-neutral-900 text-white'
-                        : 'bg-stone-50 text-neutral-800 border border-black/[0.03]'"
-                    >
-                      <template v-if="msg.role === 'user'">
-                        <p
-                          v-for="(line, idx) in msg.text.split('\n')"
-                          :key="idx"
-                          :class="idx > 0 ? 'mt-2' : ''"
-                        >
-                          {{ line }}
-                        </p>
-                      </template>
-                      <div
-                        v-else
-                        class="prose prose-sm max-w-none overflow-x-auto prose-neutral prose-p:my-2 prose-headings:my-3 prose-pre:my-3 prose-pre:overflow-x-auto prose-pre:rounded-lg prose-pre:bg-neutral-900 prose-pre:text-neutral-100 prose-code:before:content-none prose-code:after:content-none prose-code:bg-neutral-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-4 prose-blockquote:border-neutral-300 prose-blockquote:text-neutral-700 prose-table:my-3 prose-table:w-full prose-th:border prose-th:border-neutral-300 prose-th:bg-neutral-100 prose-th:px-2 prose-th:py-1 prose-th:font-semibold prose-td:border prose-td:border-neutral-200 prose-td:px-2 prose-td:py-1"
-                        v-html="renderMarkdown(msg.text)"
-                      ></div>
-                    </div>
-                    <div
-                      class="flex items-center gap-2"
-                      :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
-                    >
-                      <p class="text-[10px] text-neutral-400">
-                        {{ msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }) }}
-                      </p>
-                      <button
-                        type="button"
-                        class="h-5 w-5 inline-flex items-center justify-center rounded text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
-                        @click="copyMessage(msg.text)"
-                      >
-                        <Copy :size="12" />
-                      </button>
-                      <template v-if="msg.role === 'model'">
-                        <button
-                          type="button"
-                          class="h-5 w-5 inline-flex items-center justify-center rounded transition-colors"
-                          :class="aiFeedback[i] === 'up'
-                            ? 'text-emerald-600 bg-emerald-50'
-                            : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'"
-                          @click="setAiFeedback(i, 'up')"
-                        >
-                          <ThumbsUp :size="12" />
-                        </button>
-                        <button
-                          type="button"
-                          class="h-5 w-5 inline-flex items-center justify-center rounded transition-colors"
-                          :class="aiFeedback[i] === 'down'
-                            ? 'text-rose-600 bg-rose-50'
-                            : 'text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100'"
-                          @click="setAiFeedback(i, 'down')"
-                        >
-                          <ThumbsDown :size="12" />
-                        </button>
-                      </template>
-                    </div>
-                  </div>
+                    {{ session.title }}
+                  </p>
+                  <p class="text-[11px] text-neutral-400 mt-0.5 flex items-center gap-1">
+                    <Clock :size="10" />
+                    {{ formatTime(session.updatedAt) }}
+                  </p>
                 </div>
-
-                <!-- 输入中状态 -->
-                <div
-                  v-if="isTyping && showTypingIndicator"
-                  class="flex gap-3"
-                >
-                  <div class="w-8 h-8 rounded-lg bg-stone-100 flex items-center justify-center shrink-0">
-                    <Bot :size="16" class="text-neutral-400" />
-                  </div>
-                  <div class="bg-stone-50 border border-black/[0.03] rounded-xl px-4 py-3">
-                    <div class="flex gap-1">
-                      <span class="w-1.5 h-1.5 bg-neutral-300 rounded-full animate-bounce"></span>
-                      <span class="w-1.5 h-1.5 bg-neutral-300 rounded-full animate-bounce delay-100"></span>
-                      <span class="w-1.5 h-1.5 bg-neutral-300 rounded-full animate-bounce delay-200"></span>
-                    </div>
-                  </div>
+                <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                  <button
+                    @click.stop="openEditDialog(session.id)"
+                    class="p-1 text-neutral-400 hover:text-neutral-600 hover:bg-white rounded-md"
+                    title="重命名"
+                  >
+                    <Pencil :size="12" />
+                  </button>
+                  <button
+                    @click.stop="openDeleteDialog(session.id)"
+                    class="p-1 text-neutral-400 hover:text-rose-500 hover:bg-rose-50 rounded-md"
+                    title="删除对话"
+                  >
+                    <Trash2 :size="12" />
+                  </button>
                 </div>
               </div>
+            </button>
+          </div>
+        </ScrollArea>
 
-              <!-- 输入区域 -->
-              <div class="p-3 bg-stone-50/30">
-                <div class="relative">
+      </aside>
+
+      <!-- 右侧聊天主区域 -->
+      <div class="flex-1 flex flex-col min-w-0 mr-2 my-2">
+        <!-- 聊天头部 -->
+        <div class="h-14 border-b border-black/5 bg-white/50 backdrop-blur-sm flex items-center justify-between px-6 shrink-0">
+          <div class="flex items-center gap-3">
+            <h3 class="text-sm font-semibold text-neutral-800">
+              {{ currentSessionId ? (chatSessions.find(s => s.id === currentSessionId)?.title || '新对话') : '新对话' }}
+            </h3>
+            <Badge v-if="enableDeepThinking" variant="secondary" class="text-[10px] h-5 gap-1 bg-amber-50 text-amber-700 border-amber-200/50">
+              <Brain :size="10" />
+              深度思考
+            </Badge>
+            <Badge v-if="enableKnowledgeBase" variant="secondary" class="text-[10px] h-5 gap-1 bg-blue-50 text-blue-700 border-blue-200/50">
+              <Database :size="10" />
+              知识库
+            </Badge>
+          </div>
+          <div class="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <Button
+                    @click="clearChat"
+                    variant="ghost"
+                    size="icon"
+                    class="h-8 w-8 text-neutral-400 hover:text-rose-500"
+                  >
+                    <Trash2 :size="15" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>清空对话</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
+
+        <!-- 消息区域 -->
+        <div
+          ref="scrollRef"
+          class="flex-1 overflow-y-auto custom-scrollbar"
+        >
+          <!-- 空状态：欢迎页面 -->
+          <div
+            v-if="messages.length === 0"
+            class="h-full flex flex-col items-center justify-center px-10"
+          >
+            <div class="w-full max-w-3xl text-center">
+              <!-- Hero 文字 -->
+              <div class="mb-2">
+                <Badge variant="outline" class="text-xs px-3 py-1 gap-1.5 border-dashed">
+                  <Sparkles :size="12" class="text-zinc-500" />
+                  <span class="text-zinc-500">AI 智能对话</span>
+                </Badge>
+              </div>
+              <h1 class="text-3xl font-bold text-neutral-900 tracking-tight mt-4">
+                把问题变成<span class="bg-gradient-to-r from-zinc-800 to-zinc-500 bg-clip-text text-transparent">清晰答案</span>
+              </h1>
+              <p class="text-sm text-neutral-400 mt-3 max-w-md mx-auto leading-relaxed">
+                工具调用、知识检索与深度思考，一次对话给出可执行方案
+              </p>
+
+              <!-- 输入框 -->
+              <div class="mt-8 max-w-2xl mx-auto">
+                <div class="relative rounded-2xl border border-black/[0.06] bg-white shadow-lg shadow-black/[0.03] overflow-hidden transition-all focus-within:shadow-xl focus-within:border-black/10">
                   <textarea
                     ref="inputRef"
                     v-model="input"
                     @keydown="handleKeyDown"
-                    placeholder="输入消息..."
-                    class="w-full bg-white border border-black/5 rounded-lg px-4 pt-3 pb-11 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-200 transition-all resize-none min-h-[88px] max-h-40 custom-scrollbar"
-                    rows="2"
+                    placeholder="输入你的问题..."
+                    class="w-full bg-transparent px-5 pt-4 pb-12 text-sm focus:outline-none resize-none min-h-[100px] custom-scrollbar"
+                    rows="3"
                   />
-                  <div class="absolute left-3 bottom-2 flex items-center gap-2">
-                    <button
-                      type="button"
-                      class="h-7 px-2.5 rounded-md text-xs inline-flex items-center gap-1.5 transition-colors"
-                      :class="enableKnowledgeBase
-                        ? 'bg-neutral-900 text-white'
-                        : 'bg-white text-neutral-600 border border-black/10 hover:bg-stone-50'"
-                      @click="enableKnowledgeBase = !enableKnowledgeBase"
-                    >
-                      <Database :size="13" />
-                      <span>使用知识库</span>
-                    </button>
-                    <button
-                      type="button"
-                      class="h-7 px-2.5 rounded-md text-xs inline-flex items-center gap-1.5 transition-colors"
-                      :class="enableDeepThinking
-                        ? 'bg-neutral-900 text-white'
-                        : 'bg-white text-neutral-600 border border-black/10 hover:bg-stone-50'"
-                      @click="enableDeepThinking = !enableDeepThinking"
-                    >
-                      <Brain :size="13" />
-                      <span>深度思考</span>
-                    </button>
+                  <div class="absolute left-4 bottom-3 flex items-center gap-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger as-child>
+                          <button
+                            type="button"
+                            class="h-7 px-2.5 rounded-lg text-xs inline-flex items-center gap-1.5 transition-all"
+                            :class="enableKnowledgeBase
+                              ? 'bg-blue-50 text-blue-600 ring-1 ring-blue-200'
+                              : 'text-neutral-400 hover:text-neutral-600 hover:bg-stone-50'"
+                            @click="enableKnowledgeBase = !enableKnowledgeBase"
+                          >
+                            <Database :size="13" />
+                            <span class="hidden sm:inline">知识库</span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>知识库检索</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger as-child>
+                          <button
+                            type="button"
+                            class="h-7 px-2.5 rounded-lg text-xs inline-flex items-center gap-1.5 transition-all"
+                            :class="enableDeepThinking
+                              ? 'bg-amber-50 text-amber-600 ring-1 ring-amber-200'
+                              : 'text-neutral-400 hover:text-neutral-600 hover:bg-stone-50'"
+                            @click="enableDeepThinking = !enableDeepThinking"
+                          >
+                            <Brain :size="13" />
+                            <span class="hidden sm:inline">深度思考</span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>启用深度思考</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                   <Button
                     @click="isTyping ? handleStopGenerating() : handleSend()"
                     :disabled="isTyping ? isStopping : !input.trim()"
                     size="icon"
-                    class="absolute right-2 bottom-2 h-8 w-8"
+                    class="absolute right-3 bottom-3 h-9 w-9 rounded-xl transition-all"
                     :class="isTyping
                       ? 'bg-rose-600 hover:bg-rose-500'
-                      : (input.trim() ? 'bg-neutral-900 hover:bg-neutral-800' : '')"
+                      : (input.trim() ? 'bg-zinc-900 hover:bg-zinc-800 shadow-md' : 'bg-zinc-100 text-zinc-400')"
                   >
                     <Square v-if="isTyping" :size="14" />
                     <Send v-else :size="16" />
                   </Button>
                 </div>
+                <p class="text-[11px] text-neutral-300 mt-2.5 text-center">
+                  Enter 发送 · Shift + Enter 换行
+                </p>
               </div>
-            </CardContent>
-          </Card>
+
+              <!-- 试试这些开场 -->
+              <div class="mt-8">
+                <p class="text-xs text-neutral-400 mb-3 font-medium">试试这些开场</p>
+                <div class="grid grid-cols-2 gap-2.5 max-w-2xl mx-auto">
+                  <button
+                    v-for="(prompt, idx) in quickPrompts"
+                    :key="idx"
+                    type="button"
+                    class="group rounded-xl border border-black/[0.04] bg-white/80 px-4 py-3 text-left text-sm text-neutral-600 transition-all hover:border-zinc-200 hover:bg-white hover:shadow-sm hover:text-neutral-800"
+                    @click="useQuickPrompt(prompt)"
+                  >
+                    <span class="flex items-center justify-between gap-2">
+                      <span>{{ prompt }}</span>
+                      <ChevronRight :size="14" class="shrink-0 text-neutral-300 group-hover:text-neutral-500 transition-colors" />
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- 消息列表 -->
+          <div v-else class="max-w-4xl mx-auto px-8 py-6 space-y-6">
+            <div
+              v-for="(msg, i) in messages"
+              :key="i"
+              class="flex gap-3"
+              :class="msg.role === 'user' ? 'flex-row-reverse' : ''"
+            >
+              <!-- 头像 -->
+              <Avatar class="h-8 w-8 shrink-0 border border-black/5" :class="msg.role === 'user' ? '' : ''">
+                <AvatarFallback
+                  :class="msg.role === 'user' ? 'bg-zinc-900 text-white' : 'bg-stone-50 text-zinc-500'"
+                >
+                  <User v-if="msg.role === 'user'" :size="14" />
+                  <Bot v-else :size="14" />
+                </AvatarFallback>
+              </Avatar>
+              <div
+                class="max-w-[80%] space-y-1.5"
+                :class="msg.role === 'user' ? 'text-right' : ''"
+              >
+                <div
+                  class="rounded-2xl px-4 py-3 text-sm leading-relaxed inline-block text-left"
+                  :class="msg.role === 'user'
+                    ? 'bg-zinc-900 text-white rounded-tr-md'
+                    : 'bg-white text-neutral-800 border border-black/[0.04] shadow-sm rounded-tl-md'"
+                >
+                  <template v-if="msg.role === 'user'">
+                    <p
+                      v-for="(line, idx) in msg.text.split('\n')"
+                      :key="idx"
+                      :class="idx > 0 ? 'mt-2' : ''"
+                    >
+                      {{ line }}
+                    </p>
+                  </template>
+                  <div
+                    v-else
+                    class="prose prose-sm max-w-none overflow-x-auto prose-neutral prose-p:my-2 prose-headings:my-3 prose-pre:my-3 prose-pre:overflow-x-auto prose-pre:rounded-lg prose-pre:bg-neutral-900 prose-pre:text-neutral-100 prose-code:before:content-none prose-code:after:content-none prose-code:bg-neutral-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-blockquote:border-l-4 prose-blockquote:border-neutral-300 prose-blockquote:text-neutral-700 prose-table:my-3 prose-table:w-full prose-th:border prose-th:border-neutral-300 prose-th:bg-neutral-100 prose-th:px-2 prose-th:py-1 prose-th:font-semibold prose-td:border prose-td:border-neutral-200 prose-td:px-2 prose-td:py-1"
+                    v-html="renderMarkdown(msg.text)"
+                  ></div>
+                </div>
+                <!-- 消息操作栏 -->
+                <div
+                  class="flex items-center gap-1.5"
+                  :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
+                >
+                  <span class="text-[10px] text-neutral-300">
+                    {{ msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }) }}
+                  </span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger as-child>
+                        <button
+                          type="button"
+                          class="h-6 w-6 inline-flex items-center justify-center rounded-md text-neutral-300 hover:text-neutral-500 hover:bg-stone-50 transition-colors"
+                          @click="copyMessage(msg.text)"
+                        >
+                          <Copy :size="12" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>复制</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <template v-if="msg.role === 'model'">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger as-child>
+                          <button
+                            type="button"
+                            class="h-6 w-6 inline-flex items-center justify-center rounded-md transition-colors"
+                            :class="aiFeedback[i] === 'up'
+                              ? 'text-emerald-500 bg-emerald-50'
+                              : 'text-neutral-300 hover:text-neutral-500 hover:bg-stone-50'"
+                            @click="setAiFeedback(i, 'up')"
+                          >
+                            <ThumbsUp :size="12" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>有帮助</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger as-child>
+                          <button
+                            type="button"
+                            class="h-6 w-6 inline-flex items-center justify-center rounded-md transition-colors"
+                            :class="aiFeedback[i] === 'down'
+                              ? 'text-rose-500 bg-rose-50'
+                              : 'text-neutral-300 hover:text-neutral-500 hover:bg-stone-50'"
+                            @click="setAiFeedback(i, 'down')"
+                          >
+                            <ThumbsDown :size="12" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>需改进</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </template>
+                </div>
+              </div>
+            </div>
+
+            <!-- 输入中状态 -->
+            <div
+              v-if="isTyping && showTypingIndicator"
+              class="flex gap-3"
+            >
+              <Avatar class="h-8 w-8 border border-black/5">
+                <AvatarFallback class="bg-stone-50 text-zinc-400">
+                  <Bot :size="14" />
+                </AvatarFallback>
+              </Avatar>
+              <div class="bg-white border border-black/[0.04] rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
+                <div class="flex items-center gap-1.5">
+                  <span class="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce"></span>
+                  <span class="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce delay-100"></span>
+                  <span class="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce delay-200"></span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- 底部输入区域 (有消息时显示) -->
+        <div v-if="messages.length > 0" class="border-t border-black/[0.04] px-8 py-3">
+          <div class="max-w-4xl mx-auto">
+            <div class="relative rounded-2xl border border-black/[0.06] bg-white shadow-sm overflow-hidden focus-within:shadow-md focus-within:border-black/10 transition-all">
+              <textarea
+                ref="inputRef"
+                v-model="input"
+                @keydown="handleKeyDown"
+                placeholder="输入你的问题..."
+                class="w-full bg-transparent px-4 pt-3 pb-12 text-sm focus:outline-none resize-none min-h-[80px] max-h-40 custom-scrollbar"
+                rows="2"
+              />
+              <div class="absolute left-3 bottom-2.5 flex items-center gap-1.5">
+                <button
+                  type="button"
+                  class="h-7 px-2 rounded-lg text-xs inline-flex items-center gap-1 transition-all"
+                  :class="enableKnowledgeBase
+                    ? 'bg-blue-50 text-blue-600 ring-1 ring-blue-200'
+                    : 'text-neutral-400 hover:text-neutral-600 hover:bg-stone-50'"
+                  @click="enableKnowledgeBase = !enableKnowledgeBase"
+                >
+                  <Database :size="12" />
+                  <span class="hidden sm:inline">知识库</span>
+                </button>
+                <button
+                  type="button"
+                  class="h-7 px-2 rounded-lg text-xs inline-flex items-center gap-1 transition-all"
+                  :class="enableDeepThinking
+                    ? 'bg-amber-50 text-amber-600 ring-1 ring-amber-200'
+                    : 'text-neutral-400 hover:text-neutral-600 hover:bg-stone-50'"
+                  @click="enableDeepThinking = !enableDeepThinking"
+                >
+                  <Brain :size="12" />
+                  <span class="hidden sm:inline">深度思考</span>
+                </button>
+              </div>
+              <Button
+                @click="isTyping ? handleStopGenerating() : handleSend()"
+                :disabled="isTyping ? isStopping : !input.trim()"
+                size="icon"
+                class="absolute right-2.5 bottom-2.5 h-8 w-8 rounded-xl transition-all"
+                :class="isTyping
+                  ? 'bg-rose-600 hover:bg-rose-500'
+                  : (input.trim() ? 'bg-zinc-900 hover:bg-zinc-800' : 'bg-zinc-100 text-zinc-400')"
+              >
+                <Square v-if="isTyping" :size="14" />
+                <Send v-else :size="15" />
+              </Button>
+            </div>
+            <p class="text-[10px] text-neutral-300 mt-1.5 text-center">
+              Enter 发送 · Shift + Enter 换行
+            </p>
+          </div>
+        </div>
+      </div>
       </div>
     </main>
 
@@ -1056,12 +1201,26 @@ const formatTime = (date: Date) => {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.15);
+}
+
+textarea {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.08) transparent;
+}
+
+textarea::-webkit-scrollbar {
+  width: 3px;
+}
+
+textarea::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 3px;
 }
 
 .delay-100 {

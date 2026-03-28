@@ -40,7 +40,7 @@ const fetchTree = async () => {
     expandedNodes.value = new Set(data.map(n => n.id))
     // 默认选中第一个
     if (data.length > 0) {
-      selectedNode.value = data[0]
+      selectedNode.value = data[0] ?? null
     }
   } catch (error) {
     console.error('获取意图树失败:', error)
@@ -168,9 +168,7 @@ const handleCreate = async () => {
     return
   }
   try {
-    const parentCode = createIsRoot.value ? null : selectedNode.value?.intentCode ?? null
-      ? selectedNode.value.intentCode
-      : null
+    const parentCode = createIsRoot.value ? null : (selectedNode.value?.intentCode ?? null)
     const examplesList = createForm.value.examples
       .split('\n')
       .map(s => s.trim())
@@ -178,7 +176,8 @@ const handleCreate = async () => {
     await intentNodeApi.create({
       ...createForm.value,
       examples: examplesList,
-      parentCode
+      parentCode,
+      topK: createForm.value.topK ?? undefined
     })
     toast.success('创建成功')
     showCreateDialog.value = false

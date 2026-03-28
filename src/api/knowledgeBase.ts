@@ -23,6 +23,7 @@ export interface KnowledgeBase {
   createdBy: number
   createdAt: string
   updatedAt: string
+  collectionName?: string
 }
 
 // 分页查询参数
