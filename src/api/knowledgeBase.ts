@@ -17,13 +17,14 @@ export interface UpdateKnowledgeBaseParams {
 export interface KnowledgeBase {
   id: string
   name: string
+  scope: string
   embeddingModel: string
   description?: string
+  collectionName?: string
   documentCount: number
   createdBy: number
   createdAt: string
   updatedAt: string
-  collectionName?: string
 }
 
 // 分页查询参数

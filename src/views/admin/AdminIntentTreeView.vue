@@ -113,7 +113,7 @@ const filterTree = (nodes: IntentNodeTree[], tab: string) => {
 
 const filteredTree = computed(() => filterTree(treeData.value, activeTab.value))
 
-// 创建节点
+// ============ 创建节点 ============
 const showCreateDialog = ref(false)
 const createForm = ref({
   intentCode: '',
@@ -186,16 +186,107 @@ const handleCreate = async () => {
     console.error('创建失败:', error)
   }
 }
+
+// ============ 编辑节点 ============
+const showEditDialog = ref(false)
+const editForm = ref({
+  id: 0 as number,
+  name: '',
+  description: '',
+  examples: '',
+  mcpToolId: '',
+  topK: null as number | null,
+  sortOrder: 0,
+  promptSnippet: '',
+  promptTemplate: '',
+  paramPromptTemplate: ''
+})
+
+const openEditDialog = () => {
+  if (!selectedNode.value) return
+  const node = selectedNode.value
+  editForm.value = {
+    id: Number(node.id),
+    name: node.name ?? '',
+    description: node.description ?? '',
+    examples: node.examples ?? '',
+    mcpToolId: node.mcpToolId ?? '',
+    topK: node.topK,
+    sortOrder: node.sortOrder ?? 0,
+    promptSnippet: node.promptSnippet ?? '',
+    promptTemplate: node.promptTemplate ?? '',
+    paramPromptTemplate: node.paramPromptTemplate ?? ''
+  }
+  showEditDialog.value = true
+}
+
+const handleUpdate = async () => {
+  if (!editForm.value.name.trim()) {
+    toast.error('名称不能为空')
+    return
+  }
+  try {
+    await intentNodeApi.update(editForm.value)
+    toast.success('更新成功')
+    showEditDialog.value = false
+    await fetchTree()
+    // 重新选中该节点（刷新后 id 不变，从树中找到它）
+    if (selectedNode.value) {
+      const found = findNodeById(treeData.value, selectedNode.value.id)
+      if (found) selectedNode.value = found
+    }
+  } catch (error) {
+    console.error('更新失败:', error)
+  }
+}
+
+// ============ 删除节点 ============
+const handleDelete = async () => {
+  if (!selectedNode.value) return
+  const nodeName = selectedNode.value.name
+  if (!confirm(`确定删除节点「${nodeName}」及其所有子节点吗？此操作不可撤销。`)) return
+  try {
+    await intentNodeApi.delete(Number(selectedNode.value.id))
+    toast.success('删除成功')
+    selectedNode.value = null
+    await fetchTree()
+  } catch (error) {
+    console.error('删除失败:', error)
+  }
+}
+
+// ============ 启用/禁用切换 ============
+const handleToggleEnabled = async () => {
+  if (!selectedNode.value) return
+  try {
+    await intentNodeApi.toggleEnabled(Number(selectedNode.value.id))
+    toast.success('状态已切换')
+    await fetchTree()
+    // 重新选中该节点
+    if (selectedNode.value) {
+      const found = findNodeById(treeData.value, selectedNode.value.id)
+      if (found) selectedNode.value = found
+    }
+  } catch (error) {
+    console.error('切换状态失败:', error)
+  }
+}
+
+// 工具：从树中递归查找节点
+const findNodeById = (nodes: IntentNodeTree[], id: string): IntentNodeTree | null => {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    const found = findNodeById(node.children ?? [], id)
+    if (found) return found
+  }
+  return null
+}
 </script>
 
 <template>
   <div class="space-y-4">
     <!-- Header actions -->
     <div class="flex items-center justify-between">
-      <div class="space-y-1">
-        <h2 class="text-xl font-semibold text-slate-900">意图树配置</h2>
-        <p class="text-sm text-slate-500">配置意图层级、类型和节点关系</p>
-      </div>
       <div class="flex gap-2">
         <Button variant="outline" class="rounded-md border-slate-200 bg-white" :disabled="isLoading" @click="fetchTree">
           <RefreshCw class="size-4" :class="{ 'animate-spin': isLoading }" />
@@ -347,12 +438,16 @@ const handleCreate = async () => {
                   <Badge variant="outline" :class="['rounded-md px-2 py-0.5 text-xs', getTypeClass(selectedNode.kind)]">
                     {{ getKindLabel(selectedNode.kind) }}
                   </Badge>
-                  <Badge variant="outline" :class="[
-                    'rounded-md px-2 py-0.5 text-xs',
-                    selectedNode.enabled === 1
-                      ? 'border-blue-200 bg-blue-50 text-blue-700'
-                      : 'border-slate-200 bg-slate-50 text-slate-500'
-                  ]">
+                  <Badge
+                    variant="outline"
+                    :class="[
+                      'cursor-pointer rounded-md px-2 py-0.5 text-xs',
+                      selectedNode.enabled === 1
+                        ? 'border-blue-200 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 bg-slate-50 text-slate-500'
+                    ]"
+                    @click="handleToggleEnabled"
+                  >
                     {{ selectedNode.enabled === 1 ? '启用' : '禁用' }}
                   </Badge>
                 </div>
@@ -362,11 +457,11 @@ const handleCreate = async () => {
                   <Plus class="size-4" />
                   新建子节点
                 </Button>
-                <Button variant="outline" size="sm" class="rounded-md border-slate-200 bg-white">
+                <Button variant="outline" size="sm" class="rounded-md border-slate-200 bg-white" @click="openEditDialog">
                   <Pencil class="size-4" />
                   编辑
                 </Button>
-                <Button variant="outline" size="sm" class="rounded-md border-slate-200 bg-white text-rose-600 hover:text-rose-700">
+                <Button variant="outline" size="sm" class="rounded-md border-slate-200 bg-white text-rose-600 hover:text-rose-700" @click="handleDelete">
                   <Trash2 class="size-4" />
                 </Button>
               </div>
@@ -553,6 +648,108 @@ const handleCreate = async () => {
             </Button>
             <Button class="rounded-md bg-slate-900 text-white hover:bg-slate-800" @click="handleCreate">
               创建
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Edit dialog -->
+    <Teleport to="body">
+      <div v-if="showEditDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+          <h3 class="mb-4 text-lg font-semibold text-slate-900">编辑意图节点</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="mb-1 block text-sm text-slate-600">名称 <span class="text-red-500">*</span></label>
+              <input
+                v-model="editForm.name"
+                placeholder="节点名称"
+                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm text-slate-600">描述</label>
+              <textarea
+                v-model="editForm.description"
+                placeholder="节点描述"
+                rows="2"
+                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm text-slate-600">示例问题（JSON 数组字符串）</label>
+              <textarea
+                v-model="editForm.examples"
+                placeholder='如 ["今天天气如何","北京明天有雨吗"]'
+                rows="3"
+                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="mb-1 block text-sm text-slate-600">MCP Tool ID</label>
+                <input
+                  v-model="editForm.mcpToolId"
+                  placeholder="MCP 工具 ID（可选）"
+                  class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm text-slate-600">TopK</label>
+                <input
+                  v-model.number="editForm.topK"
+                  type="number"
+                  placeholder="默认全局"
+                  class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="mb-1 block text-sm text-slate-600">排序</label>
+                <input
+                  v-model.number="editForm.sortOrder"
+                  type="number"
+                  placeholder="排序值"
+                  class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
+              </div>
+            </div>
+            <div>
+              <label class="mb-1 block text-sm text-slate-600">短规则片段（Prompt Snippet）</label>
+              <textarea
+                v-model="editForm.promptSnippet"
+                placeholder="可选"
+                rows="2"
+                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm text-slate-600">完整 Prompt 模板</label>
+              <textarea
+                v-model="editForm.promptTemplate"
+                placeholder="可选"
+                rows="3"
+                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
+            <div>
+              <label class="mb-1 block text-sm text-slate-600">参数提取提示词模板（MCP 专属）</label>
+              <textarea
+                v-model="editForm.paramPromptTemplate"
+                placeholder="可选"
+                rows="3"
+                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+              />
+            </div>
+          </div>
+          <div class="mt-6 flex justify-end gap-3">
+            <Button variant="outline" class="rounded-md border-slate-200" @click="showEditDialog = false">
+              取消
+            </Button>
+            <Button class="rounded-md bg-slate-900 text-white hover:bg-slate-800" @click="handleUpdate">
+              保存
             </Button>
           </div>
         </div>

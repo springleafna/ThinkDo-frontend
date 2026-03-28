@@ -1,241 +1,144 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
+  CardContent
 } from '@/components/ui/card'
 import { Pencil, TreePine, RefreshCw, X, Search } from 'lucide-vue-next'
+import { toast } from 'vue-sonner'
+import {
+  intentNodeApi,
+  IntentKindMap,
+  IntentLevelMap,
+  type IntentNodeTree,
+  type PageResult
+} from '@/api/intentNode'
 
-type IntentRow = {
-  name: string
-  code: string
-  level: string
-  type: string
-  path: string
-  collection: string
-  topK: string
-  exampleCount: number
-  status: string
-}
-
+// ============ 筛选条件 ============
 const searchQuery = ref('')
-const filterLevel = ref('全部层级')
-const filterType = ref('全部类型')
-const filterStatus = ref('全部状态')
-const filterParent = ref('全部父节点')
+const filterLevel = ref('')
+const filterKind = ref('')
+const filterEnabled = ref('')
+const loading = ref(false)
 
-const intentRows = ref<IntentRow[]>([
-  {
-    name: '发票信息',
-    code: 'DOMAIN_INVOICE',
-    level: 'DOMAIN',
-    type: 'KB',
-    path: '发票信息',
-    collection: 'finance',
-    topK: '全局默认',
-    exampleCount: 2,
-    status: '启用'
-  },
-  {
-    name: '增值税发票',
-    code: 'CATEGORY_VAT_INVOICE',
-    level: 'CATEGORY',
-    type: 'KB',
-    path: '发票信息 / 增值税发票',
-    collection: 'finance',
-    topK: '全局默认',
-    exampleCount: 2,
-    status: '启用'
-  },
-  {
-    name: '销售汇总数据统计',
-    code: 'DOMAIN_SALES',
-    level: 'DOMAIN',
-    type: 'RAG',
-    path: '销售汇总数据统计',
-    collection: 'sales_report',
-    topK: '5',
-    exampleCount: 6,
-    status: '启用'
-  },
-  {
-    name: '销售数据统计',
-    code: 'CATEGORY_SALES_DATA',
-    level: 'CATEGORY',
-    type: 'RAG',
-    path: '销售汇总数据统计 / 销售数据统计',
-    collection: 'sales_report',
-    topK: '全局默认',
-    exampleCount: 4,
-    status: '启用'
-  },
-  {
-    name: '客户工单服务管理',
-    code: 'DOMAIN_TICKET',
-    level: 'DOMAIN',
-    type: 'MCP',
-    path: '客户工单服务管理',
-    collection: 'ticket_system',
-    topK: '3',
-    exampleCount: 3,
-    status: '启用'
-  },
-  {
-    name: '客户工单查询',
-    code: 'CATEGORY_TICKET_QUERY',
-    level: 'CATEGORY',
-    type: 'MCP',
-    path: '客户工单服务管理 / 客户工单查询',
-    collection: 'ticket_system',
-    topK: '全局默认',
-    exampleCount: 2,
-    status: '启用'
-  },
-  {
-    name: '系统交互',
-    code: 'DOMAIN_SYSTEM',
-    level: 'DOMAIN',
-    type: 'SYSTEM',
-    path: '系统交互',
-    collection: '-',
-    topK: '全局默认',
-    exampleCount: 0,
-    status: '启用'
-  },
-  {
-    name: '欢迎与问候',
-    code: 'CATEGORY_WELCOME',
-    level: 'CATEGORY',
-    type: 'SYSTEM',
-    path: '系统交互 / 欢迎与问候',
-    collection: '-',
-    topK: '全局默认',
-    exampleCount: 8,
-    status: '启用'
-  },
-  {
-    name: '关于助手',
-    code: 'CATEGORY_ABOUT',
-    level: 'CATEGORY',
-    type: 'SYSTEM',
-    path: '系统交互 / 关于助手',
-    collection: '-',
-    topK: '全局默认',
-    exampleCount: 5,
-    status: '启用'
-  },
-  {
-    name: '情感反馈',
-    code: 'CATEGORY_FEEDBACK',
-    level: 'CATEGORY',
-    type: 'SYSTEM',
-    path: '系统交互 / 情感反馈',
-    collection: '-',
-    topK: '全局默认',
-    exampleCount: 6,
-    status: '启用'
-  },
-  {
-    name: '天气信息查询服务',
-    code: 'DOMAIN_WEATHER',
-    level: 'DOMAIN',
-    type: 'MCP',
-    path: '天气信息查询服务',
-    collection: 'weather_service',
-    topK: '3',
-    exampleCount: 2,
-    status: '启用'
-  },
-  {
-    name: '天气查询',
-    code: 'CATEGORY_WEATHER_QUERY',
-    level: 'CATEGORY',
-    type: 'MCP',
-    path: '天气信息查询服务 / 天气查询',
-    collection: 'weather_service',
-    topK: '全局默认',
-    exampleCount: 3,
-    status: '停用'
-  }
-])
+// ============ 分页 ============
+const pagination = ref({ current: 1, size: 10, total: 0, pages: 0 })
+const tableRows = ref<IntentNodeTree[]>([])
 
-const getLevelClass = (level: string) => {
-  const map: Record<string, string> = {
-    DOMAIN: 'border-amber-200 bg-amber-50 text-amber-700',
-    CATEGORY: 'border-blue-200 bg-blue-50 text-blue-700'
-  }
-  return map[level] ?? 'border-slate-200 bg-slate-50 text-slate-700'
-}
-
-const getTypeClass = (type: string) => {
-  const map: Record<string, string> = {
-    KB: 'border-purple-200 bg-purple-50 text-purple-700',
-    RAG: 'border-blue-200 bg-blue-50 text-blue-700',
-    MCP: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    SYSTEM: 'border-slate-200 bg-slate-50 text-slate-700'
-  }
-  return map[type] ?? 'border-slate-200 bg-slate-50 text-slate-700'
-}
-
-const getStatusClass = (status: string) => {
-  if (status === '启用') return 'border-blue-200 bg-blue-50 text-blue-700'
-  if (status === '停用') return 'border-amber-200 bg-amber-50 text-amber-700'
-  return 'border-slate-200 bg-slate-50 text-slate-700'
-}
-
-const filteredRows = ref(intentRows.value)
-
-const applyFilters = () => {
-  filteredRows.value = intentRows.value.filter(row => {
-    if (searchQuery.value && !row.name.includes(searchQuery.value) && !row.code.toLowerCase().includes(searchQuery.value.toLowerCase())) {
-      return false
+const fetchData = async () => {
+  loading.value = true
+  try {
+    const params: Record<string, unknown> = {
+      current: pagination.value.current,
+      size: pagination.value.size
     }
-    if (filterLevel.value !== '全部层级' && row.level !== filterLevel.value) return false
-    if (filterType.value !== '全部类型' && row.type !== filterType.value) return false
-    if (filterStatus.value !== '全部状态' && row.status !== filterStatus.value) return false
-    if (filterParent.value !== '全部父节点') {
-      const parent = row.path.split(' / ')[0]
-      if (parent !== filterParent.value) return false
-    }
-    return true
-  })
+    if (searchQuery.value) params.keyword = searchQuery.value
+    if (filterLevel.value !== '') params.level = Number(filterLevel.value)
+    if (filterKind.value !== '') params.kind = Number(filterKind.value)
+    if (filterEnabled.value !== '') params.enabled = Number(filterEnabled.value)
+
+    const res = await intentNodeApi.pageQuery(params as any)
+    tableRows.value = res.records
+    pagination.value.total = res.total
+    pagination.value.pages = res.pages
+    pagination.value.current = res.current
+  } catch (error) {
+    console.error('获取意图节点列表失败:', error)
+    toast.error('获取意图节点列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchData()
+})
+
+// ============ 筛选操作 ============
+const handleSearch = () => {
+  pagination.value.current = 1
+  fetchData()
 }
 
 const clearFilters = () => {
   searchQuery.value = ''
-  filterLevel.value = '全部层级'
-  filterType.value = '全部类型'
-  filterStatus.value = '全部状态'
-  filterParent.value = '全部父节点'
-  filteredRows.value = intentRows.value
+  filterLevel.value = ''
+  filterKind.value = ''
+  filterEnabled.value = ''
+  pagination.value.current = 1
+  fetchData()
 }
+
+const handlePageChange = (page: number) => {
+  pagination.value.current = page
+  fetchData()
+}
+
+// ============ 辅助函数 ============
+const getKindLabel = (kind: number) => IntentKindMap[kind] ?? 'UNKNOWN'
+const getLevelLabel = (level: number) => IntentLevelMap[level] ?? 'UNKNOWN'
+
+const parseExamples = (examples: string | null): string[] => {
+  if (!examples) return []
+  try {
+    const parsed = JSON.parse(examples)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+const getLevelClass = (level: number) => {
+  const map: Record<string, string> = {
+    DOMAIN: 'border-amber-200 bg-amber-50 text-amber-700',
+    CATEGORY: 'border-blue-200 bg-blue-50 text-blue-700',
+    TOPIC: 'border-purple-200 bg-purple-50 text-purple-700'
+  }
+  return map[getLevelLabel(level)] ?? 'border-slate-200 bg-slate-50 text-slate-700'
+}
+
+const getTypeClass = (kind: number) => {
+  const map: Record<string, string> = {
+    KB: 'border-blue-200 bg-blue-50 text-blue-700',
+    MCP: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    SYSTEM: 'border-slate-200 bg-slate-50 text-slate-700'
+  }
+  return map[getKindLabel(kind)] ?? 'border-slate-200 bg-slate-50 text-slate-700'
+}
+
+const getStatusClass = (enabled: number) => {
+  if (enabled === 1) return 'border-blue-200 bg-blue-50 text-blue-700'
+  return 'border-amber-200 bg-amber-50 text-amber-700'
+}
+
+// 生成页码数组
+const pageNumbers = computed(() => {
+  const pages: number[] = []
+  const total = pagination.value.pages
+  const current = pagination.value.current
+  const start = Math.max(1, current - 2)
+  const end = Math.min(total, current + 2)
+  for (let i = start; i <= end; i++) pages.push(i)
+  return pages
+})
 </script>
 
 <template>
   <div class="space-y-4">
-    <!-- Header -->
-    <div class="space-y-1">
-      <h2 class="text-xl font-semibold text-slate-900">意图节点管理</h2>
-      <p class="text-sm text-slate-500">分页查看和快速定位到意图树节点</p>
-    </div>
-
     <!-- Filters -->
     <Card class="border-slate-200 bg-white shadow-none">
-      <CardContent class="pt-6">
+      <CardContent class="px-4">
         <div class="flex flex-wrap items-center gap-3">
           <div class="relative">
             <Search class="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <Input
               v-model="searchQuery"
-              placeholder="搜索意图名称/ID..."
+              placeholder="搜索意图名称/编码..."
               class="h-9 w-64 border-slate-200 bg-white pl-9"
-              @input="applyFilters"
+              @keydown.enter="handleSearch"
             />
           </div>
 
@@ -243,63 +146,46 @@ const clearFilters = () => {
             <select
               v-model="filterLevel"
               class="h-9 rounded-md border border-slate-200 bg-white px-3 pr-8 text-sm text-slate-700 appearance-none"
-              @change="applyFilters"
+              @change="handleSearch"
             >
-              <option value="全部层级">全部层级</option>
-              <option value="DOMAIN">DOMAIN</option>
-              <option value="CATEGORY">CATEGORY</option>
+              <option value="">全部层级</option>
+              <option value="0">DOMAIN</option>
+              <option value="1">CATEGORY</option>
+              <option value="2">TOPIC</option>
             </select>
             <svg class="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </div>
 
           <div class="relative">
             <select
-              v-model="filterType"
+              v-model="filterKind"
               class="h-9 rounded-md border border-slate-200 bg-white px-3 pr-8 text-sm text-slate-700 appearance-none"
-              @change="applyFilters"
+              @change="handleSearch"
             >
-              <option value="全部类型">全部类型</option>
-              <option value="KB">KB</option>
-              <option value="RAG">RAG</option>
-              <option value="MCP">MCP</option>
-              <option value="SYSTEM">SYSTEM</option>
+              <option value="">全部类型</option>
+              <option value="0">KB</option>
+              <option value="1">SYSTEM</option>
+              <option value="2">MCP</option>
             </select>
             <svg class="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </div>
 
           <div class="relative">
             <select
-              v-model="filterStatus"
+              v-model="filterEnabled"
               class="h-9 rounded-md border border-slate-200 bg-white px-3 pr-8 text-sm text-slate-700 appearance-none"
-              @change="applyFilters"
+              @change="handleSearch"
             >
-              <option value="全部状态">全部状态</option>
-              <option value="启用">启用</option>
-              <option value="停用">停用</option>
-            </select>
-            <svg class="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
-
-          <div class="relative">
-            <select
-              v-model="filterParent"
-              class="h-9 rounded-md border border-slate-200 bg-white px-3 pr-8 text-sm text-slate-700 appearance-none"
-              @change="applyFilters"
-            >
-              <option value="全部父节点">全部父节点</option>
-              <option value="ROOT">ROOT（根节点）</option>
-              <option value="发票信息">发票信息</option>
-              <option value="销售汇总数据统计">销售汇总数据统计</option>
-              <option value="客户工单服务管理">客户工单服务管理</option>
-              <option value="系统交互">系统交互</option>
-              <option value="天气信息查询服务">天气信息查询服务</option>
+              <option value="">全部状态</option>
+              <option value="1">启用</option>
+              <option value="0">禁用</option>
             </select>
             <svg class="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </div>
 
           <div class="ml-auto flex gap-2">
-            <Button variant="outline" class="h-9 rounded-md border-slate-200 bg-white" @click="applyFilters">
-              <RefreshCw class="size-4" />
+            <Button variant="outline" class="h-9 rounded-md border-slate-200 bg-white" @click="fetchData">
+              <RefreshCw class="size-4" :class="{ 'animate-spin': loading }" />
               刷新
             </Button>
             <Button variant="outline" class="h-9 rounded-md border-slate-200 bg-white" @click="clearFilters">
@@ -313,15 +199,27 @@ const clearFilters = () => {
 
     <!-- Table -->
     <Card class="border-slate-200 bg-white shadow-none">
-      <CardContent class="pt-6">
-        <div class="overflow-x-auto">
+      <CardContent>
+        <!-- Loading -->
+        <div v-if="loading" class="flex items-center justify-center py-12 text-sm text-slate-400">
+          <RefreshCw class="mr-2 size-4 animate-spin" />
+          加载中...
+        </div>
+
+        <!-- Empty -->
+        <div v-else-if="!tableRows.length" class="flex flex-col items-center justify-center py-12 text-slate-400">
+          <p class="text-sm">暂无匹配的意图节点</p>
+        </div>
+
+        <!-- Table -->
+        <div v-else class="overflow-x-auto">
           <table class="w-full min-w-[1100px] text-left text-sm">
             <thead class="bg-slate-50 text-slate-500">
               <tr>
                 <th class="px-4 py-3 font-medium">意图节点</th>
                 <th class="px-4 py-3 font-medium">层级</th>
                 <th class="px-4 py-3 font-medium">类型</th>
-                <th class="px-4 py-3 font-medium">路径</th>
+                <th class="px-4 py-3 font-medium">父节点</th>
                 <th class="px-4 py-3 font-medium">关联资源</th>
                 <th class="px-4 py-3 font-medium">示例数</th>
                 <th class="px-4 py-3 font-medium">状态</th>
@@ -329,43 +227,47 @@ const clearFilters = () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in filteredRows" :key="row.code" class="border-t border-slate-200 hover:bg-slate-50/50">
+              <tr v-for="row in tableRows" :key="row.id" class="border-t border-slate-200 hover:bg-slate-50/50">
                 <td class="px-4 py-3">
                   <div class="flex items-center gap-2">
                     <span class="text-sm font-medium text-slate-900">{{ row.name }}</span>
-                    <code class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">{{ row.code }}</code>
+                    <code class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">{{ row.intentCode }}</code>
                   </div>
                 </td>
                 <td class="px-4 py-3">
                   <Badge variant="outline" :class="['rounded-md px-2 py-0.5 text-xs', getLevelClass(row.level)]">
-                    {{ row.level }}
+                    {{ getLevelLabel(row.level) }}
                   </Badge>
                 </td>
                 <td class="px-4 py-3">
-                  <Badge variant="outline" :class="['rounded-md px-2 py-0.5 text-xs', getTypeClass(row.type)]">
-                    {{ row.type }}
+                  <Badge variant="outline" :class="['rounded-md px-2 py-0.5 text-xs', getTypeClass(row.kind)]">
+                    {{ getKindLabel(row.kind) }}
                   </Badge>
                 </td>
-                <td class="px-4 py-3 text-sm text-slate-600">{{ row.path }}</td>
+                <td class="px-4 py-3 text-sm text-slate-600">{{ row.parentCode ?? 'ROOT' }}</td>
                 <td class="px-4 py-3">
-                  <div v-if="row.collection !== '-'" class="space-y-0.5">
-                    <span class="text-sm text-slate-700">{{ row.collection }}</span>
-                    <p class="text-xs text-slate-500">TopK: {{ row.topK }}</p>
+                  <div v-if="row.collectionName" class="space-y-0.5">
+                    <span class="text-sm text-slate-700">{{ row.collectionName }}</span>
+                    <p class="text-xs text-slate-500">TopK: {{ row.topK ?? '全局默认' }}</p>
+                  </div>
+                  <div v-else-if="row.mcpToolId" class="space-y-0.5">
+                    <span class="text-sm text-emerald-700">{{ row.mcpToolId }}</span>
+                    <p class="text-xs text-slate-500">MCP Tool</p>
                   </div>
                   <span v-else class="text-sm text-slate-400">-</span>
                 </td>
-                <td class="px-4 py-3 text-sm text-slate-700">{{ row.exampleCount }}</td>
+                <td class="px-4 py-3 text-sm text-slate-700">{{ parseExamples(row.examples).length }}</td>
                 <td class="px-4 py-3">
-                  <Badge variant="outline" :class="['rounded-md px-2 py-0.5 text-xs', getStatusClass(row.status)]">
-                    {{ row.status }}
+                  <Badge variant="outline" :class="['rounded-md px-2 py-0.5 text-xs', getStatusClass(row.enabled)]">
+                    {{ row.enabled === 1 ? '启用' : '禁用' }}
                   </Badge>
                 </td>
                 <td class="px-4 py-3">
                   <div class="flex gap-1">
-                    <Button variant="outline" size="icon-sm" class="size-8 rounded-md border-slate-200 bg-white">
+                    <Button variant="outline" size="icon-sm" class="rounded-md border-slate-200 bg-white">
                       <Pencil class="size-3.5" />
                     </Button>
-                    <Button variant="outline" size="icon-sm" class="size-8 rounded-md border-slate-200 bg-white">
+                    <Button variant="outline" size="icon-sm" class="rounded-md border-slate-200 bg-white">
                       <TreePine class="size-3.5" />
                     </Button>
                   </div>
@@ -376,14 +278,36 @@ const clearFilters = () => {
         </div>
 
         <!-- Pagination -->
-        <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
-          <span class="text-sm text-slate-500">共 {{ filteredRows.length }} 条记录</span>
+        <div v-if="pagination.total > 0" class="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
+          <span class="text-sm text-slate-500">共 {{ pagination.total }} 条记录</span>
           <div class="flex items-center gap-2">
-            <Button variant="outline" disabled class="h-8 rounded-md border-slate-200 bg-white px-3 text-xs">
+            <Button
+              variant="outline"
+              :disabled="pagination.current <= 1"
+              class="h-8 rounded-md border-slate-200 bg-white px-3 text-xs"
+              @click="handlePageChange(pagination.current - 1)"
+            >
               上一页
             </Button>
-            <span class="rounded-md bg-slate-900 px-3 py-1 text-xs font-medium text-white">1</span>
-            <Button variant="outline" disabled class="h-8 rounded-md border-slate-200 bg-white px-3 text-xs">
+            <template v-for="p in pageNumbers" :key="p">
+              <button
+                :class="[
+                  'h-8 rounded-md px-3 text-xs font-medium transition-colors',
+                  p === pagination.current
+                    ? 'bg-slate-900 text-white'
+                    : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                ]"
+                @click="handlePageChange(p)"
+              >
+                {{ p }}
+              </button>
+            </template>
+            <Button
+              variant="outline"
+              :disabled="pagination.current >= pagination.pages"
+              class="h-8 rounded-md border-slate-200 bg-white px-3 text-xs"
+              @click="handlePageChange(pagination.current + 1)"
+            >
               下一页
             </Button>
           </div>

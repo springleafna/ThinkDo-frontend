@@ -42,6 +42,39 @@ export interface CreateIntentNodeParams {
   paramPromptTemplate?: string
 }
 
+// 编辑意图节点请求参数
+export interface UpdateIntentNodeParams {
+  id: number
+  name?: string
+  description?: string
+  examples?: string
+  mcpToolId?: string
+  topK?: number | null
+  sortOrder?: number
+  promptSnippet?: string
+  promptTemplate?: string
+  paramPromptTemplate?: string
+}
+
+// 分页查询请求参数
+export interface IntentNodePageParams {
+  current?: number
+  size?: number
+  keyword?: string
+  level?: number
+  kind?: number
+  enabled?: number
+}
+
+// 分页响应
+export interface PageResult<T> {
+  records: T[]
+  total: number
+  size: number
+  current: number
+  pages: number
+}
+
 // 意图类型映射
 export const IntentKindMap: Record<number, string> = {
   0: 'KB',
@@ -66,10 +99,42 @@ export const intentNodeApi = {
   },
 
   /**
+   * 分页查询意图节点列表
+   * GET /intent-node
+   */
+  pageQuery(params: IntentNodePageParams) {
+    return request.get<PageResult<IntentNodeTree>>('/intent-node', { params })
+  },
+
+  /**
    * 创建意图节点
    * POST /intent-node
    */
   create(data: CreateIntentNodeParams) {
     return request.post<void>('/intent-node', data)
+  },
+
+  /**
+   * 编辑意图节点
+   * PUT /intent-node
+   */
+  update(data: UpdateIntentNodeParams) {
+    return request.put<void>('/intent-node', data)
+  },
+
+  /**
+   * 删除意图节点（级联删除子节点）
+   * DELETE /intent-node/{id}
+   */
+  delete(id: number) {
+    return request.delete<void>(`/intent-node/${id}`)
+  },
+
+  /**
+   * 启用/禁用意图节点
+   * PUT /intent-node/{id}/toggle-enabled
+   */
+  toggleEnabled(id: number) {
+    return request.put<void>(`/intent-node/${id}/toggle-enabled`)
   }
 }
