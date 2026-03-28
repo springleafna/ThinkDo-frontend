@@ -2,9 +2,26 @@
 import type { Component } from 'vue'
 import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { ChevronDown, ChevronRight, ShieldCheck } from 'lucide-vue-next'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarRail,
+  SidebarSeparator,
+} from '@/components/ui/sidebar'
+import {
+  ChevronRight,
+  ShieldCheck,
+} from 'lucide-vue-next'
 
 type AdminNavItem = {
   label: string
@@ -25,134 +42,107 @@ const isActive = (item: AdminNavItem) => {
   return item.children?.some((child: AdminNavItem) => route.path === child.to) ?? false
 }
 
-const expandedItems = ref<Set<string>>(new Set())
+const openMenus = ref<Set<string>>(new Set())
 
-// Auto-expand when route matches a child
 watch(() => route.path, (path) => {
   for (const item of props.items) {
     if (item.children?.some((child: AdminNavItem) => child.to === path)) {
-      expandedItems.value.add(item.to)
+      openMenus.value.add(item.to)
     }
   }
 }, { immediate: true })
 
-const isExpanded = (item: AdminNavItem) => {
-  return item.children ? expandedItems.value.has(item.to) : false
-}
+const isOpen = (item: AdminNavItem) => openMenus.value.has(item.to)
 
-const toggleExpand = (item: AdminNavItem) => {
+const toggleOpen = (item: AdminNavItem) => {
   if (!item.children) return
-  const s = new Set(expandedItems.value)
+  const s = new Set(openMenus.value)
   if (s.has(item.to)) {
     s.delete(item.to)
   } else {
     s.add(item.to)
   }
-  expandedItems.value = s
+  openMenus.value = s
 }
 </script>
 
 <template>
-  <aside class="hidden w-[260px] shrink-0 border-r border-slate-200 bg-white xl:flex xl:flex-col">
-    <div class="px-5 py-4">
-      <div class="flex items-center gap-3">
-        <div class="flex size-9 items-center justify-center rounded-md bg-slate-900 text-white">
-          <ShieldCheck class="size-5" />
-        </div>
-        <div>
-          <h1 class="text-base font-semibold text-slate-900">管理后台</h1>
-          <p class="text-xs text-slate-500">ThinkDo 内部系统</p>
-        </div>
-      </div>
-      <Badge variant="outline" class="mt-4 rounded-md border-slate-200 bg-slate-50 text-slate-600">
-        演示环境
-      </Badge>
-    </div>
-
-    <Separator class="bg-slate-200" />
-
-    <nav class="flex-1 space-y-1 px-3 py-3">
-      <template v-for="item in items" :key="item.to">
-        <!-- Parent with children -->
-        <div v-if="item.children?.length">
-          <button
-            :class="[
-              'group flex w-full items-start gap-3 rounded-md border px-3 py-3 transition-colors',
-              isActive(item)
-                ? 'border-slate-900 bg-slate-900 text-white'
-                : 'border-transparent bg-white text-slate-700 hover:border-slate-200 hover:bg-slate-50'
-            ]"
-            @click="toggleExpand(item)"
-          >
-            <div
-              :class="[
-                'mt-0.5 flex size-8 items-center justify-center rounded-md',
-                isActive(item) ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'
-              ]"
-            >
-              <component :is="item.icon" class="size-4" />
+  <Sidebar collapsible="icon">
+    <SidebarHeader>
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton size="lg" class="hover:bg-sidebar-accent">
+            <div class="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+              <ShieldCheck class="size-4" />
             </div>
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center justify-between">
-                <p class="truncate text-sm font-medium">
-                  {{ item.label }}
-                </p>
-                <component
-                  :is="isExpanded(item) ? ChevronDown : ChevronRight"
-                  class="size-4 shrink-0 opacity-60"
-                />
-              </div>
+            <div class="grid flex-1 text-left text-sm leading-tight">
+              <span class="truncate font-semibold">管理后台</span>
+              <span class="truncate text-xs text-muted-foreground">ThinkDo 内部系统</span>
             </div>
-          </button>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    </SidebarHeader>
 
-          <!-- Children -->
-          <div v-show="isExpanded(item)" class="ml-4 mt-1 space-y-0.5 border-l border-slate-200 pl-3">
-            <RouterLink
-              v-for="child in item.children"
-              :key="child.to"
-              :to="child.to"
-              :class="[
-                'flex items-center rounded-md px-3 py-2 text-sm transition-colors',
-                route.path === child.to
-                  ? 'bg-slate-100 font-medium text-slate-900'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              ]"
-            >
-              {{ child.label }}
-            </RouterLink>
-          </div>
-        </div>
+    <SidebarSeparator />
 
-        <!-- Single item without children -->
-        <RouterLink
-          v-else
-          :to="item.to"
-          :class="[
-            'group flex items-start gap-3 rounded-md border px-3 py-3 transition-colors',
-            isActive(item)
-              ? 'border-slate-900 bg-slate-900 text-white'
-              : 'border-transparent bg-white text-slate-700 hover:border-slate-200 hover:bg-slate-50'
-          ]"
-        >
-          <div
-            :class="[
-              'mt-0.5 flex size-8 items-center justify-center rounded-md',
-              isActive(item) ? 'bg-white/10 text-white' : 'bg-slate-100 text-slate-600'
-            ]"
-          >
-            <component :is="item.icon" class="size-4" />
-          </div>
-          <div class="min-w-0 flex-1">
-            <p class="truncate text-sm font-medium">
-              {{ item.label }}
-            </p>
-          </div>
-        </RouterLink>
-      </template>
-    </nav>
+    <SidebarContent>
+      <SidebarGroup>
+        <SidebarGroupLabel>导航菜单</SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            <template v-for="item in items" :key="item.to">
+              <!-- Item with children -->
+              <SidebarMenuItem v-if="item.children?.length">
+                <SidebarMenuButton
+                  :isActive="isActive(item)"
+                  :tooltip="item.label"
+                  @click="toggleOpen(item)"
+                >
+                  <component :is="item.icon" />
+                  <span>{{ item.label }}</span>
+                  <ChevronRight
+                    class="ml-auto transition-transform duration-200"
+                    :class="{ 'rotate-90': isOpen(item) }"
+                  />
+                </SidebarMenuButton>
 
-    <div class="border-t border-slate-200 px-5 py-4 text-xs leading-5 text-slate-500">
-      当前页面为静态后台原型，后续可继续接权限、接口和日志能力。
-    </div>
-  </aside>
+                <SidebarMenuSub v-show="isOpen(item)">
+                  <SidebarMenuSubItem
+                    v-for="child in item.children"
+                    :key="child.to"
+                  >
+                    <SidebarMenuSubButton
+                      asChild
+                      :isActive="route.path === child.to"
+                    >
+                      <RouterLink :to="child.to">
+                        <span>{{ child.label }}</span>
+                      </RouterLink>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                </SidebarMenuSub>
+              </SidebarMenuItem>
+
+              <!-- Single item -->
+              <SidebarMenuItem v-else>
+                <SidebarMenuButton
+                  asChild
+                  :isActive="isActive(item)"
+                  :tooltip="item.label"
+                >
+                  <RouterLink :to="item.to">
+                    <component :is="item.icon" />
+                    <span>{{ item.label }}</span>
+                  </RouterLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </template>
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    </SidebarContent>
+
+    <SidebarRail />
+  </Sidebar>
 </template>

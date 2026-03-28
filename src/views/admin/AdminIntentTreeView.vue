@@ -131,8 +131,10 @@ const createForm = ref({
 const createIsRoot = ref(true)
 const levelDisabled = ref(true)
 
-// TOPIC (level=2) 时需填写 mcpToolId，在打开对话框时根据层级直接确定
-const requireMcpToolId = ref(false)
+// MCP 类型且 TOPIC 层级时需填写 mcpToolId
+const isMcpType = computed(() => createForm.value.kind === 2)
+const isTopicLevel = computed(() => createForm.value.level === 2)
+const requireMcpToolId = computed(() => isMcpType.value && isTopicLevel.value)
 
 const openCreateDialog = (isRoot: boolean) => {
   createIsRoot.value = isRoot
@@ -153,8 +155,6 @@ const openCreateDialog = (isRoot: boolean) => {
   }
   // 根节点固定 DOMAIN，子节点层级由父节点决定，均不可手动选择
   levelDisabled.value = true
-  // level=2 即 TOPIC 时必须填写 mcpToolId
-  requireMcpToolId.value = nextLevel === 2
   showCreateDialog.value = true
 }
 
@@ -479,50 +479,74 @@ const handleCreate = async () => {
                 </Select>
               </div>
             </div>
-            <div v-if="requireMcpToolId">
-              <label class="mb-1 block text-sm text-slate-600">MCP Tool ID <span class="text-red-500">*</span></label>
-              <input
-                v-model="createForm.mcpToolId"
-                placeholder="如 weather_query"
-                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-              />
-            </div>
-            <div>
-              <textarea
-                v-model="createForm.description"
-                placeholder="节点描述"
-                rows="2"
-                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-              />
-            </div>
-            <div>
-              <label class="mb-1 block text-sm text-slate-600">示例问题</label>
-              <textarea
-                v-model="createForm.examples"
-                placeholder="每行输入一个示例问题，如：&#10;今天天气如何&#10;北京明天有雨吗"
-                rows="3"
-                class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-              />
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="mb-1 block text-sm text-slate-600">Collection</label>
+            <!-- MCP 类型时的表单项 -->
+            <template v-if="isMcpType">
+              <div v-if="requireMcpToolId">
+                <label class="mb-1 block text-sm text-slate-600">MCP Tool ID <span class="text-red-500">*</span></label>
                 <input
-                  v-model="createForm.collectionName"
-                  placeholder="Milvus collection 名"
+                  v-model="createForm.mcpToolId"
+                  placeholder="如 weather_query"
                   class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
                 />
               </div>
               <div>
-                <label class="mb-1 block text-sm text-slate-600">TopK</label>
-                <input
-                  v-model.number="createForm.topK"
-                  type="number"
-                  placeholder="默认全局"
+                <label class="mb-1 block text-sm text-slate-600">节点描述</label>
+                <textarea
+                  v-model="createForm.description"
+                  placeholder="节点描述（可选）"
+                  rows="2"
                   class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
                 />
               </div>
-            </div>
+              <div v-if="requireMcpToolId">
+                <label class="mb-1 block text-sm text-slate-600">示例问题</label>
+                <textarea
+                  v-model="createForm.examples"
+                  placeholder="每行输入一个示例问题，如：&#10;今天天气如何&#10;北京明天有雨吗"
+                  rows="3"
+                  class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
+              </div>
+            </template>
+            <!-- 非 MCP 类型时的表单项 -->
+            <template v-else>
+              <div>
+                <textarea
+                  v-model="createForm.description"
+                  placeholder="节点描述"
+                  rows="2"
+                  class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm text-slate-600">示例问题</label>
+                <textarea
+                  v-model="createForm.examples"
+                  placeholder="每行输入一个示例问题，如：&#10;今天天气如何&#10;北京明天有雨吗"
+                  rows="3"
+                  class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="mb-1 block text-sm text-slate-600">Collection</label>
+                  <input
+                    v-model="createForm.collectionName"
+                    placeholder="Milvus collection 名"
+                    class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  />
+                </div>
+                <div>
+                  <label class="mb-1 block text-sm text-slate-600">TopK</label>
+                  <input
+                    v-model.number="createForm.topK"
+                    type="number"
+                    placeholder="默认全局"
+                    class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  />
+                </div>
+              </div>
+            </template>
           </div>
           <div class="mt-6 flex justify-end gap-3">
             <Button variant="outline" class="rounded-md border-slate-200" @click="showCreateDialog = false">

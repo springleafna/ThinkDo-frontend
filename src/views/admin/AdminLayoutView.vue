@@ -1,4 +1,4 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import {
@@ -12,6 +12,7 @@ import {
   Settings2,
   UsersRound
 } from 'lucide-vue-next'
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import AdminSidebarNav from '@/components/admin/AdminSidebarNav.vue'
 import AdminTopbar from '@/components/admin/AdminTopbar.vue'
 
@@ -73,22 +74,21 @@ const pageSubtitle = computed(() =>
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-100 text-slate-950">
-    <div class="mx-auto flex min-h-screen max-w-[1480px] gap-4 p-4">
-      <AdminSidebarNav :items="navItems" />
+  <SidebarProvider>
+    <AdminSidebarNav :items="navItems" />
 
-      <div class="flex min-w-0 flex-1 flex-col gap-4">
-        <div class="flex items-center gap-2 border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 xl:hidden">
-          <Activity class="size-4 text-slate-400" />
-          管理员导航已折叠，当前页面可继续预览静态内容。
-        </div>
+    <SidebarInset>
+      <header class="flex h-12 items-center gap-2 border-b px-4">
+        <SidebarTrigger class="-ml-1" />
+      </header>
 
+      <div class="flex flex-1 flex-col gap-4 p-4">
         <AdminTopbar :title="pageTitle" :subtitle="pageSubtitle" />
 
         <main class="min-h-0 flex-1">
           <RouterView />
         </main>
       </div>
-    </div>
-  </div>
+    </SidebarInset>
+  </SidebarProvider>
 </template>

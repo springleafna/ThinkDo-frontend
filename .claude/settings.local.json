@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx vue-tsc:*)"
+      "Bash(npx vue-tsc:*)",
+      "Bash(yes \"n\")",
+      "Bash(npx shadcn-vue@latest add sidebar)"
     ]
   }
 }
