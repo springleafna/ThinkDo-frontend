@@ -44,7 +44,7 @@ export interface CreateIntentNodeParams {
 
 // 编辑意图节点请求参数
 export interface UpdateIntentNodeParams {
-  id: number
+  id: string | number
   name?: string
   description?: string
   examples?: string
@@ -126,7 +126,7 @@ export const intentNodeApi = {
    * 删除意图节点（级联删除子节点）
    * DELETE /intent-node/{id}
    */
-  delete(id: number) {
+  delete(id: string | number) {
     return request.delete<void>(`/intent-node/${id}`)
   },
 
@@ -134,7 +134,7 @@ export const intentNodeApi = {
    * 启用/禁用意图节点
    * PUT /intent-node/{id}/toggle-enabled
    */
-  toggleEnabled(id: number) {
+  toggleEnabled(id: string | number) {
     return request.put<void>(`/intent-node/${id}/toggle-enabled`)
   }
 }

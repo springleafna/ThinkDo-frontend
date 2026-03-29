@@ -737,7 +737,7 @@ const formatTime = (date: Date) => {
       <!-- 下方对话区域 -->
       <div class="flex-1 flex min-h-0 overflow-hidden ml-2 mr-2 mb-2">
         <!-- 左侧对话列表侧栏 -->
-        <aside class="w-64 max-h-[680px] mt-16 border-r border-black/5 bg-white/70 backdrop-blur-sm flex flex-col shrink-0 rounded-xl shadow-sm overflow-hidden">
+        <aside class="w-64 max-h-[570px] mt-16 border-r border-black/5 bg-white/70 backdrop-blur-sm flex flex-col shrink-0 rounded-xl shadow-sm overflow-hidden">
         <!-- 侧栏头部 -->
         <div class="px-3 pt-3 pb-2">
           <Button

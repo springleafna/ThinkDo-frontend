@@ -7,7 +7,23 @@ import {
   Card,
   CardContent
 } from '@/components/ui/card'
-import { Pencil, TreePine, RefreshCw, X, Search } from 'lucide-vue-next'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Switch } from '@/components/ui/switch'
+import { Pencil, RefreshCw, X, Search, Trash2 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import {
   intentNodeApi,
@@ -19,9 +35,9 @@ import {
 
 // ============ 筛选条件 ============
 const searchQuery = ref('')
-const filterLevel = ref('')
-const filterKind = ref('')
-const filterEnabled = ref('')
+const filterLevel = ref<string | undefined>(undefined)
+const filterKind = ref<string | undefined>(undefined)
+const filterEnabled = ref<string | undefined>(undefined)
 const loading = ref(false)
 
 // ============ 分页 ============
@@ -36,9 +52,9 @@ const fetchData = async () => {
       size: pagination.value.size
     }
     if (searchQuery.value) params.keyword = searchQuery.value
-    if (filterLevel.value !== '') params.level = Number(filterLevel.value)
-    if (filterKind.value !== '') params.kind = Number(filterKind.value)
-    if (filterEnabled.value !== '') params.enabled = Number(filterEnabled.value)
+    if (filterLevel.value != null && filterLevel.value !== '') params.level = Number(filterLevel.value)
+    if (filterKind.value != null && filterKind.value !== '') params.kind = Number(filterKind.value)
+    if (filterEnabled.value != null && filterEnabled.value !== '') params.enabled = Number(filterEnabled.value)
 
     const res = await intentNodeApi.pageQuery(params as any)
     tableRows.value = res.records
@@ -65,9 +81,9 @@ const handleSearch = () => {
 
 const clearFilters = () => {
   searchQuery.value = ''
-  filterLevel.value = ''
-  filterKind.value = ''
-  filterEnabled.value = ''
+  filterLevel.value = undefined
+  filterKind.value = undefined
+  filterEnabled.value = undefined
   pagination.value.current = 1
   fetchData()
 }
@@ -109,9 +125,46 @@ const getTypeClass = (kind: number) => {
   return map[getKindLabel(kind)] ?? 'border-slate-200 bg-slate-50 text-slate-700'
 }
 
-const getStatusClass = (enabled: number) => {
-  if (enabled === 1) return 'border-blue-200 bg-blue-50 text-blue-700'
-  return 'border-amber-200 bg-amber-50 text-amber-700'
+// ============ 删除对话框 ============
+const showDeleteDialog = ref(false)
+const deletingRow = ref<IntentNodeTree | null>(null)
+
+const openDeleteDialog = (row: IntentNodeTree) => {
+  deletingRow.value = row
+  showDeleteDialog.value = true
+}
+
+const closeDeleteDialog = () => {
+  showDeleteDialog.value = false
+  deletingRow.value = null
+}
+
+const confirmDelete = async () => {
+  if (!deletingRow.value) return
+  try {
+    await intentNodeApi.delete(deletingRow.value.id)
+    toast.success('删除成功')
+    closeDeleteDialog()
+    fetchData()
+  } catch {
+    toast.error('删除失败')
+  }
+}
+
+// ============ 启用/禁用 ============
+const handleToggleEnabled = async (row: IntentNodeTree) => {
+  const newEnabled = row.enabled === 1 ? 0 : 1
+  try {
+    await intentNodeApi.toggleEnabled(row.id)
+    toast.success(newEnabled ? '已启用' : '已禁用')
+    // 刷新数据以确保状态同步
+    await fetchData()
+  } catch (error) {
+    console.error('切换状态失败:', error)
+    toast.error('操作失败')
+    // 失败时刷新数据回滚
+    await fetchData()
+  }
 }
 
 // 生成页码数组
@@ -142,46 +195,37 @@ const pageNumbers = computed(() => {
             />
           </div>
 
-          <div class="relative">
-            <select
-              v-model="filterLevel"
-              class="h-9 rounded-md border border-slate-200 bg-white px-3 pr-8 text-sm text-slate-700 appearance-none"
-              @change="handleSearch"
-            >
-              <option value="">全部层级</option>
-              <option value="0">DOMAIN</option>
-              <option value="1">CATEGORY</option>
-              <option value="2">TOPIC</option>
-            </select>
-            <svg class="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
+          <Select v-model="filterLevel" @update:model-value="handleSearch">
+            <SelectTrigger size="sm" class="w-[130px] border-slate-200 bg-white">
+              <SelectValue placeholder="全部层级" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="0">DOMAIN</SelectItem>
+              <SelectItem value="1">CATEGORY</SelectItem>
+              <SelectItem value="2">TOPIC</SelectItem>
+            </SelectContent>
+          </Select>
 
-          <div class="relative">
-            <select
-              v-model="filterKind"
-              class="h-9 rounded-md border border-slate-200 bg-white px-3 pr-8 text-sm text-slate-700 appearance-none"
-              @change="handleSearch"
-            >
-              <option value="">全部类型</option>
-              <option value="0">KB</option>
-              <option value="1">SYSTEM</option>
-              <option value="2">MCP</option>
-            </select>
-            <svg class="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
+          <Select v-model="filterKind" @update:model-value="handleSearch">
+            <SelectTrigger size="sm" class="w-[130px] border-slate-200 bg-white">
+              <SelectValue placeholder="全部类型" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="0">KB</SelectItem>
+              <SelectItem value="1">SYSTEM</SelectItem>
+              <SelectItem value="2">MCP</SelectItem>
+            </SelectContent>
+          </Select>
 
-          <div class="relative">
-            <select
-              v-model="filterEnabled"
-              class="h-9 rounded-md border border-slate-200 bg-white px-3 pr-8 text-sm text-slate-700 appearance-none"
-              @change="handleSearch"
-            >
-              <option value="">全部状态</option>
-              <option value="1">启用</option>
-              <option value="0">禁用</option>
-            </select>
-            <svg class="pointer-events-none absolute right-2 top-1/2 size-4 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-          </div>
+          <Select v-model="filterEnabled" @update:model-value="handleSearch">
+            <SelectTrigger size="sm" class="w-[130px] border-slate-200 bg-white">
+              <SelectValue placeholder="全部状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">启用</SelectItem>
+              <SelectItem value="0">禁用</SelectItem>
+            </SelectContent>
+          </Select>
 
           <div class="ml-auto flex gap-2">
             <Button variant="outline" class="h-9 rounded-md border-slate-200 bg-white" @click="fetchData">
@@ -258,17 +302,18 @@ const pageNumbers = computed(() => {
                 </td>
                 <td class="px-4 py-3 text-sm text-slate-700">{{ parseExamples(row.examples).length }}</td>
                 <td class="px-4 py-3">
-                  <Badge variant="outline" :class="['rounded-md px-2 py-0.5 text-xs', getStatusClass(row.enabled)]">
-                    {{ row.enabled === 1 ? '启用' : '禁用' }}
-                  </Badge>
+                  <Switch
+                    :default-checked="row.enabled === 1"
+                    @click="handleToggleEnabled(row)"
+                  />
                 </td>
                 <td class="px-4 py-3">
                   <div class="flex gap-1">
                     <Button variant="outline" size="icon-sm" class="rounded-md border-slate-200 bg-white">
                       <Pencil class="size-3.5" />
                     </Button>
-                    <Button variant="outline" size="icon-sm" class="rounded-md border-slate-200 bg-white">
-                      <TreePine class="size-3.5" />
+                    <Button variant="outline" size="icon-sm" class="rounded-md border-slate-200 bg-white" @click="openDeleteDialog(row)">
+                      <Trash2 class="size-3.5" />
                     </Button>
                   </div>
                 </td>
@@ -314,5 +359,25 @@ const pageNumbers = computed(() => {
         </div>
       </CardContent>
     </Card>
+
+    <!-- Delete Confirmation Dialog -->
+    <Dialog v-model:open="showDeleteDialog">
+      <DialogContent class="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>确认删除</DialogTitle>
+          <DialogDescription>
+            确认删除「{{ deletingRow?.name }}」？此操作将级联删除所有子节点，删除后无法恢复。
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" class="rounded-md border-slate-200" @click="closeDeleteDialog">
+            取消
+          </Button>
+          <Button variant="destructive" class="rounded-md bg-rose-600 hover:bg-rose-700" @click="confirmDelete">
+            确认删除
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

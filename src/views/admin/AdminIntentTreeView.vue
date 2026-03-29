@@ -190,7 +190,7 @@ const handleCreate = async () => {
 // ============ 编辑节点 ============
 const showEditDialog = ref(false)
 const editForm = ref({
-  id: 0 as number,
+  id: '' as string | number,
   name: '',
   description: '',
   examples: '',
@@ -206,7 +206,7 @@ const openEditDialog = () => {
   if (!selectedNode.value) return
   const node = selectedNode.value
   editForm.value = {
-    id: Number(node.id),
+    id: node.id,
     name: node.name ?? '',
     description: node.description ?? '',
     examples: node.examples ?? '',
@@ -246,7 +246,7 @@ const handleDelete = async () => {
   const nodeName = selectedNode.value.name
   if (!confirm(`确定删除节点「${nodeName}」及其所有子节点吗？此操作不可撤销。`)) return
   try {
-    await intentNodeApi.delete(Number(selectedNode.value.id))
+    await intentNodeApi.delete(selectedNode.value.id)
     toast.success('删除成功')
     selectedNode.value = null
     await fetchTree()
@@ -259,7 +259,7 @@ const handleDelete = async () => {
 const handleToggleEnabled = async () => {
   if (!selectedNode.value) return
   try {
-    await intentNodeApi.toggleEnabled(Number(selectedNode.value.id))
+    await intentNodeApi.toggleEnabled(selectedNode.value.id)
     toast.success('状态已切换')
     await fetchTree()
     // 重新选中该节点
