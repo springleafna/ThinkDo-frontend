@@ -85,7 +85,7 @@ const onStart = () => {
           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-500 opacity-40"></span>
           <span class="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
         </span>
-        新一代个人生产力控制台
+        新一代个人生产力平台
       </div>
 
       <!-- 恢复你喜欢的排版：部分黑色，部分蓝色斜体 -->

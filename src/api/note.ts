@@ -215,5 +215,17 @@ export const noteApi = {
 
   getRecentNotes() {
     return request.get<NoteListItem[]>('/note/recent')
-  }
+  },
+
+  /**
+   * 上传笔记图片
+   * POST /note/image/upload
+   */
+  uploadImage(file: File) {
+    const form = new FormData()
+    form.append('file', file)
+    return request.post<string>('/note/image/upload', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 }

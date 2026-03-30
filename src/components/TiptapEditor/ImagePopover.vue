@@ -5,12 +5,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  Image as ImageIcon, 
-  UploadCloud, 
+import {
+  Image as ImageIcon,
+  UploadCloud,
   Link as LinkIcon,
   ArrowRight
 } from 'lucide-vue-next'
+import { noteApi } from '@/api/note'
 
 interface Props {
   editor: Editor
@@ -23,6 +24,7 @@ const imageUrl = ref('')
 const activeTab = ref('upload')
 const fileInput = ref<HTMLInputElement | null>(null)
 const isDragging = ref(false)
+const isUploading = ref(false)
 
 // 打开菜单
 const openMenu = () => {
@@ -58,15 +60,22 @@ const handleDrop = (e: DragEvent) => {
   if (file) processFile(file)
 }
 
-// 处理文件上传 (模拟)
-const processFile = (file: File) => {
+// 处理文件上传
+const processFile = async (file: File) => {
   if (!file.type.startsWith('image/')) return
-  
-  // TODO: 替换为真实上传逻辑
-  const reader = new FileReader()
-  reader.readAsDataURL(file)
-  reader.onload = (e) => {
-    insertImage(e.target?.result as string)
+  if (file.size > 5 * 1024 * 1024) {
+    alert('图片大小不能超过5MB')
+    return
+  }
+  isUploading.value = true
+  try {
+    const res = await noteApi.uploadImage(file)
+    insertImage(res.data)
+  } catch (e) {
+    console.error('图片上传失败', e)
+    alert('图片上传失败，请重试')
+  } finally {
+    isUploading.value = false
   }
 }
 
@@ -128,13 +137,13 @@ const insertImage = (url: string) => {
               <!-- 统一的图标容器样式 -->
               <div class="mb-3 p-3 bg-white rounded-full shadow-sm ring-1 ring-neutral-100 group-hover:scale-110 transition-transform duration-200">
                 <div class="bg-violet-100 text-violet-600 rounded-full p-2">
-                   <UploadCloud :size="20" />
+                   <UploadCloud :size="20" :class="isUploading ? 'animate-bounce' : ''" />
                 </div>
               </div>
 
               <div class="text-center space-y-1">
                 <p class="text-sm text-neutral-600 font-medium">
-                  点击或拖拽上传
+                  {{ isUploading ? '上传中...' : '点击或拖拽上传' }}
                 </p>
                 <p class="text-[10px] text-neutral-400">
                   支持 JPG, PNG, GIF, WebP (Max 5MB)
