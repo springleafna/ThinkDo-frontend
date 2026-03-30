@@ -182,64 +182,60 @@ const pageNumbers = computed(() => {
 <template>
   <div class="space-y-4">
     <!-- Filters -->
-    <Card class="border-slate-200 bg-white shadow-none">
-      <CardContent class="px-4">
-        <div class="flex flex-wrap items-center gap-3">
-          <div class="relative">
-            <Search class="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              v-model="searchQuery"
-              placeholder="搜索意图名称/编码..."
-              class="h-9 w-64 border-slate-200 bg-white pl-9"
-              @keydown.enter="handleSearch"
-            />
-          </div>
+    <div class="flex flex-wrap items-center gap-3">
+      <div class="relative">
+        <Search class="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+        <Input
+          v-model="searchQuery"
+          placeholder="搜索意图名称/编码..."
+          class="h-9 w-64 border-slate-200 bg-white pl-9"
+          @keydown.enter="handleSearch"
+        />
+      </div>
 
-          <Select v-model="filterLevel" @update:model-value="handleSearch">
-            <SelectTrigger size="sm" class="w-[130px] border-slate-200 bg-white">
-              <SelectValue placeholder="全部层级" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="0">DOMAIN</SelectItem>
-              <SelectItem value="1">CATEGORY</SelectItem>
-              <SelectItem value="2">TOPIC</SelectItem>
-            </SelectContent>
-          </Select>
+      <Select v-model="filterLevel" @update:model-value="handleSearch">
+        <SelectTrigger size="sm" class="w-[130px] border-slate-200 bg-white">
+          <SelectValue placeholder="全部层级" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="0">DOMAIN</SelectItem>
+          <SelectItem value="1">CATEGORY</SelectItem>
+          <SelectItem value="2">TOPIC</SelectItem>
+        </SelectContent>
+      </Select>
 
-          <Select v-model="filterKind" @update:model-value="handleSearch">
-            <SelectTrigger size="sm" class="w-[130px] border-slate-200 bg-white">
-              <SelectValue placeholder="全部类型" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="0">KB</SelectItem>
-              <SelectItem value="1">SYSTEM</SelectItem>
-              <SelectItem value="2">MCP</SelectItem>
-            </SelectContent>
-          </Select>
+      <Select v-model="filterKind" @update:model-value="handleSearch">
+        <SelectTrigger size="sm" class="w-[130px] border-slate-200 bg-white">
+          <SelectValue placeholder="全部类型" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="0">KB</SelectItem>
+          <SelectItem value="1">SYSTEM</SelectItem>
+          <SelectItem value="2">MCP</SelectItem>
+        </SelectContent>
+      </Select>
 
-          <Select v-model="filterEnabled" @update:model-value="handleSearch">
-            <SelectTrigger size="sm" class="w-[130px] border-slate-200 bg-white">
-              <SelectValue placeholder="全部状态" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">启用</SelectItem>
-              <SelectItem value="0">禁用</SelectItem>
-            </SelectContent>
-          </Select>
+      <Select v-model="filterEnabled" @update:model-value="handleSearch">
+        <SelectTrigger size="sm" class="w-[130px] border-slate-200 bg-white">
+          <SelectValue placeholder="全部状态" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="1">启用</SelectItem>
+          <SelectItem value="0">禁用</SelectItem>
+        </SelectContent>
+      </Select>
 
-          <div class="ml-auto flex gap-2">
-            <Button variant="outline" class="h-9 rounded-md border-slate-200 bg-white" @click="fetchData">
-              <RefreshCw class="size-4" :class="{ 'animate-spin': loading }" />
-              刷新
-            </Button>
-            <Button variant="outline" class="h-9 rounded-md border-slate-200 bg-white" @click="clearFilters">
-              <X class="size-4" />
-              清空筛选
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+      <div class="ml-auto flex gap-2">
+        <Button variant="outline" class="h-9 rounded-md border-slate-200 bg-white" @click="fetchData">
+          <RefreshCw class="size-4" :class="{ 'animate-spin': loading }" />
+          刷新
+        </Button>
+        <Button variant="outline" class="h-9 rounded-md border-slate-200 bg-white" @click="clearFilters">
+          <X class="size-4" />
+          清空筛选
+        </Button>
+      </div>
+    </div>
 
     <!-- Table -->
     <Card class="border-slate-200 bg-white shadow-none">
