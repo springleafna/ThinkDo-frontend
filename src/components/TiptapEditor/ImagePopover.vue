@@ -69,8 +69,8 @@ const processFile = async (file: File) => {
   }
   isUploading.value = true
   try {
-    const res = await noteApi.uploadImage(file)
-    insertImage(res.data)
+    const url = await noteApi.uploadImage(file)
+    insertImage(url)
   } catch (e) {
     console.error('图片上传失败', e)
     alert('图片上传失败，请重试')

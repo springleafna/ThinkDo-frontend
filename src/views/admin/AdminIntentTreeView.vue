@@ -308,23 +308,6 @@ const findNodeById = (nodes: IntentNodeTree[], id: string): IntentNodeTree | nul
           <CardDescription class="text-sm text-slate-500">点击节点查看详情或进行编辑</CardDescription>
         </CardHeader>
         <CardContent>
-          <!-- Tabs -->
-          <div v-if="tabs.length" class="mb-4 flex gap-2 overflow-x-auto pb-2">
-            <button
-              v-for="tab in ['全部', ...tabs]"
-              :key="tab"
-              :class="[
-                'shrink-0 rounded-md px-3 py-1.5 text-sm transition-colors',
-                activeTab === tab
-                  ? 'bg-slate-900 font-medium text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              ]"
-              @click="activeTab = tab"
-            >
-              {{ tab }}
-            </button>
-          </div>
-
           <!-- Loading -->
           <div v-if="isLoading" class="flex items-center justify-center py-12 text-sm text-slate-400">
             <RefreshCw class="mr-2 size-4 animate-spin" />
