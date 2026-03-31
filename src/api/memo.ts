@@ -67,10 +67,10 @@ export const memoApi = {
 
   /**
    * 获取便签详情
-   * GET /plan/memo/{id}
+   * GET /plan/memo/detail/{id}
    */
   getById(id: number) {
-    return request.get<Memo>(`/plan/memo/${id}`)
+    return request.get<Memo>(`/plan/memo/detail/${id}`)
   },
 
   /**

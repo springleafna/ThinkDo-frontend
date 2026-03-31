@@ -135,10 +135,10 @@ export const planApi = {
 
   /**
    * 获取计划详情
-   * GET /plan/plan/{id}
+   * GET /plan/plan/detail/{id}
    */
   getById(id: number) {
-    return request.get<Plan>(`/plan/plan/${id}`)
+    return request.get<Plan>(`/plan/plan/detail/${id}`)
   },
 
   /**

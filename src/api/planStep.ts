@@ -51,10 +51,10 @@ export const planStepApi = {
 
   /**
    * 获取计划步骤详情
-   * GET /plan/step/{id}
+   * GET /plan/step/detail/{id}
    */
   getById(id: number) {
-    return request.get<PlanStep>(`/plan/step/${id}`)
+    return request.get<PlanStep>(`/plan/step/detail/${id}`)
   },
 
   /**

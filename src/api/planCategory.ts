@@ -48,10 +48,10 @@ export const planCategoryApi = {
 
   /**
    * 获取计划分类详情
-   * GET /plan/category/{id}
+   * GET /plan/category/detail/{id}
    */
   getById(id: number) {
-    return request.get<PlanCategory>(`/plan/category/${id}`)
+    return request.get<PlanCategory>(`/plan/category/detail/${id}`)
   },
 
   /**

@@ -175,10 +175,10 @@ export const noteApi = {
 
   /**
    * 获取笔记详情
-   * GET /note/{id}
+   * GET /note/detail/{id}
    */
   getById(id: number) {
-    return request.get<Note>(`/note/${id}`)
+    return request.get<Note>(`/note/detail/${id}`)
   },
 
   /**
