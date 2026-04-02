@@ -44,7 +44,7 @@ export interface SseMetaData {
 
 // SSE message 事件数据
 export interface SseMessageData {
-  type: 'response'
+  type: 'response' | 'think'
   delta: string
 }
 
@@ -64,6 +64,7 @@ export interface SseEvent<T = any> {
 export interface SseCallbacks {
   onMeta?: (data: SseMetaData) => void
   onMessage?: (data: SseMessageData) => void
+  onThink?: (data: SseMessageData) => void
   onFinish?: (data: SseFinishData) => void
   onDone?: () => void
   onError?: (error: Error) => void
@@ -118,7 +119,7 @@ export const aiChatApi = {
    * GET /ai/chat/sse
    */
   streamChat(params: StreamChatParams, callbacks: SseCallbacks): () => void {
-    const { onMeta, onMessage, onFinish, onDone, onError } = callbacks
+    const { onMeta, onMessage, onThink, onFinish, onDone, onError } = callbacks
 
     // 构建 URL 参数
     const urlParams = new URLSearchParams({
@@ -176,9 +177,15 @@ export const aiChatApi = {
               case 'meta':
                 onMeta?.(JSON.parse(data))
                 break
-              case 'message':
-                onMessage?.(JSON.parse(data))
+              case 'message': {
+                const messageData = JSON.parse(data) as SseMessageData
+                if (messageData.type === 'think') {
+                  onThink?.(messageData)
+                } else {
+                  onMessage?.(messageData)
+                }
                 break
+              }
               case 'finish':
                 onFinish?.(JSON.parse(data))
                 break

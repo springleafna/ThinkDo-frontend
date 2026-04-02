@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, computed } from 'vue'
-import { Send, Bot, User, Trash2, Plus, MessageSquare, Clock, Pencil, Copy, ThumbsUp, ThumbsDown, Sparkles, Database, Brain, Square, Search, ChevronRight } from 'lucide-vue-next'
+import { Send, Bot, User, Trash2, Plus, MessageSquare, Clock, Pencil, Copy, ThumbsUp, ThumbsDown, Sparkles, Database, Brain, Square, Search, ChevronRight, ChevronDown } from 'lucide-vue-next'
 import { useLayoutStore } from '@/stores/layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,12 +18,14 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { aiChatApi, type ConversationInfo, type MessageInfo } from '@/api/ai'
 import { toast } from 'vue-sonner'
 
 interface ChatMessage {
   role: 'user' | 'model'
   text: string
+  thinking?: string
   timestamp: Date
 }
 
@@ -67,6 +69,7 @@ const currentTaskId = ref('')
 const activeStreamCancel = ref<(() => void) | null>(null)
 const isStopping = ref(false)
 const pendingFinishTitle = ref('')
+const thinkingStates = ref<Record<number, boolean>>({})
 const quickPrompts = [
   '帮我总结今天的工作重点',
   '给我一个本周学习计划',
@@ -584,6 +587,7 @@ const handleSend = async () => {
 
   // 用于存储完整的响应文本
   let fullResponse = ''
+  let fullThinking = ''
   let aiMessageIndex = -1
 
   // 开始流式输出
@@ -607,6 +611,32 @@ const handleSend = async () => {
             session.id = data.conversationId
             currentSessionId.value = data.conversationId
           }
+        }
+      },
+      onThink: (data) => {
+        // 收到思考增量
+        if (data.type === 'think' && typeof data.delta === 'string') {
+          fullThinking += data.delta
+
+          // 如果还没有创建 AI 消息，先创建（用于显示思考中）
+          if (aiMessageIndex === -1) {
+            const aiMessage: ChatMessage = {
+              role: 'model',
+              text: '',
+              thinking: fullThinking,
+              timestamp: new Date()
+            }
+            messages.value.push(aiMessage)
+            aiMessageIndex = messages.value.length - 1
+            showTypingIndicator.value = false
+          } else {
+            // 更新思考内容
+            const msg = messages.value[aiMessageIndex]
+            if (msg) {
+              msg.thinking = fullThinking
+            }
+          }
+          scrollToBottom()
         }
       },
       onMessage: (data) => {
@@ -986,6 +1016,31 @@ const formatTime = (date: Date) => {
                     ? 'bg-zinc-900 text-white rounded-tr-md'
                     : 'bg-white text-neutral-800 border border-black/[0.04] shadow-sm rounded-tl-md'"
                 >
+                  <!-- 思考过程展示 -->
+                  <template v-if="msg.role === 'model' && msg.thinking">
+                    <Collapsible v-model:open="thinkingStates[i]" class="mb-3">
+                      <CollapsibleTrigger
+                        class="flex items-center gap-2 text-xs font-medium text-amber-600 hover:text-amber-700 transition-colors w-full text-left"
+                      >
+                        <Brain :size="13" />
+                        <span>深度思考过程</span>
+                        <component
+                          :is="thinkingStates[i] ? ChevronDown : ChevronRight"
+                          :size="12"
+                          class="shrink-0 transition-transform duration-200"
+                        />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent class="mt-2">
+                        <div class="bg-amber-50/50 rounded-lg px-3 py-2 text-xs text-amber-900/80 leading-relaxed border border-amber-100/50">
+                          <div
+                            class="prose prose-xs max-w-none prose-p:my-1 prose-headings:my-2 prose-pre:my-2 prose-pre:overflow-x-auto prose-pre:rounded-md prose-pre:bg-amber-900/10 prose-pre:text-amber-900 prose-pre:px-2 prose-pre:py-1 prose-code:bg-amber-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-amber-800 prose-code:before:content-none prose-code:after:content-none prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5"
+                            v-html="renderMarkdown(msg.thinking)"
+                          ></div>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </template>
+
                   <template v-if="msg.role === 'user'">
                     <p
                       v-for="(line, idx) in msg.text.split('\n')"
