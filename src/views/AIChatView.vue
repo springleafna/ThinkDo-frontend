@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, computed } from 'vue'
-import { Send, Bot, User, Trash2, Plus, MessageSquare, Clock, Pencil, Copy, ThumbsUp, ThumbsDown, Sparkles, Database, Brain, Square, Search, ChevronRight, ChevronDown } from 'lucide-vue-next'
+import { Send, Bot, User, Trash2, Plus, MessageSquare, Clock, Pencil, Copy, ThumbsUp, ThumbsDown, Sparkles, Brain, Square, Search, ChevronRight, ChevronDown } from 'lucide-vue-next'
 import { useLayoutStore } from '@/stores/layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -63,7 +63,6 @@ const isTyping = ref(false)
 const showTypingIndicator = ref(false)
 const aiFeedback = ref<Record<number, 'up' | 'down'>>({})
 const inputRef = ref<HTMLTextAreaElement>()
-const enableKnowledgeBase = ref(false)
 const enableDeepThinking = ref(false)
 const currentTaskId = ref('')
 const activeStreamCancel = ref<(() => void) | null>(null)
@@ -599,8 +598,7 @@ const handleSend = async () => {
     activeStreamCancel.value = aiChatApi.streamChat({
       question: userQuestion,
       conversationId: isNewSession ? undefined : currentSessionId.value,
-      deepThinking: enableDeepThinking.value,
-      useKnowledgeBase: enableKnowledgeBase.value
+      deepThinking: enableDeepThinking.value
     }, {
       onMeta: (data) => {
         currentTaskId.value = data.taskId || currentTaskId.value
@@ -847,13 +845,9 @@ const formatTime = (date: Date) => {
             <h3 class="text-sm font-semibold text-neutral-800">
               {{ currentSessionId ? (chatSessions.find(s => s.id === currentSessionId)?.title || '新对话') : '新对话' }}
             </h3>
-            <Badge v-if="enableDeepThinking" variant="secondary" class="text-[10px] h-5 gap-1 bg-amber-50 text-amber-700 border-amber-200/50">
+            <Badge v-if="enableDeepThinking" variant="secondary" class="text-[10px] h-5 gap-1 bg-blue-50 text-blue-700 border-blue-200/50">
               <Brain :size="10" />
               深度思考
-            </Badge>
-            <Badge v-if="enableKnowledgeBase" variant="secondary" class="text-[10px] h-5 gap-1 bg-blue-50 text-blue-700 border-blue-200/50">
-              <Database :size="10" />
-              知识库
             </Badge>
           </div>
           <div class="flex items-center gap-2">
@@ -918,26 +912,8 @@ const formatTime = (date: Date) => {
                           <button
                             type="button"
                             class="h-7 px-2.5 rounded-lg text-xs inline-flex items-center gap-1.5 transition-all"
-                            :class="enableKnowledgeBase
-                              ? 'bg-blue-50 text-blue-600 ring-1 ring-blue-200'
-                              : 'text-neutral-400 hover:text-neutral-600 hover:bg-stone-50'"
-                            @click="enableKnowledgeBase = !enableKnowledgeBase"
-                          >
-                            <Database :size="13" />
-                            <span class="hidden sm:inline">知识库</span>
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>知识库检索</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger as-child>
-                          <button
-                            type="button"
-                            class="h-7 px-2.5 rounded-lg text-xs inline-flex items-center gap-1.5 transition-all"
                             :class="enableDeepThinking
-                              ? 'bg-amber-50 text-amber-600 ring-1 ring-amber-200'
+                              ? 'bg-blue-50 text-blue-600 ring-1 ring-blue-200'
                               : 'text-neutral-400 hover:text-neutral-600 hover:bg-stone-50'"
                             @click="enableDeepThinking = !enableDeepThinking"
                           >
@@ -1020,7 +996,7 @@ const formatTime = (date: Date) => {
                   <template v-if="msg.role === 'model' && msg.thinking">
                     <Collapsible v-model:open="thinkingStates[i]" class="mb-3">
                       <CollapsibleTrigger
-                        class="flex items-center gap-2 text-xs font-medium text-amber-600 hover:text-amber-700 transition-colors w-full text-left"
+                        class="flex items-center gap-2 text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors w-full text-left"
                       >
                         <Brain :size="13" />
                         <span>深度思考过程</span>
@@ -1031,9 +1007,9 @@ const formatTime = (date: Date) => {
                         />
                       </CollapsibleTrigger>
                       <CollapsibleContent class="mt-2">
-                        <div class="bg-amber-50/50 rounded-lg px-3 py-2 text-xs text-amber-900/80 leading-relaxed border border-amber-100/50">
+                        <div class="bg-blue-50/50 rounded-lg px-3 py-2 text-xs text-blue-900/80 leading-relaxed border border-blue-200/50">
                           <div
-                            class="prose prose-xs max-w-none prose-p:my-1 prose-headings:my-2 prose-pre:my-2 prose-pre:overflow-x-auto prose-pre:rounded-md prose-pre:bg-amber-900/10 prose-pre:text-amber-900 prose-pre:px-2 prose-pre:py-1 prose-code:bg-amber-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-amber-800 prose-code:before:content-none prose-code:after:content-none prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5"
+                            class="prose prose-xs max-w-none prose-p:my-1 prose-headings:my-2 prose-pre:my-2 prose-pre:overflow-x-auto prose-pre:rounded-md prose-pre:bg-blue-900/10 prose-pre:text-blue-900 prose-pre:px-2 prose-pre:py-1 prose-code:bg-blue-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-blue-800 prose-code:before:content-none prose-code:after:content-none prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5"
                             v-html="renderMarkdown(msg.thinking)"
                           ></div>
                         </div>
@@ -1155,19 +1131,8 @@ const formatTime = (date: Date) => {
                 <button
                   type="button"
                   class="h-7 px-2 rounded-lg text-xs inline-flex items-center gap-1 transition-all"
-                  :class="enableKnowledgeBase
-                    ? 'bg-blue-50 text-blue-600 ring-1 ring-blue-200'
-                    : 'text-neutral-400 hover:text-neutral-600 hover:bg-stone-50'"
-                  @click="enableKnowledgeBase = !enableKnowledgeBase"
-                >
-                  <Database :size="12" />
-                  <span class="hidden sm:inline">知识库</span>
-                </button>
-                <button
-                  type="button"
-                  class="h-7 px-2 rounded-lg text-xs inline-flex items-center gap-1 transition-all"
                   :class="enableDeepThinking
-                    ? 'bg-amber-50 text-amber-600 ring-1 ring-amber-200'
+                    ? 'bg-blue-50 text-blue-600 ring-1 ring-blue-200'
                     : 'text-neutral-400 hover:text-neutral-600 hover:bg-stone-50'"
                   @click="enableDeepThinking = !enableDeepThinking"
                 >

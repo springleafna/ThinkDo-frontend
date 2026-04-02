@@ -30,7 +30,6 @@ export interface StreamChatParams {
   question: string
   conversationId?: string
   deepThinking?: boolean
-  useKnowledgeBase?: boolean
 }
 
 // SSE 事件类型
@@ -124,8 +123,7 @@ export const aiChatApi = {
     // 构建 URL 参数
     const urlParams = new URLSearchParams({
       question: params.question,
-      deepThinking: String(params.deepThinking ?? false),
-      useKnowledgeBase: String(params.useKnowledgeBase ?? false)
+      deepThinking: String(params.deepThinking ?? false)
     })
 
     if (params.conversationId) {
