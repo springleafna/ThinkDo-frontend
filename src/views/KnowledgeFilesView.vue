@@ -24,13 +24,15 @@ import {
   X,
   Loader2,
   Play,
-  RefreshCw
+  RefreshCw,
+  Activity
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
+import ChunkDetailDialog from '@/components/ChunkDetailDialog.vue'
 import { knowledgeBaseApi, type KnowledgeBase } from '@/api/knowledgeBase'
-import { knowledgeDocumentApi, type KnowledgeDocument } from '@/api/knowledgeDocument'
+import { knowledgeDocumentApi, type KnowledgeDocument, type ChunkLog } from '@/api/knowledgeDocument'
 import {
   Dialog,
   DialogContent,
@@ -120,6 +122,17 @@ interface FileInfo extends KnowledgeDocument {
 // 文件数据
 const files = ref<FileInfo[]>([])
 const chunkingFileIds = ref<Set<string>>(new Set())
+
+// 分块日志对话框
+const showChunkLogDialog = ref(false)
+const isLoadingChunkLogs = ref(false)
+const chunkLogs = ref<ChunkLog[]>([])
+const chunkLogDocName = ref('')
+
+// 分块详情对话框
+const showChunkDetailDialog = ref(false)
+const chunkDetailDocId = ref('')
+const chunkDetailDocName = ref('')
 
 // 获取知识库详情
 const fetchKnowledgeBase = async () => {
@@ -301,6 +314,61 @@ const handleStartChunk = async (file: FileInfo) => {
   } finally {
     chunkingFileIds.value.delete(file.id)
   }
+}
+
+// 查看分块日志
+const handleShowChunkLogs = async (file: FileInfo) => {
+  chunkLogDocName.value = file.docName
+  showChunkLogDialog.value = true
+  isLoadingChunkLogs.value = true
+  chunkLogs.value = []
+  try {
+    const data = await knowledgeDocumentApi.getChunkLogs(file.id)
+    chunkLogs.value = data || []
+  } catch (error) {
+    console.error('获取分块日志失败：', error)
+    toast.error('获取分块日志失败')
+  } finally {
+    isLoadingChunkLogs.value = false
+  }
+}
+
+// 查看分块详情
+const handleShowChunkDetail = (file: FileInfo) => {
+  chunkDetailDocId.value = file.id
+  chunkDetailDocName.value = file.docName
+  showChunkDetailDialog.value = true
+}
+
+// 格式化毫秒为可读时间
+const formatDuration = (ms: number | null) => {
+  if (ms == null) return '-'
+  if (ms < 1000) return `${ms}ms`
+  return `${(ms / 1000).toFixed(2)}s`
+}
+
+// 格式化日期时间
+const formatDateTime = (dateStr: string | null) => {
+  if (!dateStr) return '-'
+  const d = new Date(dateStr)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+// 获取状态标签
+const getLogStatusLabel = (status: string) => {
+  if (status === 'running') return '处理中'
+  if (status === 'success') return '成功'
+  if (status === 'failed') return '失败'
+  return status
+}
+
+// 获取状态样式
+const getLogStatusClass = (status: string) => {
+  if (status === 'running') return 'text-amber-600 bg-amber-50'
+  if (status === 'success') return 'text-emerald-600 bg-emerald-50'
+  if (status === 'failed') return 'text-rose-600 bg-rose-50'
+  return 'text-neutral-600 bg-neutral-50'
 }
 
 // 全选/取消全选
@@ -690,8 +758,9 @@ onMounted(() => {
 
                   <div class="mt-2 flex items-center justify-between gap-2">
                     <span
+                      @click.stop="normalizeChunkStatus(file.status) !== 'pending' && handleShowChunkLogs(file)"
                       class="inline-flex items-center rounded-md border px-2 py-0.5 text-[11px]"
-                      :class="getChunkStatusClass(file.status)"
+                      :class="[getChunkStatusClass(file.status), normalizeChunkStatus(file.status) !== 'pending' ? 'cursor-pointer hover:opacity-80' : '']"
                     >
                       {{ getChunkStatusLabel(file.status) }}
                     </span>
@@ -711,6 +780,14 @@ onMounted(() => {
 
                   <!-- 快捷操作按钮 -->
                   <div class="flex items-center gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      v-if="normalizeChunkStatus(file.status) === 'success'"
+                      @click.stop="handleShowChunkDetail(file)"
+                      class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs hover:bg-blue-100 transition-colors"
+                    >
+                      <FileText :size="12" />
+                      <span>分块</span>
+                    </button>
                     <button
                       @click.stop
                       class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-black/5 rounded-lg text-xs hover:bg-black/10 transition-colors"
@@ -776,8 +853,9 @@ onMounted(() => {
                     </div>
 
                     <div
+                      @click.stop="normalizeChunkStatus(file.status) !== 'pending' && handleShowChunkLogs(file)"
                       class="hidden lg:inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] shrink-0"
-                      :class="getChunkStatusClass(file.status)"
+                      :class="[getChunkStatusClass(file.status), normalizeChunkStatus(file.status) !== 'pending' ? 'cursor-pointer hover:opacity-80' : '']"
                     >
                       {{ getChunkStatusLabel(file.status) }}
                     </div>
@@ -796,6 +874,14 @@ onMounted(() => {
                         <Loader2 v-if="chunkingFileIds.has(file.id)" :size="12" class="animate-spin" />
                         <Play v-else :size="12" />
                         <span>{{ chunkingFileIds.has(file.id) ? '处理中' : '开始分块' }}</span>
+                      </button>
+                      <button
+                        v-if="normalizeChunkStatus(file.status) === 'success'"
+                        @click.stop="handleShowChunkDetail(file)"
+                        class="p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="查看分块"
+                      >
+                        <FileText :size="16" class="text-neutral-400 hover:text-blue-600" />
                       </button>
                       <button
                         @click.stop
@@ -1107,6 +1193,110 @@ onMounted(() => {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <!-- 分块日志对话框 -->
+    <Dialog v-model:open="showChunkLogDialog">
+      <DialogContent class="sm:max-w-[520px] max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle class="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+            <Activity :size="20" class="text-neutral-600" />
+            分块日志详情
+          </DialogTitle>
+          <DialogDescription class="text-sm text-neutral-500">
+            {{ chunkLogDocName }}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="py-4 space-y-4">
+          <!-- 加载中 -->
+          <div v-if="isLoadingChunkLogs" class="flex items-center justify-center py-8 text-neutral-400">
+            <Loader2 :size="24" class="animate-spin mr-2" />
+            <span class="text-sm">加载中...</span>
+          </div>
+
+          <!-- 无日志 -->
+          <div v-else-if="chunkLogs.length === 0" class="flex flex-col items-center justify-center py-8 text-neutral-400">
+            <Activity :size="32" class="mb-2 opacity-50" />
+            <p class="text-sm">暂无分块日志</p>
+          </div>
+
+          <!-- 日志列表 -->
+          <div v-else class="space-y-3">
+            <div
+              v-for="log in chunkLogs"
+              :key="log.id"
+              class="rounded-xl border border-black/5 bg-white p-4 space-y-2.5"
+            >
+              <!-- 状态和时间 -->
+              <div class="flex items-center justify-between">
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium"
+                  :class="getLogStatusClass(log.status)"
+                >
+                  <Loader2 v-if="log.status === 'running'" :size="12" class="animate-spin" />
+                  {{ getLogStatusLabel(log.status) }}
+                </span>
+                <span class="text-xs text-neutral-400">{{ formatDateTime(log.startTime) }}</span>
+              </div>
+
+              <!-- 详细信息 -->
+              <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                <div class="flex justify-between">
+                  <span class="text-neutral-400">处理模式</span>
+                  <span class="text-neutral-700">分块策略</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-neutral-400">分块策略</span>
+                  <span class="text-neutral-700">{{ log.chunkStrategy || '-' }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-neutral-400">分块数量</span>
+                  <span class="text-neutral-700 font-medium">{{ log.chunkCount ?? '-' }}</span>
+                </div>
+              </div>
+
+              <!-- 耗时明细 -->
+              <div class="space-y-1 pt-1 border-t border-black/5">
+                <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                  <div class="flex justify-between">
+                    <span class="text-neutral-400">文本提取</span>
+                    <span class="text-neutral-700">{{ formatDuration(log.extractDuration) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-neutral-400">分块耗时</span>
+                    <span class="text-neutral-700">{{ formatDuration(log.chunkDuration) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-neutral-400">向量化</span>
+                    <span class="text-neutral-700">{{ formatDuration(log.embeddingDuration) }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-neutral-400">其他耗时</span>
+                    <span class="text-neutral-700">{{ formatDuration(log.otherDuration) }}</span>
+                  </div>
+                </div>
+                <div class="flex justify-between text-xs font-medium pt-1 border-t border-black/5">
+                  <span class="text-neutral-500">总耗时</span>
+                  <span class="text-neutral-900">{{ formatDuration(log.totalDuration) }}</span>
+                </div>
+              </div>
+
+              <!-- 错误信息 -->
+              <div v-if="log.errorMessage" class="mt-1 p-2 bg-rose-50 rounded-lg border border-rose-100">
+                <p class="text-xs text-rose-600 break-all">{{ log.errorMessage }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+
+    <!-- 分块详情对话框 -->
+    <ChunkDetailDialog
+      v-model:open="showChunkDetailDialog"
+      :doc-id="chunkDetailDocId"
+      :doc-name="chunkDetailDocName"
+    />
   </div>
 </template>
 

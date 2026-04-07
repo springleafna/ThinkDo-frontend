@@ -80,6 +80,39 @@ export interface DocumentSearchResult {
   kbName: string
 }
 
+// 分块日志信息
+export interface ChunkLog {
+  id: string
+  docId: string
+  status: string
+  chunkStrategy: string
+  extractDuration: number | null
+  chunkDuration: number | null
+  embeddingDuration: number | null
+  otherDuration: number | null
+  totalDuration: number | null
+  chunkCount: number | null
+  errorMessage: string | null
+  startTime: string | null
+  endTime: string | null
+  createdAt: string
+}
+
+// 分块详情
+export interface KnowledgeChunk {
+  id: string
+  kbId: string
+  docId: string
+  chunkIndex: number
+  content: string
+  contentHash: string
+  charCount: number | null
+  tokenCount: number | null
+  enabled: number
+  createTime: string | null
+  updateTime: string | null
+}
+
 // 知识库文档相关 API
 export const knowledgeDocumentApi = {
   /**
@@ -180,5 +213,21 @@ export const knowledgeDocumentApi = {
    */
   startChunk(docId: string) {
     return request.post<void>(`/knowledge-base/docs/${docId}/chunk`)
+  },
+
+  /**
+   * 查询文档分块日志
+   * GET /knowledge-base/docs/{docId}/chunk-logs
+   */
+  getChunkLogs(docId: string) {
+    return request.get<ChunkLog[]>(`/knowledge-base/docs/${docId}/chunk-logs`)
+  },
+
+  /**
+   * 查询文档分块详情列表
+   * GET /knowledge-base/docs/{docId}/chunks
+   */
+  getChunks(docId: string) {
+    return request.get<KnowledgeChunk[]>(`/knowledge-base/docs/${docId}/chunks`)
   }
 }

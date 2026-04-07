@@ -171,9 +171,31 @@ const escapeHtml = (text: string) => {
 }
 
 const parseInlineMarkdown = (text: string) => {
-  let html = escapeHtml(text)
+  const processed: Record<string, string> = {}
+  let placeholderIndex = 0
+  const getPlaceholder = () => `__PLACEHOLDER_${placeholderIndex++}__`
+
+  let html = text
+  // 先处理图片，用占位符替换
+  html = html.replace(/!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g, (match, alt, url) => {
+    const tag = `<img src="${url}" alt="${escapeHtml(alt)}" class="max-w-full h-auto rounded-md my-2" loading="lazy" />`
+    const placeholder = getPlaceholder()
+    processed[placeholder] = tag
+    return placeholder
+  })
+  // 先处理链接，用占位符替换
+  html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (match, linkText, url) => {
+    const tag = `<a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)}</a>`
+    const placeholder = getPlaceholder()
+    processed[placeholder] = tag
+    return placeholder
+  })
+  // 对剩余内容进行HTML转义
+  html = escapeHtml(html)
+  // 恢复占位符
+  html = html.replace(/__PLACEHOLDER_(\d+)__/g, (_, idx) => processed[`__PLACEHOLDER_${idx}__`] || _)
+  // 处理代码
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>')
-  html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
   html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
   html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>')
   html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>')
