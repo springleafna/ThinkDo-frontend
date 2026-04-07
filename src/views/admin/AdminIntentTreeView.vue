@@ -130,20 +130,31 @@ const createForm = ref({
 })
 const createIsRoot = ref(true)
 const levelDisabled = ref(true)
+const kindDisabled = ref(false)
 
-// MCP 类型且 TOPIC 层级时需填写 mcpToolId
+// SYSTEM 类型判断（kind === 1）
+const isSystemType = computed(() => createForm.value.kind === 1)
+// MCP 类型判断（kind === 2）
 const isMcpType = computed(() => createForm.value.kind === 2)
+// KB 类型判断（kind === 0）
+const isKbType = computed(() => createForm.value.kind === 0)
+// TOPIC 层级判断（level === 2）
 const isTopicLevel = computed(() => createForm.value.level === 2)
+// SYSTEM 类型且 TOPIC 层级时需填写示例问题
+const requireExamplesForSystem = computed(() => isSystemType.value && isTopicLevel.value)
+// MCP 类型且 TOPIC 层级时需填写 mcpToolId
 const requireMcpToolId = computed(() => isMcpType.value && isTopicLevel.value)
 
 const openCreateDialog = (isRoot: boolean) => {
   createIsRoot.value = isRoot
   const parentLevel = !isRoot && selectedNode.value ? selectedNode.value.level : -1
   const nextLevel = parentLevel + 1 as number
+  // 创建子节点时继承父节点的类型，根节点默认为 KB 类型
+  const parentKind = !isRoot && selectedNode.value ? selectedNode.value.kind : 0
   createForm.value = {
     intentCode: '',
     name: '',
-    kind: 0,
+    kind: parentKind,
     level: nextLevel,
     description: '',
     examples: '',
@@ -154,7 +165,9 @@ const openCreateDialog = (isRoot: boolean) => {
     sortOrder: 0
   }
   // 根节点固定 DOMAIN，子节点层级由父节点决定，均不可手动选择
+  // 根节点可选择类型，子节点继承父节点类型不可选择
   levelDisabled.value = true
+  kindDisabled.value = !isRoot
   showCreateDialog.value = true
 }
 
@@ -163,8 +176,14 @@ const handleCreate = async () => {
     toast.error('编码和名称不能为空')
     return
   }
+  // MCP 类型 TOPIC 层级时必须填写 mcpToolId
   if (requireMcpToolId.value && !createForm.value.mcpToolId.trim()) {
     toast.error('TOPIC 级别的 MCP 节点必须填写 MCP Tool ID')
+    return
+  }
+  // SYSTEM 类型 TOPIC 层级时必须填写示例问题
+  if (requireExamplesForSystem.value && !createForm.value.examples.trim()) {
+    toast.error('TOPIC 级别的 SYSTEM 节点必须填写示例问题')
     return
   }
   try {
@@ -544,7 +563,7 @@ const findNodeById = (nodes: IntentNodeTree[], id: string): IntentNodeTree | nul
               </div>
               <div>
                 <label class="mb-1 block text-sm text-slate-600">类型</label>
-                <Select v-model="createForm.kind">
+                <Select v-model="createForm.kind" :disabled="kindDisabled">
                   <SelectTrigger class="w-full rounded-lg border-slate-200 bg-slate-50">
                     <SelectValue placeholder="选择类型" />
                   </SelectTrigger>
@@ -556,26 +575,19 @@ const findNodeById = (nodes: IntentNodeTree[], id: string): IntentNodeTree | nul
                 </Select>
               </div>
             </div>
-            <!-- MCP 类型时的表单项 -->
-            <template v-if="isMcpType">
-              <div v-if="requireMcpToolId">
-                <label class="mb-1 block text-sm text-slate-600">MCP Tool ID <span class="text-red-500">*</span></label>
-                <input
-                  v-model="createForm.mcpToolId"
-                  placeholder="如 weather_query"
-                  class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
-                />
-              </div>
+            <!-- SYSTEM 类型时的表单项 -->
+            <template v-if="isSystemType">
               <div>
                 <label class="mb-1 block text-sm text-slate-600">节点描述</label>
                 <textarea
                   v-model="createForm.description"
-                  placeholder="节点描述（可选）"
+                  placeholder="节点描述"
                   rows="2"
                   class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
                 />
               </div>
-              <div v-if="requireMcpToolId">
+              <!-- TOPIC 层级时显示示例问题 -->
+              <div v-if="requireExamplesForSystem">
                 <label class="mb-1 block text-sm text-slate-600">示例问题</label>
                 <textarea
                   v-model="createForm.examples"
@@ -585,9 +597,10 @@ const findNodeById = (nodes: IntentNodeTree[], id: string): IntentNodeTree | nul
                 />
               </div>
             </template>
-            <!-- 非 MCP 类型时的表单项 -->
-            <template v-else>
+            <!-- KB 类型时的表单项 -->
+            <template v-else-if="isKbType">
               <div>
+                <label class="mb-1 block text-sm text-slate-600">节点描述</label>
                 <textarea
                   v-model="createForm.description"
                   placeholder="节点描述"
@@ -622,6 +635,35 @@ const findNodeById = (nodes: IntentNodeTree[], id: string): IntentNodeTree | nul
                     class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
                   />
                 </div>
+              </div>
+            </template>
+            <!-- MCP 类型时的表单项 -->
+            <template v-else-if="isMcpType">
+              <div v-if="requireMcpToolId">
+                <label class="mb-1 block text-sm text-slate-600">MCP Tool ID <span class="text-red-500">*</span></label>
+                <input
+                  v-model="createForm.mcpToolId"
+                  placeholder="如 weather_query"
+                  class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
+              </div>
+              <div>
+                <label class="mb-1 block text-sm text-slate-600">节点描述</label>
+                <textarea
+                  v-model="createForm.description"
+                  placeholder="节点描述"
+                  rows="2"
+                  class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
+              </div>
+              <div v-if="requireMcpToolId">
+                <label class="mb-1 block text-sm text-slate-600">示例问题</label>
+                <textarea
+                  v-model="createForm.examples"
+                  placeholder="每行输入一个示例问题，如：&#10;今天天气如何&#10;北京明天有雨吗"
+                  rows="3"
+                  class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                />
               </div>
             </template>
           </div>
