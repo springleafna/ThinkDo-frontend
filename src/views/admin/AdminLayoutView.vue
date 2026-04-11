@@ -4,12 +4,15 @@ import { useRoute } from 'vue-router'
 import {
   Activity,
   BookText,
+  ClipboardList,
   Database,
   GitBranch,
   LayoutDashboard,
   ListTree,
   MessageSquare,
+  NotebookPen,
   Settings2,
+  StickyNote,
   UsersRound
 } from 'lucide-vue-next'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
@@ -58,6 +61,24 @@ const navItems = [
     to: '/admin/content',
     icon: BookText,
     hint: '查看笔记、计划、清单与便签数据'
+  },
+  {
+    label: '笔记管理',
+    to: '/admin/notes',
+    icon: StickyNote,
+    hint: '管理所有用户的笔记内容'
+  },
+  {
+    label: '计划管理',
+    to: '/admin/plans',
+    icon: ClipboardList,
+    hint: '管理所有用户的计划任务'
+  },
+  {
+    label: '便签管理',
+    to: '/admin/memos',
+    icon: NotebookPen,
+    hint: '管理所有用户的便签'
   },
   {
     label: '系统策略',

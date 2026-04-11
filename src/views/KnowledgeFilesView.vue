@@ -7,25 +7,22 @@ import {
   Upload,
   Search,
   FileText,
-  FileImage,
-  FileVideo,
-  FileMusic,
-  FileArchive,
   File,
   Trash2,
   Download,
-  MoreVertical,
   Clock,
   Grid3x3,
   List,
   FolderOpen,
-  Filter,
   Check,
   X,
   Loader2,
   Play,
   RefreshCw,
-  Activity
+  Activity,
+  FileSpreadsheet,
+  Presentation,
+  FileType
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
@@ -100,14 +97,14 @@ const searchKeyword = ref('')
 // 筛选条件
 const selectedFileType = ref('all')
 
-// 文件类型
+// 文件类型（基于后端 Apache Tika + Markdown 解析器支持的文档类型）
 const fileTypes = ref([
   { id: 'all', name: '全部文件', icon: File, count: 0 },
-  { id: 'document', name: '文档', icon: FileText, count: 0 },
-  { id: 'image', name: '图片', icon: FileImage, count: 0 },
-  { id: 'video', name: '视频', icon: FileVideo, count: 0 },
-  { id: 'audio', name: '音频', icon: FileMusic, count: 0 },
-  { id: 'archive', name: '压缩包', icon: FileArchive, count: 0 }
+  { id: 'pdf', name: 'PDF', icon: FileText, count: 0 },
+  { id: 'word', name: 'Word', icon: FileText, count: 0 },
+  { id: 'spreadsheet', name: '表格', icon: FileSpreadsheet, count: 0 },
+  { id: 'presentation', name: '演示', icon: Presentation, count: 0 },
+  { id: 'text', name: '文本', icon: FileType, count: 0 }
 ])
 
 // 知识库信息
@@ -160,18 +157,20 @@ const fetchDocuments = async () => {
     // 格式化文件数据
     files.value = (data.records || []).map(doc => {
       const fileType = doc.fileType?.toLowerCase() || ''
-      let uiType = 'document'
+      let uiType = 'text'
 
-      if (fileType.includes('pdf') || fileType.includes('doc') || fileType.includes('text') || fileType.includes('md')) {
-        uiType = 'document'
-      } else if (fileType.includes('image') || fileType.includes('png') || fileType.includes('jpg') || fileType.includes('gif')) {
-        uiType = 'image'
-      } else if (fileType.includes('video') || fileType.includes('mp4')) {
-        uiType = 'video'
-      } else if (fileType.includes('audio') || fileType.includes('mp3')) {
-        uiType = 'audio'
-      } else if (fileType.includes('zip') || fileType.includes('archive') || fileType.includes('rar')) {
-        uiType = 'archive'
+      if (fileType.includes('pdf')) {
+        uiType = 'pdf'
+      } else if (fileType.includes('word') || fileType.includes('doc')) {
+        uiType = 'word'
+      } else if (fileType.includes('sheet') || fileType.includes('excel') || fileType.includes('xls')) {
+        uiType = 'spreadsheet'
+      } else if (fileType.includes('presentation') || fileType.includes('ppt') || fileType.includes('powerpoint')) {
+        uiType = 'presentation'
+      } else if (fileType.includes('text') || fileType.includes('markdown') || fileType.includes('md')
+        || fileType.includes('html') || fileType.includes('xml') || fileType.includes('rtf')
+        || fileType.includes('csv')) {
+        uiType = 'text'
       }
 
       // 格式化文件大小
@@ -235,11 +234,11 @@ const formatTime = (dateString: string) => {
 // 获取文件图标
 const getFileIcon = (fileType: string) => {
   const typeMap: Record<string, any> = {
-    document: FileText,
-    image: FileImage,
-    video: FileVideo,
-    audio: FileMusic,
-    archive: FileArchive
+    pdf: FileText,
+    word: FileText,
+    spreadsheet: FileSpreadsheet,
+    presentation: Presentation,
+    text: FileType
   }
   return typeMap[fileType] || File
 }

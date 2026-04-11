@@ -95,6 +95,33 @@ const router = createRouter({
             title: '意图列表',
             subtitle: '分页查看和快速定位到意图树节点。'
           }
+        },
+        {
+          path: 'notes',
+          name: 'admin-notes',
+          component: () => import('@/views/admin/AdminNotesView.vue'),
+          meta: {
+            title: '笔记管理',
+            subtitle: '管理所有用户的笔记内容，支持搜索、筛选和删除操作。'
+          }
+        },
+        {
+          path: 'plans',
+          name: 'admin-plans',
+          component: () => import('@/views/admin/AdminPlansView.vue'),
+          meta: {
+            title: '计划管理',
+            subtitle: '管理所有用户的计划任务，查看详情和执行步骤。'
+          }
+        },
+        {
+          path: 'memos',
+          name: 'admin-memos',
+          component: () => import('@/views/admin/AdminMemosView.vue'),
+          meta: {
+            title: '便签管理',
+            subtitle: '管理所有用户的便签内容，查看和删除便签。'
+          }
         }
       ]
     },
