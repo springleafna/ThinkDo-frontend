@@ -10,7 +10,22 @@ import {
   CardTitle
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Search, ChevronLeft, ChevronRight, Eye, Trash2 } from 'lucide-vue-next'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Search, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { adminNoteApi, type AdminNoteInfo, type AdminNoteDetail } from '@/api/admin'
 import { toast } from 'vue-sonner'
 
@@ -21,9 +36,13 @@ const pageNum = ref(1)
 const pageSize = ref(10)
 const searchUsername = ref('')
 const searchKeyword = ref('')
-const filterFavorited = ref<string>('')
+const filterFavorited = ref<string | undefined>(undefined)
 const showDetailDialog = ref(false)
 const noteDetail = ref<AdminNoteDetail | null>(null)
+
+// 删除确认对话框
+const showDeleteDialog = ref(false)
+const deletingNote = ref<AdminNoteInfo | null>(null)
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
 
@@ -49,7 +68,7 @@ const fetchData = async () => {
       pageSize: pageSize.value,
       username: searchUsername.value || undefined,
       keyword: searchKeyword.value || undefined,
-      favorited: filterFavorited.value ? Number(filterFavorited.value) : undefined
+      favorited: filterFavorited.value === 'all' ? undefined : (filterFavorited.value !== undefined ? Number(filterFavorited.value) : undefined)
     })
     notes.value = res.records
     total.value = res.total
@@ -68,7 +87,7 @@ const handleSearch = () => {
 const clearFilters = () => {
   searchUsername.value = ''
   searchKeyword.value = ''
-  filterFavorited.value = ''
+  filterFavorited.value = undefined
   pageNum.value = 1
   fetchData()
 }
@@ -89,11 +108,17 @@ const viewDetail = async (id: number) => {
   }
 }
 
-const handleDelete = async (note: AdminNoteInfo) => {
-  if (!confirm(`确定删除笔记「${note.title}」吗？此操作不可恢复。`)) return
+const openDeleteDialog = (note: AdminNoteInfo) => {
+  deletingNote.value = note
+  showDeleteDialog.value = true
+}
+
+const confirmDelete = async () => {
+  if (!deletingNote.value) return
   try {
-    await adminNoteApi.delete(note.id)
+    await adminNoteApi.delete(deletingNote.value.id)
     toast.success('笔记删除成功')
+    showDeleteDialog.value = false
     fetchData()
   } catch {
     toast.error('笔记删除失败')
@@ -122,7 +147,7 @@ onMounted(() => fetchData())
             <Input
               v-model="searchUsername"
               placeholder="搜索用户名"
-              class="h-10 border-slate-200 bg-white pl-10"
+              class="!h-10 border-slate-200 bg-white pl-10"
               @keyup.enter="handleSearch"
             />
           </div>
@@ -131,20 +156,23 @@ onMounted(() => fetchData())
             <Input
               v-model="searchKeyword"
               placeholder="搜索关键词"
-              class="h-10 border-slate-200 bg-white pl-10"
+              class="!h-10 border-slate-200 bg-white pl-10"
               @keyup.enter="handleSearch"
             />
           </div>
-          <select
-            v-model="filterFavorited"
-            class="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-600"
-            @change="handleSearch"
-          >
-            <option value="">全部</option>
-            <option value="1">已收藏</option>
-            <option value="0">未收藏</option>
-          </select>
-          <Button variant="outline" class="h-10 rounded-md border-slate-200 bg-white" @click="clearFilters">
+          <div class="w-[130px]">
+            <Select v-model="filterFavorited" @update:model-value="handleSearch">
+              <SelectTrigger class="!h-10 w-full border-slate-200 bg-white text-slate-600">
+                <SelectValue placeholder="全部" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部</SelectItem>
+                <SelectItem value="1">已收藏</SelectItem>
+                <SelectItem value="0">未收藏</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="outline" size="lg" class="rounded-md border-slate-200 bg-white" @click="clearFilters">
             清空筛选
           </Button>
         </div>
@@ -186,11 +214,9 @@ onMounted(() => fetchData())
                   <td class="px-4 py-3">
                     <div class="flex gap-2">
                       <Button variant="outline" class="h-8 rounded-md border-slate-200 bg-white px-3 text-xs" @click="viewDetail(note.id)">
-                        <Eye class="mr-1 size-3.5" />
                         查看
                       </Button>
-                      <Button variant="outline" class="h-8 rounded-md border-rose-200 bg-white px-3 text-xs text-rose-600 hover:bg-rose-50" @click="handleDelete(note)">
-                        <Trash2 class="mr-1 size-3.5" />
+                      <Button variant="outline" class="h-8 rounded-md border-rose-200 bg-white px-3 text-xs text-rose-600 hover:bg-rose-50" @click="openDeleteDialog(note)">
                         删除
                       </Button>
                     </div>
@@ -241,5 +267,21 @@ onMounted(() => fetchData())
         </div>
       </div>
     </Teleport>
+
+    <!-- 删除确认对话框 -->
+    <Dialog v-model:open="showDeleteDialog">
+      <DialogContent class="w-[360px] p-5">
+        <DialogHeader class="space-y-2">
+          <DialogTitle class="text-base font-semibold">删除笔记</DialogTitle>
+          <DialogDescription class="text-sm text-slate-600">
+            确定删除笔记「{{ deletingNote?.title }}」吗？此操作不可恢复。
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter class="mt-4 flex justify-end gap-2">
+          <Button variant="outline" class="h-8 rounded-md border-slate-200 px-3 text-sm" @click="showDeleteDialog = false">取消</Button>
+          <Button variant="destructive" class="h-8 rounded-md px-3 text-sm" @click="confirmDelete">确认删除</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

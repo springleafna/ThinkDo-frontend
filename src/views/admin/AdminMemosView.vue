@@ -10,7 +10,22 @@ import {
   CardTitle
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Search, ChevronLeft, ChevronRight, Eye, Trash2 } from 'lucide-vue-next'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Search, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { adminMemoApi, type AdminMemoInfo } from '@/api/admin'
 import { toast } from 'vue-sonner'
 
@@ -21,9 +36,13 @@ const pageNum = ref(1)
 const pageSize = ref(10)
 const searchUsername = ref('')
 const searchKeyword = ref('')
-const filterPinned = ref<string>('')
+const filterPinned = ref<string | undefined>(undefined)
 const showDetailDialog = ref(false)
 const memoDetail = ref<AdminMemoInfo | null>(null)
+
+// 删除确认对话框
+const showDeleteDialog = ref(false)
+const deletingMemo = ref<AdminMemoInfo | null>(null)
 
 // 总页数
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
@@ -54,7 +73,7 @@ const fetchData = async () => {
       pageSize: pageSize.value,
       username: searchUsername.value || undefined,
       keyword: searchKeyword.value || undefined,
-      pinned: filterPinned.value !== '' ? Number(filterPinned.value) : undefined
+      pinned: filterPinned.value === 'all' ? undefined : (filterPinned.value !== undefined ? Number(filterPinned.value) : undefined)
     })
     memos.value = res.records
     total.value = res.total
@@ -75,7 +94,7 @@ const handleSearch = () => {
 const clearFilters = () => {
   searchUsername.value = ''
   searchKeyword.value = ''
-  filterPinned.value = ''
+  filterPinned.value = undefined
   pageNum.value = 1
   fetchData()
 }
@@ -99,11 +118,17 @@ const viewDetail = async (memo: AdminMemoInfo) => {
 }
 
 // 删除便签
-const handleDelete = async (memo: AdminMemoInfo) => {
-  if (!confirm(`确定删除便签「${memo.title || '无标题'}」吗？此操作不可恢复。`)) return
+const openDeleteDialog = (memo: AdminMemoInfo) => {
+  deletingMemo.value = memo
+  showDeleteDialog.value = true
+}
+
+const confirmDelete = async () => {
+  if (!deletingMemo.value) return
   try {
-    await adminMemoApi.delete(memo.id)
+    await adminMemoApi.delete(deletingMemo.value.id)
     toast.success('便签删除成功')
+    showDeleteDialog.value = false
     fetchData()
   } catch {
     toast.error('便签删除失败')
@@ -132,7 +157,7 @@ onMounted(() => fetchData())
             <Input
               v-model="searchUsername"
               placeholder="搜索用户名"
-              class="h-10 border-slate-200 bg-white pl-10"
+              class="!h-10 border-slate-200 bg-white pl-10"
               @keyup.enter="handleSearch"
             />
           </div>
@@ -140,20 +165,23 @@ onMounted(() => fetchData())
             <Input
               v-model="searchKeyword"
               placeholder="搜索关键词"
-              class="h-10 border-slate-200 bg-white"
+              class="!h-10 border-slate-200 bg-white"
               @keyup.enter="handleSearch"
             />
           </div>
-          <select
-            v-model="filterPinned"
-            class="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-600"
-            @change="handleSearch"
-          >
-            <option value="">全部</option>
-            <option value="1">已置顶</option>
-            <option value="0">未置顶</option>
-          </select>
-          <Button variant="outline" class="h-10 rounded-md border-slate-200 bg-white" @click="clearFilters">
+          <div class="w-[130px]">
+            <Select v-model="filterPinned" @update:model-value="handleSearch">
+              <SelectTrigger class="!h-10 w-full border-slate-200 bg-white text-slate-600">
+                <SelectValue placeholder="全部" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部</SelectItem>
+                <SelectItem value="1">已置顶</SelectItem>
+                <SelectItem value="0">未置顶</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="outline" size="lg" class="rounded-md border-slate-200 bg-white" @click="clearFilters">
             清空筛选
           </Button>
         </div>
@@ -200,11 +228,9 @@ onMounted(() => fetchData())
                   <td class="px-4 py-3">
                     <div class="flex gap-2">
                       <Button variant="outline" class="h-8 rounded-md border-slate-200 bg-white px-3 text-xs" @click="viewDetail(memo)">
-                        <Eye class="mr-1 size-3.5" />
                         查看
                       </Button>
-                      <Button variant="outline" class="h-8 rounded-md border-rose-200 bg-white px-3 text-xs text-rose-600 hover:bg-rose-50" @click="handleDelete(memo)">
-                        <Trash2 class="mr-1 size-3.5" />
+                      <Button variant="outline" class="h-8 rounded-md border-rose-200 bg-white px-3 text-xs text-rose-600 hover:bg-rose-50" @click="openDeleteDialog(memo)">
                         删除
                       </Button>
                     </div>
@@ -285,5 +311,21 @@ onMounted(() => fetchData())
         </div>
       </div>
     </Teleport>
+
+    <!-- 删除确认对话框 -->
+    <Dialog v-model:open="showDeleteDialog">
+      <DialogContent class="w-[360px] p-5">
+        <DialogHeader class="space-y-2">
+          <DialogTitle class="text-base font-semibold">删除便签</DialogTitle>
+          <DialogDescription class="text-sm text-slate-600">
+            确定删除便签「{{ deletingMemo?.title || '无标题' }}」吗？此操作不可恢复。
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter class="mt-4 flex justify-end gap-2">
+          <Button variant="outline" class="h-8 rounded-md border-slate-200 px-3 text-sm" @click="showDeleteDialog = false">取消</Button>
+          <Button variant="destructive" class="h-8 rounded-md px-3 text-sm" @click="confirmDelete">确认删除</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

@@ -129,7 +129,6 @@ const toggleOpen = (item: AdminNavItem) => {
                 <SidebarMenuButton
                   asChild
                   :isActive="isActive(item)"
-                  :tooltip="item.label"
                 >
                   <RouterLink :to="item.to">
                     <component :is="item.icon" />

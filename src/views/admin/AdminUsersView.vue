@@ -5,12 +5,25 @@ import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
+  CardHeader
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Search, UserPlus, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Search, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { adminUserApi, type AdminUserInfo } from '@/api/admin'
 import { toast } from 'vue-sonner'
 
@@ -20,11 +33,15 @@ const total = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(10)
 const searchUsername = ref('')
-const filterRole = ref<string>('')
+const filterRole = ref<string | undefined>(undefined)
 
 // 角色分配对话框
 const showRoleDialog = ref(false)
 const roleForm = ref({ userId: 0, username: '', roleName: 'USER' })
+
+// 删除确认对话框
+const showDeleteDialog = ref(false)
+const deletingUser = ref<AdminUserInfo | null>(null)
 
 // 总页数
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
@@ -54,7 +71,7 @@ const fetchData = async () => {
       pageNum: pageNum.value,
       pageSize: pageSize.value,
       username: searchUsername.value || undefined,
-      role: filterRole.value || undefined
+      role: filterRole.value === 'all' ? undefined : filterRole.value
     })
     users.value = res.records
     total.value = res.total
@@ -74,7 +91,7 @@ const handleSearch = () => {
 // 清空筛选
 const clearFilters = () => {
   searchUsername.value = ''
-  filterRole.value = ''
+  filterRole.value = undefined
   pageNum.value = 1
   fetchData()
 }
@@ -107,12 +124,19 @@ const handleRoleChange = async () => {
   }
 }
 
-// 删除用户
-const handleDelete = async (user: AdminUserInfo) => {
-  if (!confirm(`确定删除用户「${user.username}」吗？此操作不可恢复。`)) return
+// 打开删除确认对话框
+const openDeleteDialog = (user: AdminUserInfo) => {
+  deletingUser.value = user
+  showDeleteDialog.value = true
+}
+
+// 确认删除用户
+const confirmDelete = async () => {
+  if (!deletingUser.value) return
   try {
-    await adminUserApi.delete(user.id)
+    await adminUserApi.delete(deletingUser.value.id)
     toast.success('用户删除成功')
+    showDeleteDialog.value = false
     fetchData()
   } catch {
     toast.error('用户删除失败')
@@ -127,12 +151,6 @@ onMounted(() => fetchData())
     <Card class="border-slate-200 bg-white shadow-none">
       <CardHeader class="gap-4">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <CardTitle class="text-xl font-semibold text-slate-900">用户账号列表</CardTitle>
-            <CardDescription class="mt-2 text-sm leading-6 text-slate-500">
-              对应 tb_user、tb_user_role，查看账号状态、角色分配和最近更新时间。共 {{ total }} 个用户。
-            </CardDescription>
-          </div>
         </div>
 
         <div class="flex flex-col gap-3 lg:flex-row">
@@ -141,20 +159,23 @@ onMounted(() => fetchData())
             <Input
               v-model="searchUsername"
               placeholder="搜索用户名"
-              class="h-10 border-slate-200 bg-white pl-10"
+              class="!h-10 border-slate-200 bg-white pl-10"
               @keyup.enter="handleSearch"
             />
           </div>
-          <select
-            v-model="filterRole"
-            class="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-600"
-            @change="handleSearch"
-          >
-            <option value="">全部角色</option>
-            <option value="USER">普通用户</option>
-            <option value="ADMIN">管理员</option>
-          </select>
-          <Button variant="outline" class="h-10 rounded-md border-slate-200 bg-white" @click="clearFilters">
+          <div class="w-[130px]">
+            <Select v-model="filterRole" @update:model-value="handleSearch">
+              <SelectTrigger class="!h-10 w-full border-slate-200 bg-white text-slate-600">
+                <SelectValue placeholder="全部角色" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部角色</SelectItem>
+                <SelectItem value="USER">普通用户</SelectItem>
+                <SelectItem value="ADMIN">管理员</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="outline" size="lg" class="rounded-md border-slate-200 bg-white" @click="clearFilters">
             清空筛选
           </Button>
         </div>
@@ -194,7 +215,7 @@ onMounted(() => fetchData())
                       <Button variant="outline" class="h-8 rounded-md border-slate-200 bg-white px-3 text-xs" @click="openRoleDialog(user)">
                         分配角色
                       </Button>
-                      <Button variant="outline" class="h-8 rounded-md border-rose-200 bg-white px-3 text-xs text-rose-600 hover:bg-rose-50" @click="handleDelete(user)">
+                      <Button variant="outline" class="h-8 rounded-md border-rose-200 bg-white px-3 text-xs text-rose-600 hover:bg-rose-50" @click="openDeleteDialog(user)">
                         删除
                       </Button>
                     </div>
@@ -223,22 +244,43 @@ onMounted(() => fetchData())
     <!-- 角色分配对话框 -->
     <Teleport to="body">
       <div v-if="showRoleDialog" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" @click.self="showRoleDialog = false">
-        <div class="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-lg">
-          <h3 class="text-lg font-semibold text-slate-900">分配角色</h3>
+        <div class="w-[320px] rounded-lg border border-slate-200 bg-white p-5 shadow-lg">
+          <h3 class="text-base font-semibold text-slate-900">分配角色</h3>
           <p class="mt-2 text-sm text-slate-500">用户：{{ roleForm.username }}</p>
           <div class="mt-4">
-            <label class="mb-1 block text-sm font-medium text-slate-700">角色</label>
-            <select v-model="roleForm.roleName" class="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-600">
-              <option value="USER">普通用户</option>
-              <option value="ADMIN">管理员</option>
-            </select>
+            <label class="mb-1.5 block text-sm font-medium text-slate-700">角色</label>
+            <Select v-model="roleForm.roleName">
+              <SelectTrigger class="h-9 w-full border-slate-200 bg-white text-slate-600 text-sm">
+                <SelectValue placeholder="请选择角色" />
+              </SelectTrigger>
+              <SelectContent class="w-full min-w-0">
+                <SelectItem value="USER">普通用户</SelectItem>
+                <SelectItem value="ADMIN">管理员</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div class="mt-6 flex justify-end gap-3">
-            <Button variant="outline" class="rounded-md border-slate-200" @click="showRoleDialog = false">取消</Button>
-            <Button class="rounded-md bg-slate-900 text-white hover:bg-slate-800" @click="handleRoleChange">确认</Button>
+          <div class="mt-5 flex justify-end gap-2">
+            <Button variant="outline" class="h-8 rounded-md border-slate-200 px-3 text-sm" @click="showRoleDialog = false">取消</Button>
+            <Button class="h-8 rounded-md bg-slate-900 px-3 text-sm text-white hover:bg-slate-800" @click="handleRoleChange">确认</Button>
           </div>
         </div>
       </div>
     </Teleport>
+
+    <!-- 删除确认对话框 -->
+    <Dialog v-model:open="showDeleteDialog">
+      <DialogContent class="w-[360px] p-5">
+        <DialogHeader class="space-y-2">
+          <DialogTitle class="text-base font-semibold">删除用户</DialogTitle>
+          <DialogDescription class="text-sm text-slate-600">
+            确定删除用户「{{ deletingUser?.username }}」吗？此操作不可恢复。
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter class="mt-4 flex justify-end gap-2">
+          <Button variant="outline" class="h-8 rounded-md border-slate-200 px-3 text-sm" @click="showDeleteDialog = false">取消</Button>
+          <Button variant="destructive" class="h-8 rounded-md px-3 text-sm" @click="confirmDelete">确认删除</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

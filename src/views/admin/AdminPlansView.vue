@@ -10,7 +10,22 @@ import {
   CardTitle
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Search, ChevronLeft, ChevronRight, Eye, Trash2 } from 'lucide-vue-next'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { Search, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { adminPlanApi, type AdminPlanInfo, type AdminPlanDetail } from '@/api/admin'
 import { toast } from 'vue-sonner'
 
@@ -21,11 +36,15 @@ const pageNum = ref(1)
 const pageSize = ref(10)
 const searchUsername = ref('')
 const searchKeyword = ref('')
-const filterType = ref<string>('')
-const filterStatus = ref<string>('')
-const filterPriority = ref<string>('')
+const filterType = ref<string | undefined>(undefined)
+const filterStatus = ref<string | undefined>(undefined)
+const filterPriority = ref<string | undefined>(undefined)
 const showDetailDialog = ref(false)
 const planDetail = ref<AdminPlanDetail | null>(null)
+
+// 删除确认对话框
+const showDeleteDialog = ref(false)
+const deletingPlan = ref<AdminPlanInfo | null>(null)
 
 // 总页数
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
@@ -88,9 +107,9 @@ const fetchData = async () => {
       pageSize: pageSize.value,
       username: searchUsername.value || undefined,
       keyword: searchKeyword.value || undefined,
-      type: filterType.value !== '' ? Number(filterType.value) : undefined,
-      status: filterStatus.value !== '' ? Number(filterStatus.value) : undefined,
-      priority: filterPriority.value !== '' ? Number(filterPriority.value) : undefined
+      type: filterType.value === 'all' ? undefined : (filterType.value !== undefined ? Number(filterType.value) : undefined),
+      status: filterStatus.value === 'all' ? undefined : (filterStatus.value !== undefined ? Number(filterStatus.value) : undefined),
+      priority: filterPriority.value === 'all' ? undefined : (filterPriority.value !== undefined ? Number(filterPriority.value) : undefined)
     })
     plans.value = res.records
     total.value = res.total
@@ -111,9 +130,9 @@ const handleSearch = () => {
 const clearFilters = () => {
   searchUsername.value = ''
   searchKeyword.value = ''
-  filterType.value = ''
-  filterStatus.value = ''
-  filterPriority.value = ''
+  filterType.value = undefined
+  filterStatus.value = undefined
+  filterPriority.value = undefined
   pageNum.value = 1
   fetchData()
 }
@@ -137,11 +156,17 @@ const viewDetail = async (plan: AdminPlanInfo) => {
 }
 
 // 删除计划
-const handleDelete = async (plan: AdminPlanInfo) => {
-  if (!confirm(`确定删除计划「${plan.title}」吗？此操作不可恢复。`)) return
+const openDeleteDialog = (plan: AdminPlanInfo) => {
+  deletingPlan.value = plan
+  showDeleteDialog.value = true
+}
+
+const confirmDelete = async () => {
+  if (!deletingPlan.value) return
   try {
-    await adminPlanApi.delete(plan.id)
+    await adminPlanApi.delete(deletingPlan.value.id)
     toast.success('计划删除成功')
+    showDeleteDialog.value = false
     fetchData()
   } catch {
     toast.error('计划删除失败')
@@ -170,7 +195,7 @@ onMounted(() => fetchData())
             <Input
               v-model="searchUsername"
               placeholder="搜索用户名"
-              class="h-10 border-slate-200 bg-white pl-10"
+              class="!h-10 border-slate-200 bg-white pl-10"
               @keyup.enter="handleSearch"
             />
           </div>
@@ -178,40 +203,49 @@ onMounted(() => fetchData())
             <Input
               v-model="searchKeyword"
               placeholder="搜索标题关键词"
-              class="h-10 border-slate-200 bg-white"
+              class="!h-10 border-slate-200 bg-white"
               @keyup.enter="handleSearch"
             />
           </div>
-          <select
-            v-model="filterType"
-            class="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-600"
-            @change="handleSearch"
-          >
-            <option value="">全部类型</option>
-            <option value="0">普通计划</option>
-            <option value="1">四象限</option>
-            <option value="2">每日计划</option>
-          </select>
-          <select
-            v-model="filterStatus"
-            class="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-600"
-            @change="handleSearch"
-          >
-            <option value="">全部状态</option>
-            <option value="0">未完成</option>
-            <option value="1">已完成</option>
-          </select>
-          <select
-            v-model="filterPriority"
-            class="h-10 rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-600"
-            @change="handleSearch"
-          >
-            <option value="">全部优先级</option>
-            <option value="1">低</option>
-            <option value="2">中</option>
-            <option value="3">高</option>
-          </select>
-          <Button variant="outline" class="h-10 rounded-md border-slate-200 bg-white" @click="clearFilters">
+          <div class="w-[130px]">
+            <Select v-model="filterType" @update:model-value="handleSearch">
+              <SelectTrigger class="!h-10 w-full border-slate-200 bg-white text-slate-600">
+                <SelectValue placeholder="全部类型" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部类型</SelectItem>
+                <SelectItem value="0">普通计划</SelectItem>
+                <SelectItem value="1">四象限</SelectItem>
+                <SelectItem value="2">每日计划</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="w-[130px]">
+            <Select v-model="filterStatus" @update:model-value="handleSearch">
+              <SelectTrigger class="!h-10 w-full border-slate-200 bg-white text-slate-600">
+                <SelectValue placeholder="全部状态" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部状态</SelectItem>
+                <SelectItem value="0">未完成</SelectItem>
+                <SelectItem value="1">已完成</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div class="w-[130px]">
+            <Select v-model="filterPriority" @update:model-value="handleSearch">
+              <SelectTrigger class="!h-10 w-full border-slate-200 bg-white text-slate-600">
+                <SelectValue placeholder="全部优先级" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部优先级</SelectItem>
+                <SelectItem value="1">低</SelectItem>
+                <SelectItem value="2">中</SelectItem>
+                <SelectItem value="3">高</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button variant="outline" size="lg" class="rounded-md border-slate-200 bg-white" @click="clearFilters">
             清空筛选
           </Button>
         </div>
@@ -261,11 +295,9 @@ onMounted(() => fetchData())
                   <td class="px-4 py-3">
                     <div class="flex gap-2">
                       <Button variant="outline" class="h-8 rounded-md border-slate-200 bg-white px-3 text-xs" @click="viewDetail(plan)">
-                        <Eye class="mr-1 size-3.5" />
                         查看
                       </Button>
-                      <Button variant="outline" class="h-8 rounded-md border-rose-200 bg-white px-3 text-xs text-rose-600 hover:bg-rose-50" @click="handleDelete(plan)">
-                        <Trash2 class="mr-1 size-3.5" />
+                      <Button variant="outline" class="h-8 rounded-md border-rose-200 bg-white px-3 text-xs text-rose-600 hover:bg-rose-50" @click="openDeleteDialog(plan)">
                         删除
                       </Button>
                     </div>
@@ -399,5 +431,21 @@ onMounted(() => fetchData())
         </div>
       </div>
     </Teleport>
+
+    <!-- 删除确认对话框 -->
+    <Dialog v-model:open="showDeleteDialog">
+      <DialogContent class="w-[360px] p-5">
+        <DialogHeader class="space-y-2">
+          <DialogTitle class="text-base font-semibold">删除计划</DialogTitle>
+          <DialogDescription class="text-sm text-slate-600">
+            确定删除计划「{{ deletingPlan?.title }}」吗？此操作不可恢复。
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter class="mt-4 flex justify-end gap-2">
+          <Button variant="outline" class="h-8 rounded-md border-slate-200 px-3 text-sm" @click="showDeleteDialog = false">取消</Button>
+          <Button variant="destructive" class="h-8 rounded-md px-3 text-sm" @click="confirmDelete">确认删除</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

@@ -39,7 +39,7 @@ const router = createRouter({
           component: () => import('@/views/admin/AdminUsersView.vue'),
           meta: {
             title: '用户与权限',
-            subtitle: '对应 tb_user、tb_role、tb_user_role，查看账号、角色分配与权限治理。'
+            subtitle: '查看账号、角色分配与权限治理。'
           }
         },
         {

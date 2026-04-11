@@ -49,9 +49,6 @@ const handleLogout = async () => {
       </div>
 
       <div class="flex flex-wrap items-center gap-3">
-        <div class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
-          当前待处理 12 项
-        </div>
         <Button variant="outline" class="rounded-md border-slate-200 bg-white" @click="goToLanding">
           <House class="size-4" />
           返回首页
