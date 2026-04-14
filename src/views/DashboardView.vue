@@ -313,8 +313,8 @@ const placeholderCount = computed(() => Math.max(0, 2 - insightNotes.value.lengt
             <section class="col-span-12 lg:col-span-8 space-y-6 section-reveal" style="animation-delay: 0.2s">
 
               <!-- Plans Section -->
-              <div class="woven-border bg-white p-8 rounded-[2rem] relative overflow-hidden group card-hover shadow-sm">
-                <div class="flex justify-between items-start mb-10">
+              <div class="woven-border bg-white p-6 rounded-[2rem] relative overflow-hidden group card-hover shadow-sm">
+                <div class="flex justify-between items-start mb-6">
                   <div>
                     <h2 class="text-xl font-medium tracking-tight mb-1 text-neutral-900">我的计划</h2>
                   </div>
@@ -373,10 +373,10 @@ const placeholderCount = computed(() => Math.max(0, 2 - insightNotes.value.lengt
 
               <!-- Notes Section -->
               <div
-                class="woven-border bg-[#18181b] text-white p-8 rounded-[2rem] card-hover relative group cursor-pointer shadow-lg overflow-hidden"
+                class="woven-border bg-[#18181b] text-white p-6 rounded-[2rem] card-hover relative group cursor-pointer shadow-lg overflow-hidden"
                 @click="navigateToNotes"
               >
-                <div class="flex justify-between items-center mb-8 relative z-10">
+                <div class="flex justify-between items-center mb-6 relative z-10">
                   <div class="flex items-center gap-3">
                     <PenTool class="w-5 h-5 opacity-60 text-zinc-400" />
                     <h2 class="text-lg font-light tracking-wide italic">思维笔记</h2>

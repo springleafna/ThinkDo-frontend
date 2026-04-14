@@ -51,7 +51,6 @@ const quadrantConfigs = [
     id: 'q1',
     title: '重要且紧急',
     subtitle: 'DO IT NOW',
-    description: '立即处理，危机管理。',
     icon: Zap,
     color: 'bg-rose-50 border-rose-200 text-rose-900',
     key: 'importantUrgent' as const
@@ -60,7 +59,6 @@ const quadrantConfigs = [
     id: 'q2',
     title: '重要但不紧急',
     subtitle: 'SCHEDULE IT',
-    description: '长期规划，自我提升。',
     icon: Calendar,
     color: 'bg-indigo-50 border-indigo-200 text-indigo-900',
     key: 'importantNotUrgent' as const
@@ -69,7 +67,6 @@ const quadrantConfigs = [
     id: 'q3',
     title: '不重要但紧急',
     subtitle: 'DELEGATE IT',
-    description: '琐碎事务，尽量授权。',
     icon: Users,
     color: 'bg-amber-50 border-amber-200 text-amber-900',
     key: 'urgentNotImportant' as const
@@ -78,7 +75,6 @@ const quadrantConfigs = [
     id: 'q4',
     title: '不重要且不紧急',
     subtitle: 'ELIMINATE IT',
-    description: '消遣娱乐，断舍离。',
     icon: Trash,
     color: 'bg-stone-50 border-stone-200 text-stone-900',
     key: 'notImportantNotUrgent' as const
@@ -290,14 +286,7 @@ onMounted(() => {
                     <p class="mono text-[10px] font-bold opacity-40 tracking-widest">{{ quadrant.subtitle }}</p>
                   </div>
                 </div>
-                <button class="p-2 hover:bg-white/40 rounded-full transition-colors">
-                  <Plus :size="18" class="opacity-40" />
-                </button>
               </div>
-
-              <p class="text-xs italic mb-8 opacity-60 leading-relaxed">
-                {{ quadrant.description }}
-              </p>
 
               <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 min-h-0">
                 <div class="space-y-3">

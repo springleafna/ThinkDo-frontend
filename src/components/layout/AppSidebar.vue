@@ -199,7 +199,6 @@ const handleNavigation = (viewId: string) => {
           ]"
         >
           <p class="text-[13px] font-medium truncate whitespace-nowrap">{{ userStore.username || '未登录' }}</p>
-          <p class="mono text-[8px] opacity-40 uppercase tracking-tighter whitespace-nowrap">在线连接</p>
         </div>
       </div>
 
