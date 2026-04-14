@@ -11,7 +11,6 @@ import {
   Tag,
   Calendar,
   FolderOpen,
-  Plus,
   X
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
@@ -448,9 +447,6 @@ watch(() => route.params.id, () => {
               <div class="space-y-6">
               <!-- 标题编辑 -->
               <div>
-                <label class="block text-sm font-medium text-neutral-700 mb-2">
-                  笔记标题
-                </label>
                 <Input
                   v-model="form.title"
                   type="text"
@@ -462,12 +458,12 @@ watch(() => route.params.id, () => {
               <!-- 分类和标签 -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- 分类选择 -->
-                <div>
-                  <label class="block text-sm font-medium text-neutral-700 mb-2">
+                <div class="flex items-center gap-4">
+                  <label class="text-sm font-medium text-neutral-700 min-w-[60px]">
                     分类
                   </label>
                   <Select v-model="form.categoryId">
-                    <SelectTrigger class="bg-white border-black/10 w-full">
+                    <SelectTrigger class="bg-white border-black/10 w-48">
                       <SelectValue placeholder="未分类" />
                     </SelectTrigger>
                     <SelectContent>
@@ -479,31 +475,20 @@ watch(() => route.params.id, () => {
                 </div>
 
                 <!-- 标签输入 -->
-                <div>
-                  <label class="block text-sm font-medium text-neutral-700 mb-2">
+                <div class="flex items-center gap-3">
+                  <label class="text-sm font-medium text-neutral-700 min-w-[60px]">
                     标签 <span class="text-neutral-400 font-normal">（最多3个）</span>
                   </label>
-                  <div class="flex items-center gap-2 mb-2">
-                    <Input
-                      v-model="newTagInput"
-                      @keyup.enter="addTag"
-                      type="text"
-                      placeholder="输入标签后按回车或点击加号"
-                      :disabled="form.tags.length >= 3"
-                      class="flex-1"
-                    />
-                    <Button
-                      @click="addTag"
-                      :disabled="form.tags.length >= 3"
-                      variant="outline"
-                      size="icon"
-                      class="shrink-0"
-                    >
-                      <Plus :size="16" />
-                    </Button>
-                  </div>
-                  <!-- 已选标签 -->
-                  <div v-if="form.tags.length > 0" class="flex flex-wrap gap-2">
+                  <Input
+                    v-model="newTagInput"
+                    @keyup.enter="addTag"
+                    type="text"
+                    placeholder="输入标签后按回车"
+                    :disabled="form.tags.length >= 3"
+                    class="w-48"
+                  />
+                  <!-- 已选标签 - 在输入框右侧 -->
+                  <div v-if="form.tags.length > 0" class="flex flex-wrap items-center gap-2">
                     <Badge
                       v-for="tag in form.tags"
                       :key="tag"
@@ -519,7 +504,7 @@ watch(() => route.params.id, () => {
                       </button>
                     </Badge>
                   </div>
-                  <p v-if="form.tags.length >= 3" class="text-xs text-neutral-400 mt-1">
+                  <p v-if="form.tags.length >= 3" class="text-xs text-neutral-400 whitespace-nowrap">
                     已达到标签数量上限
                   </p>
                 </div>

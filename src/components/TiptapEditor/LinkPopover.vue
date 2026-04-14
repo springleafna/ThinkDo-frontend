@@ -44,7 +44,7 @@ const openMenu = () => {
 // 确认添加/修改链接
 const confirmLink = () => {
   if (!props.editor) return
-  
+
   // 如果内容为空，视为移除
   if (!linkUrl.value) {
     removeLink()
@@ -52,15 +52,48 @@ const confirmLink = () => {
   }
 
   let href = linkUrl.value
-  // 可选：在这里添加 https:// 补全逻辑
-  
-  props.editor
-    .chain()
-    .focus()
-    .extendMarkRange('link')
-    .setLink({ href })
-    .run()
-    
+  // 如果 URL 不以协议开头，添加 https://
+  if (href && !href.match(/^https?:\/\//i)) {
+    href = 'https://' + href
+  }
+
+  const { from, to } = props.editor.state.selection
+  const text = props.editor.state.doc.textBetween(from, to)
+
+  // 如果没有选中文本，插入链接文本并应用链接样式
+  if (!text || from === to) {
+    props.editor
+      .chain()
+      .focus()
+      .insertContent([
+        {
+          type: 'text',
+          text: href,
+          marks: [
+            {
+              type: 'link',
+              attrs: {
+                href: href,
+                target: '_blank',
+                class: 'text-violet-600 hover:text-violet-800 underline underline-offset-4 cursor-pointer transition-colors'
+              }
+            }
+          ]
+        }
+      ])
+      .run()
+  } else {
+    // 有选中文本，设置为链接
+    props.editor
+      .chain()
+      .focus()
+      .setMark('link', {
+        href: href,
+        target: '_blank'
+      })
+      .run()
+  }
+
   isOpen.value = false
 }
 

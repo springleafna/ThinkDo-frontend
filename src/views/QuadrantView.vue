@@ -31,7 +31,7 @@ interface QuadrantData {
   id: string
   title: string
   subtitle: string
-  description: string
+  description?: string
   icon: any
   color: string
   tasks: PlanQuadrantInfo[]
