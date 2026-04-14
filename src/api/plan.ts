@@ -54,6 +54,9 @@ export interface Plan {
   createdAt: string
   updatedAt: string
   type?: number
+  totalSteps?: number
+  completedSteps?: number
+  progress?: number
 }
 
 // 计划查询参数
@@ -187,5 +190,13 @@ export const planApi = {
    */
   aiCreate(data: AiCreatePlanParams) {
     return request.post<number>('/plan/plan/aiCreate', data)
+  },
+
+  /**
+   * 获取最近未完成的计划列表（用于Dashboard展示）
+   * GET /plan/plan/recent
+   */
+  getRecentPlans() {
+    return request.get<Plan[]>('/plan/plan/recent')
   }
 }

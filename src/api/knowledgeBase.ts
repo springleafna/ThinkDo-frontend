@@ -43,6 +43,12 @@ export interface PageResult<T> {
   pages: number
 }
 
+// 知识库统计信息
+export interface KnowledgeStatistics {
+  baseCount: number
+  documentCount: number
+}
+
 // 知识库相关 API
 export const knowledgeBaseApi = {
   /**
@@ -93,5 +99,13 @@ export const knowledgeBaseApi = {
     return request.get<PageResult<KnowledgeBase>>('/knowledge-base', {
       params: { ...params, current: 1, size: 1000 }
     })
+  },
+
+  /**
+   * 获取知识库统计信息
+   * GET /knowledge-base/statistics
+   */
+  getStatistics() {
+    return request.get<KnowledgeStatistics>('/knowledge-base/statistics')
   }
 }
