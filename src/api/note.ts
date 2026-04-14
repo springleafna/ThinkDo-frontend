@@ -1,12 +1,11 @@
 import { request } from '@/utils/request'
 
-export type AiAction = 'POLISH' | 'EXPAND' | 'CORRECT' | 'FORMAT'
+export type AiAction = 'POLISH' | 'EXPAND' | 'CORRECT'
 
 export interface AiOptions {
   tone?: string
   targetLength?: string
   language?: string
-  preserveMarkup?: boolean
 }
 
 export interface AiTransformReq {
@@ -19,7 +18,6 @@ export interface AiTransformReq {
 export interface AiStreamChunkResp {
   delta: string | null
   done: boolean
-  isHtml: boolean | null
 }
 
 const API_BASE = (import.meta as any).env.VITE_API_BASE_URL || '/api'
@@ -28,7 +26,7 @@ const AI_STREAM_PATH = '/note/ai/transform/stream'
 export async function streamAiTransform(
   req: AiTransformReq,
   onDelta: (delta: string) => void,
-  onDone: (isHtml: boolean) => void,
+  onDone: () => void,
   signal?: AbortSignal,
 ): Promise<void> {
   const url = API_BASE + AI_STREAM_PATH
@@ -70,7 +68,7 @@ export async function streamAiTransform(
         try {
           const obj = JSON.parse(json) as AiStreamChunkResp
           if (obj.done) {
-            onDone(Boolean(obj.isHtml))
+            onDone()
           } else if (obj.delta) {
             onDelta(obj.delta)
           }

@@ -456,14 +456,14 @@ watch(() => route.params.id, () => {
               </div>
 
               <!-- 分类和标签 -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="flex flex-col md:flex-row md:items-center gap-4">
                 <!-- 分类选择 -->
-                <div class="flex items-center gap-4">
-                  <label class="text-sm font-medium text-neutral-700 min-w-[60px]">
+                <div class="flex items-center gap-3">
+                  <label class="text-sm font-medium text-neutral-700 min-w-[10px]">
                     分类
                   </label>
                   <Select v-model="form.categoryId">
-                    <SelectTrigger class="bg-white border-black/10 w-48">
+                    <SelectTrigger class="bg-white border-black/10 w-40">
                       <SelectValue placeholder="未分类" />
                     </SelectTrigger>
                     <SelectContent>
@@ -475,7 +475,7 @@ watch(() => route.params.id, () => {
                 </div>
 
                 <!-- 标签输入 -->
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 flex-1">
                   <label class="text-sm font-medium text-neutral-700 min-w-[60px]">
                     标签 <span class="text-neutral-400 font-normal">（最多3个）</span>
                   </label>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch, onBeforeUnmount } from 'vue'
+import { watch, onBeforeUnmount, ref, computed } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -12,10 +12,12 @@ import js from 'highlight.js/lib/languages/javascript'
 import ts from 'highlight.js/lib/languages/typescript'
 import html from 'highlight.js/lib/languages/xml'
 import type { Editor } from '@tiptap/vue-3'
+import { marked } from 'marked'
 
 // UI Components
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { Textarea } from '@/components/ui/textarea'
 import LinkPopover from './TiptapEditor/LinkPopover.vue'
 import ImagePopover from './TiptapEditor/ImagePopover.vue'
 import TableOfContents from './TiptapEditor/TableOfContents.vue'
@@ -37,6 +39,8 @@ import {
   Redo,
   Code2,
   Text as TextIcon,
+  FileCode,
+  Eye,
 } from 'lucide-vue-next'
 
 // 配置代码高亮语言
@@ -45,6 +49,12 @@ const lowlight = createLowlight({
   js,
   ts,
   html,
+})
+
+// 配置marked
+marked.setOptions({
+  breaks: true,
+  gfm: true,
 })
 
 interface Props {
@@ -64,6 +74,56 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
+// Markdown源码编辑模式
+const isMarkdownMode = ref(false)
+const markdownSource = ref('')
+
+// Markdown转HTML（同步版本，用于编辑器实时预览）
+const markdownToHtml = (markdown: string): string => {
+  try {
+    return marked.parse(markdown, { async: false }) as string
+  } catch (e) {
+    console.error('Markdown转HTML失败:', e)
+    return markdown
+  }
+}
+
+// HTML转Markdown（简化版本）
+const htmlToMarkdown = (html: string): string => {
+  let markdown = html
+
+  // 处理标题
+  markdown = markdown.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
+  markdown = markdown.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
+  markdown = markdown.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
+
+  // 处理图片
+  markdown = markdown.replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)')
+
+  // 处理链接
+  markdown = markdown.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
+
+  // 处理加粗
+  markdown = markdown.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
+  markdown = markdown.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
+
+  // 处理斜体
+  markdown = markdown.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
+  markdown = markdown.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
+
+  // 处理代码
+  markdown = markdown.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`')
+  markdown = markdown.replace(/<pre[^>]*>(.*?)<\/pre>/gis, '```\n$1\n```')
+
+  // 处理段落
+  markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gis, '$1\n\n')
+
+  // 清理多余的换行
+  markdown = markdown.replace(/\n{3,}/g, '\n\n')
+
+  return markdown.trim()
+}
+
 const editor = useEditor({
   content: props.modelValue,
   extensions: [
@@ -81,19 +141,28 @@ const editor = useEditor({
     Link.configure({
       openOnClick: false,
       HTMLAttributes: {
-        class: 'text-violet-600 hover:text-violet-800 underline underline-offset-4 cursor-pointer transition-colors'
-      }
+        class: 'text-violet-600 hover:text-violet-800 underline underline-offset-4 cursor-pointer transition-colors',
+        target: '_blank'
+      },
+      autolink: true,
+      linkOnPaste: true,
+      validate: (href) => !!href
     }),
     Image.configure({
       HTMLAttributes: {
-        class: 'rounded-lg border border-neutral-200 shadow-sm max-w-full h-auto my-4'
-      }
+        class: 'rounded-lg border border-neutral-200 shadow-sm max-w-full h-auto my-4',
+        loading: 'lazy'
+      },
+      inline: false,
+      allowBase64: true
     }),
     CodeBlockLowlight.configure({
       lowlight,
       HTMLAttributes: {
-        class: 'bg-neutral-100 text-neutral-800 rounded-md p-4 my-4 overflow-x-auto font-mono text-sm border border-neutral-200'
-      }
+        class: 'bg-neutral-100 text-neutral-800 rounded-md p-4 my-4 overflow-x-auto font-mono text-sm border border-neutral-200',
+        spellcheck: 'false'
+      },
+      defaultLanguage: null
     })
   ],
   editorProps: {
@@ -114,7 +183,16 @@ const editor = useEditor({
 // 监听外部 modelValue 变化
 watch(() => props.modelValue, (value) => {
   if (editor.value && value !== editor.value.getHTML()) {
-    editor.value.commands.setContent(value)
+    // 检测是否是Markdown格式（简单的检测）
+    if (value && (value.includes('```') || value.startsWith('#') || value.includes('!['))) {
+      // 可能是Markdown，转换为HTML显示
+      isMarkdownMode.value = true
+      markdownSource.value = value
+      editor.value.commands.setContent(markdownToHtml(value))
+    } else {
+      // HTML格式，直接设置
+      editor.value.commands.setContent(value)
+    }
   }
 })
 
@@ -122,6 +200,21 @@ watch(() => props.modelValue, (value) => {
 watch(() => props.editable, (value) => {
   editor.value?.setEditable(value)
 })
+
+// 切换到Markdown源码模式
+const toggleMarkdownMode = () => {
+  if (!isMarkdownMode.value) {
+    // 切换到Markdown模式：将当前HTML转换为Markdown
+    const currentHtml = editor.value?.getHTML() || ''
+    markdownSource.value = htmlToMarkdown(currentHtml)
+    isMarkdownMode.value = true
+  } else {
+    // 切换回富文本模式：将Markdown转换为HTML
+    const newHtml = markdownToHtml(markdownSource.value)
+    editor.value?.commands.setContent(newHtml)
+    isMarkdownMode.value = false
+  }
+}
 
 onBeforeUnmount(() => {
   editor.value?.destroy()
@@ -213,15 +306,45 @@ defineExpose({
         <AIPopover :editor="editor" />
         <LinkPopover :editor="editor" />
         <ImagePopover :editor="editor" />
+        <Button
+          @click="toggleMarkdownMode"
+          variant="ghost"
+          size="icon"
+          class="h-8 w-8"
+          :class="isMarkdownMode ? 'bg-neutral-200 text-neutral-900' : 'text-neutral-600'"
+          title="切换Markdown模式"
+        >
+          <FileCode v-if="!isMarkdownMode" :size="15" />
+          <Eye v-else :size="15" />
+        </Button>
       </div>
 
     </div>
 
     <!-- 编辑器主体 -->
-    <div class="flex-1 cursor-text relative w-full overflow-hidden">
-      <EditorContent :editor="editor" class="w-full h-full" />
-      <!-- 目录组件 -->
-      <TableOfContents v-if="editor" :editor="editor" />
+    <div class="flex-1 relative w-full overflow-hidden">
+      <!-- Markdown源码编辑模式 -->
+      <div v-if="isMarkdownMode" class="h-full">
+        <textarea
+          v-model="markdownSource"
+          placeholder="在这里输入Markdown内容..."
+          class="w-full h-full min-h-[300px] p-6 font-mono text-sm resize-none focus:outline-none border-none bg-transparent"
+          @input="(e) => {
+            const value = (e.target as HTMLTextAreaElement).value
+            markdownSource = value
+            // 实时更新预览
+            if (editor) {
+              editor.commands.setContent(markdownToHtml(value))
+            }
+          }"
+        />
+      </div>
+      <!-- 富文本编辑模式 -->
+      <div v-else class="cursor-text relative w-full h-full">
+        <EditorContent :editor="editor" class="w-full h-full" />
+        <!-- 目录组件 -->
+        <TableOfContents v-if="editor" :editor="editor" />
+      </div>
     </div>
   </div>
 </template>
@@ -262,6 +385,7 @@ defineExpose({
   line-height: 2.5rem;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
+  color: #1a1a1a;
 }
 
 :deep(.ProseMirror h2) {
@@ -270,6 +394,7 @@ defineExpose({
   line-height: 2.25rem;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
+  color: #262626;
 }
 
 :deep(.ProseMirror h3) {
@@ -278,12 +403,30 @@ defineExpose({
   line-height: 2rem;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
+  color: #404040;
 }
 
 /* 段落样式 */
 :deep(.ProseMirror p) {
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
+  line-height: 1.7;
+}
+
+/* 文本格式样式 */
+:deep(.ProseMirror strong) {
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+:deep(.ProseMirror em) {
+  font-style: italic;
+  color: #404040;
+}
+
+:deep(.ProseMirror s) {
+  text-decoration: line-through;
+  color: #a3a3a3;
 }
 
 /* 引用样式 */
@@ -324,22 +467,33 @@ defineExpose({
 
 /* 代码块样式 */
 :deep(.ProseMirror pre) {
-  background-color: #f5f5f5;
-  border-radius: 0.375rem;
+  background-color: #1e293b;
+  color: #e2e8f0;
+  border-radius: 0.5rem;
   padding: 1rem;
   margin-top: 1rem;
   margin-bottom: 1rem;
   overflow-x: auto;
-  font-family: ui-monospace, monospace;
+  font-family: 'Courier New', Courier, monospace;
   font-size: 0.875rem;
+  line-height: 1.5;
 }
 
 :deep(.ProseMirror code) {
-  background-color: #f5f5f5;
-  padding: 0.125rem 0.25rem;
+  background-color: #f1f5f9;
+  color: #dc2626;
+  padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
-  font-family: ui-monospace, monospace;
+  font-family: 'Courier New', Courier, monospace;
   font-size: 0.875em;
+  font-weight: 500;
+}
+
+:deep(.ProseMirror pre code) {
+  background-color: transparent;
+  color: inherit;
+  padding: 0;
+  font-weight: 400;
 }
 
 :deep(.ProseMirror pre code) {
