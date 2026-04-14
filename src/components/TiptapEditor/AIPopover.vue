@@ -66,11 +66,10 @@ const initSource = () => {
     return
   }
   range.value = null
-  let fullText = props.editor.getText()
-  // 如果包含HTML标签，尝试转换
-  if (fullText.includes('<')) {
-    fullText = htmlToSimpleMarkdown(fullText)
-  }
+  // 使用getHTML()而不是getText()，以保留图片等HTML内容
+  let fullHtml = props.editor.getHTML()
+  // 将HTML转换为Markdown
+  let fullText = htmlToSimpleMarkdown(fullHtml)
   source.value = fullText
   scope.value = 'document'
 }
@@ -135,11 +134,9 @@ const setScope = (s: 'selection' | 'paragraph' | 'document') => {
     source.value = text
   } else {
     range.value = null
-    let text = props.editor.getText()
-    // 如果包含HTML标签，转换为Markdown
-    if (text.includes('<')) {
-      text = htmlToSimpleMarkdown(text)
-    }
+    // 使用getHTML()而不是getText()，以保留图片等HTML内容
+    let html = props.editor.getHTML()
+    let text = htmlToSimpleMarkdown(html)
     source.value = text
   }
   preview.value = ''
