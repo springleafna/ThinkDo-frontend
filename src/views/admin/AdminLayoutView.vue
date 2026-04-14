@@ -11,7 +11,6 @@ import {
   ListTree,
   MessageSquare,
   NotebookPen,
-  Settings2,
   StickyNote,
   UsersRound
 } from 'lucide-vue-next'
@@ -79,12 +78,6 @@ const navItems = [
     to: '/admin/memos',
     icon: NotebookPen,
     hint: '管理所有用户的便签'
-  },
-  {
-    label: '系统策略',
-    to: '/admin/system',
-    icon: Settings2,
-    hint: '配置模型路由、RAG 与平台治理策略'
   }
 ]
 

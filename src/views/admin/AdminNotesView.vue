@@ -132,15 +132,6 @@ onMounted(() => fetchData())
   <div class="space-y-4">
     <Card class="border-slate-200 bg-white shadow-none">
       <CardHeader class="gap-4">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <CardTitle class="text-xl font-semibold text-slate-900">笔记管理</CardTitle>
-            <CardDescription class="mt-2 text-sm leading-6 text-slate-500">
-              管理所有用户的笔记内容。共 {{ total }} 条笔记。
-            </CardDescription>
-          </div>
-        </div>
-
         <div class="flex flex-col gap-3 lg:flex-row">
           <div class="relative max-w-md flex-1">
             <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />

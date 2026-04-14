@@ -70,15 +70,6 @@ const router = createRouter({
           }
         },
         {
-          path: 'system',
-          name: 'admin-system',
-          component: () => import('@/views/admin/AdminSettingsView.vue'),
-          meta: {
-            title: '系统策略',
-            subtitle: '结合项目能力查看模型路由、RAG 策略、文档处理链路与平台治理配置。'
-          }
-        },
-        {
           path: 'intent-tree',
           name: 'admin-intent-tree',
           component: () => import('@/views/admin/AdminIntentTreeView.vue'),

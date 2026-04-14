@@ -150,9 +150,6 @@ onMounted(() => fetchData())
   <div class="space-y-4">
     <Card class="border-slate-200 bg-white shadow-none">
       <CardHeader class="gap-4">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        </div>
-
         <div class="flex flex-col gap-3 lg:flex-row">
           <div class="relative max-w-md flex-1">
             <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />

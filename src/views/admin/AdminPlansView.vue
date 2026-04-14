@@ -180,14 +180,6 @@ onMounted(() => fetchData())
   <div class="space-y-4">
     <Card class="border-slate-200 bg-white shadow-none">
       <CardHeader class="gap-4">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <CardTitle class="text-xl font-semibold text-slate-900">计划管理</CardTitle>
-            <CardDescription class="mt-2 text-sm leading-6 text-slate-500">
-              管理所有用户的计划任务。共 {{ total }} 条记录。
-            </CardDescription>
-          </div>
-        </div>
 
         <div class="flex flex-col gap-3 lg:flex-row lg:flex-wrap">
           <div class="relative max-w-md flex-1">
