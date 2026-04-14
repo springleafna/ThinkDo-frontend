@@ -268,13 +268,14 @@ onMounted(() => {
     <main class="flex-1 flex flex-col min-w-0 z-10">
       <AppHeader :active-view="activeView" />
 
-      <div class="flex-1 overflow-y-auto p-8 md:p-12 pt-8 custom-scrollbar relative z-10">
-        <div class="max-w-7xl mx-auto space-y-10 pb-12 section-reveal">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="flex-1 overflow-y-auto p-4 md:p-6 pt-4 custom-scrollbar relative z-10">
+        <div class="max-w-7xl mx-auto space-y-4 pb-8 section-reveal">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div
               v-for="quadrant in data"
               :key="quadrant.id"
-              :class="['woven-border rounded-[2.5rem] p-8 flex flex-col card-hover shadow-sm h-[380px]', quadrant.color]"
+              :class="['woven-border rounded-[2rem] p-6 flex flex-col card-hover shadow-sm', quadrant.color]"
+              :style="{ minHeight: '280px', height: 'calc(50vh - 80px)' }"
             >
               <div class="flex justify-between items-start mb-6">
                 <div class="flex items-center gap-4">

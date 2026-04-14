@@ -22,6 +22,7 @@ type AuthMode = 'login' | 'register'
 
 const mode = ref<AuthMode>('login')
 const isLoading = ref(false)
+const isAdminLoading = ref(false)
 
 // 密码显示/隐藏状态
 const showPassword = ref(false)
@@ -79,7 +80,12 @@ const doLogin = async (isAdminLogin: boolean) => {
     return
   }
 
-  isLoading.value = true
+  // 根据登录类型设置对应的加载状态
+  if (isAdminLogin) {
+    isAdminLoading.value = true
+  } else {
+    isLoading.value = true
+  }
 
   try {
     const loginParams: LoginParams = {
@@ -108,7 +114,12 @@ const doLogin = async (isAdminLogin: boolean) => {
   } catch (error) {
     console.error('认证失败:', error)
   } finally {
-    isLoading.value = false
+    // 清除对应的加载状态
+    if (isAdminLogin) {
+      isAdminLoading.value = false
+    } else {
+      isLoading.value = false
+    }
   }
 }
 
@@ -241,7 +252,6 @@ const toggleConfirmPasswordVisibility = () => {
                   type="button"
                   class="text-[11px] font-bold uppercase tracking-tighter text-indigo-600 hover:underline"
                 >
-                  忘记密码？
                 </button>
               </div>
               <div class="relative flex items-center">
@@ -263,7 +273,7 @@ const toggleConfirmPasswordVisibility = () => {
                   @click="togglePasswordVisibility"
                   class="absolute right-4 text-neutral-300 hover:text-neutral-500 transition-colors"
                 >
-                  <Eye v-if="!showPassword" :size="16" />
+                  <Eye v-if="showPassword" :size="16" />
                   <EyeOff v-else :size="16" />
                 </button>
               </div>
@@ -293,7 +303,7 @@ const toggleConfirmPasswordVisibility = () => {
                   @click="toggleConfirmPasswordVisibility"
                   class="absolute right-4 text-neutral-300 hover:text-neutral-500 transition-colors"
                 >
-                  <Eye v-if="!showConfirmPassword" :size="16" />
+                  <Eye v-if="showConfirmPassword" :size="16" />
                   <EyeOff v-else :size="16" />
                 </button>
               </div>
@@ -321,12 +331,19 @@ const toggleConfirmPasswordVisibility = () => {
 
               <button
                 type="button"
-                :disabled="isLoading"
+                :disabled="isAdminLoading"
                 @click="handleAdminLogin"
                 class="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border border-indigo-200 bg-white py-3 text-sm font-medium text-indigo-600 transition-all hover:bg-indigo-50"
+                :class="isAdminLoading ? 'cursor-not-allowed opacity-80' : ''"
               >
-                <ShieldCheck :size="16" />
-                管理员登录
+                <div
+                  v-if="isAdminLoading"
+                  class="h-4 w-4 animate-spin rounded-full border-2 border-indigo-600/20 border-t-indigo-600"
+                ></div>
+                <template v-else>
+                  <ShieldCheck :size="16" />
+                  管理员登录
+                </template>
               </button>
             </div>
 

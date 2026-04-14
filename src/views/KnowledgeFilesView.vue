@@ -595,7 +595,6 @@ onMounted(() => {
                 </div>
                 <div>
                   <h1 class="text-2xl font-bold text-neutral-900 mb-1">{{ knowledgeBase?.name || '加载中...' }}</h1>
-                  <p class="text-sm text-neutral-400">向量空间：{{ knowledgeBase?.collectionName || '-' }}</p>
                 </div>
               </div>
               <div class="flex items-center gap-3">

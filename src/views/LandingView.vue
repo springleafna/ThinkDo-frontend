@@ -178,16 +178,6 @@ const onStart = () => {
         </div>
       </div>
     </section>
-
-    <!-- Footer -->
-    <footer class="max-w-7xl mx-auto px-6 py-12 border-t border-neutral-200/60 flex flex-col md:flex-row justify-between items-center gap-6">
-      <p class="text-xs text-neutral-400 font-medium tracking-wide">© 2026 ThinkDo. All rights reserved.</p>
-      <div class="flex gap-8">
-        <button class="text-xs font-medium text-neutral-400 hover:text-neutral-900 transition-colors">隐私协议</button>
-        <button class="text-xs font-medium text-neutral-400 hover:text-neutral-900 transition-colors">服务条款</button>
-        <button class="text-xs font-medium text-neutral-400 hover:text-neutral-900 transition-colors">更新日志</button>
-      </div>
-    </footer>
   </div>
 </template>
 
