@@ -33,7 +33,7 @@ export interface StreamChatParams {
 }
 
 // SSE 事件类型
-export type SseEventType = 'meta' | 'message' | 'finish' | 'done'
+export type SseEventType = 'meta' | 'message' | 'finish' | 'done' | 'step'
 
 // SSE meta 事件数据
 export interface SseMetaData {
@@ -53,6 +53,12 @@ export interface SseFinishData {
   title?: string
 }
 
+// SSE step 事件数据
+export interface SseStepData {
+  step: string
+  message: string
+}
+
 // SSE 事件
 export interface SseEvent<T = any> {
   event: SseEventType
@@ -64,6 +70,7 @@ export interface SseCallbacks {
   onMeta?: (data: SseMetaData) => void
   onMessage?: (data: SseMessageData) => void
   onThink?: (data: SseMessageData) => void
+  onStep?: (data: SseStepData) => void
   onFinish?: (data: SseFinishData) => void
   onDone?: () => void
   onError?: (error: Error) => void
@@ -118,7 +125,7 @@ export const aiChatApi = {
    * GET /ai/chat/sse
    */
   streamChat(params: StreamChatParams, callbacks: SseCallbacks): () => void {
-    const { onMeta, onMessage, onThink, onFinish, onDone, onError } = callbacks
+    const { onMeta, onMessage, onThink, onStep, onFinish, onDone, onError } = callbacks
 
     // 构建 URL 参数
     const urlParams = new URLSearchParams({
@@ -186,6 +193,9 @@ export const aiChatApi = {
               }
               case 'finish':
                 onFinish?.(JSON.parse(data))
+                break
+              case 'step':
+                onStep?.(JSON.parse(data))
                 break
             }
           } catch (e) {

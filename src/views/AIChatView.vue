@@ -69,6 +69,7 @@ const activeStreamCancel = ref<(() => void) | null>(null)
 const isStopping = ref(false)
 const pendingFinishTitle = ref('')
 const thinkingStates = ref<Record<number, boolean>>({})
+const currentStep = ref('')
 const quickPrompts = [
   '帮我记录一个灵感',
   '我还有哪些任务即将截止',
@@ -614,6 +615,7 @@ const handleSend = async () => {
   // 开始流式输出
   isTyping.value = true
   showTypingIndicator.value = true
+  currentStep.value = ''
 
   try {
     // 调用流式 API
@@ -622,6 +624,9 @@ const handleSend = async () => {
       conversationId: isNewSession ? undefined : currentSessionId.value,
       deepThinking: enableDeepThinking.value
     }, {
+      onStep: (data) => {
+        currentStep.value = data.message
+      },
       onMeta: (data) => {
         currentTaskId.value = data.taskId || currentTaskId.value
         // 收到 meta 事件，更新会话 ID
@@ -637,6 +642,7 @@ const handleSend = async () => {
         // 收到思考增量
         if (data.type === 'think' && typeof data.delta === 'string') {
           fullThinking += data.delta
+          currentStep.value = ''
 
           // 如果还没有创建 AI 消息，先创建（用于显示思考中）
           if (aiMessageIndex === -1) {
@@ -663,6 +669,7 @@ const handleSend = async () => {
         // 收到消息增量
         if (data.type === 'response' && typeof data.delta === 'string') {
           fullResponse += data.delta
+          currentStep.value = ''
 
           // 如果还没有创建 AI 消息，先创建
           if (aiMessageIndex === -1) {
@@ -689,6 +696,7 @@ const handleSend = async () => {
         }
       },
       onFinish: (data) => {
+        currentStep.value = ''
         if (data.title?.trim()) {
           pendingFinishTitle.value = data.title.trim()
         }
@@ -698,6 +706,7 @@ const handleSend = async () => {
       },
       onDone: () => {
         // 连接关闭，更新会话
+        currentStep.value = ''
         isTyping.value = false
         showTypingIndicator.value = false
         activeStreamCancel.value = null
@@ -707,6 +716,7 @@ const handleSend = async () => {
       },
       onError: (error) => {
         console.error('流式对话错误:', error)
+        currentStep.value = ''
         isTyping.value = false
         showTypingIndicator.value = false
         activeStreamCancel.value = null
@@ -725,6 +735,7 @@ const handleSend = async () => {
     })
   } catch (error) {
     console.error('发送消息失败:', error)
+    currentStep.value = ''
     isTyping.value = false
     showTypingIndicator.value = false
     activeStreamCancel.value = null
@@ -1127,7 +1138,15 @@ const formatTime = (date: Date) => {
                 </AvatarFallback>
               </Avatar>
               <div class="bg-white border border-black/[0.04] rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">
-                <div class="flex items-center gap-1.5">
+                <div v-if="currentStep" class="flex items-center gap-2 text-sm text-neutral-500">
+                  <div class="flex items-center gap-1">
+                    <span class="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse"></span>
+                    <span class="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse delay-100"></span>
+                    <span class="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse delay-200"></span>
+                  </div>
+                  <span>{{ currentStep }}</span>
+                </div>
+                <div v-else class="flex items-center gap-1.5">
                   <span class="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce"></span>
                   <span class="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce delay-100"></span>
                   <span class="w-1.5 h-1.5 bg-zinc-300 rounded-full animate-bounce delay-200"></span>
@@ -1270,6 +1289,16 @@ textarea::-webkit-scrollbar-thumb {
 }
 
 .delay-200 {
+  animation-delay: 200ms;
+}
+
+.animate-pulse.delay-100 {
+  animation: pulse 1.5s ease-in-out infinite;
+  animation-delay: 100ms;
+}
+
+.animate-pulse.delay-200 {
+  animation: pulse 1.5s ease-in-out infinite;
   animation-delay: 200ms;
 }
 </style>
