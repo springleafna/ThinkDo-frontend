@@ -171,13 +171,7 @@ const loadMemos = async () => {
       }
     })
 
-    // 按置顶状态和创建时间排序
-    memos.value.sort((a, b) => {
-      if (a.pinned !== b.pinned) {
-        return b.pinned - a.pinned // 置顶的排在前面
-      }
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    })
+    // 使用后端返回的顺序（已按置顶状态和更新时间排序）
   } catch (error) {
     console.error('加载便签失败:', error)
     toast.error('加载便签失败')
@@ -354,7 +348,7 @@ onMounted(() => {
             <div class="flex items-center gap-2">
               <button
                 v-if="memo.pinned === 1"
-                @click.stop
+                @click.stop="() => {}"
                 class="opacity-40 hover:opacity-100 transition-opacity"
                 title="已置顶"
               >
@@ -406,7 +400,7 @@ onMounted(() => {
                 <Pin v-else :size="12" class="opacity-40" />
               </button>
               <button
-                @click.stop
+                @click.stop="() => {}"
                 class="p-1.5 hover:bg-white/40 rounded-lg transition-colors"
               >
                 <Maximize2 :size="12" class="opacity-40" />

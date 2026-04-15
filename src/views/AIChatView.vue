@@ -70,10 +70,10 @@ const isStopping = ref(false)
 const pendingFinishTitle = ref('')
 const thinkingStates = ref<Record<number, boolean>>({})
 const quickPrompts = [
-  '帮我总结今天的工作重点',
-  '给我一个本周学习计划',
-  '把这个需求拆分为可执行任务',
-  '用简单例子解释一下 RAG'
+  '帮我记录一个灵感',
+  '我还有哪些任务即将截止',
+  '你会什么',
+  '我的知识库里关于RAG是怎么解释的'
 ]
 
 const copyMessage = async (text: string) => {
