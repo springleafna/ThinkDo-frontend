@@ -56,7 +56,7 @@ const memos = ref<MemoWithColor[]>([])
 const form = ref({
   title: '',
   content: '',
-  tag: 'IDEA',
+  tag: '',
   colorIndex: 0,
   pinned: 0
 })
@@ -196,7 +196,7 @@ const togglePinned = async (memo: MemoWithColor) => {
 
 const handleOpenCreate = () => {
   editId.value = null
-  form.value = { title: '', content: '', tag: 'IDEA', colorIndex: 0, pinned: 0 }
+  form.value = { title: '', content: '', tag: '', colorIndex: 0, pinned: 0 }
   showModal.value = true
 }
 
@@ -206,7 +206,7 @@ const handleOpenEdit = (memo: MemoWithColor) => {
   form.value = {
     title: memo.title || '',
     content: memo.content,
-    tag: memo.tag?.replace('#', '') || 'IDEA',
+    tag: memo.tag?.replace('#', '') || '',
     colorIndex: cIdx !== -1 ? cIdx : 0,
     pinned: memo.pinned
   }
@@ -398,12 +398,6 @@ onMounted(() => {
               >
                 <PinOff v-if="memo.pinned === 1" :size="12" class="opacity-40" />
                 <Pin v-else :size="12" class="opacity-40" />
-              </button>
-              <button
-                @click.stop="() => {}"
-                class="p-1.5 hover:bg-white/40 rounded-lg transition-colors"
-              >
-                <Maximize2 :size="12" class="opacity-40" />
               </button>
             </div>
             <button

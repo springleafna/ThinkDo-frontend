@@ -377,12 +377,6 @@ if (typeof window !== 'undefined') {
               />
             </div>
 
-            <!-- 筛选按钮 -->
-            <Button variant="outline" size="default" class="bg-white border-black/5 hover:bg-black/5">
-              <Filter :size="16" class="mr-2" />
-              <span class="hidden sm:inline">筛选</span>
-            </Button>
-
             <!-- 视图切换 -->
             <div class="flex items-center gap-2 bg-white border border-black/5 rounded-xl p-1">
               <Button

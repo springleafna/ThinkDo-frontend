@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import AdminMetricCard from '@/components/admin/AdminMetricCard.vue'
 import {
@@ -61,7 +61,7 @@ const metrics = [
   {
     title: '知识库文档',
     value: ref('0'),
-    description: '对应知识库与文档管理链路中的文档总量。',
+    description: '对应知识库中的文档总量。',
     icon: Database,
     iconClass: 'bg-slate-100 text-slate-700',
     field: 'documentTotal' as const

@@ -7,6 +7,7 @@ import {
   Plus,
   Search,
   Folder,
+  FolderOpen,
   FileText,
   Upload,
   Trash2,
@@ -303,14 +304,6 @@ onMounted(() => {
                 class="w-full pl-12 pr-4 py-3 bg-white border border-black/5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-black/10 transition-all"
               />
             </div>
-
-            <!-- 上传按钮 -->
-            <button
-              class="flex items-center gap-2 px-4 py-3 bg-white border border-black/5 rounded-xl text-sm hover:bg-black/5 transition-all"
-            >
-              <Upload :size="16" />
-              <span class="hidden sm:inline">上传文件</span>
-            </button>
 
             <!-- 视图切换 -->
             <div class="flex items-center gap-2 bg-white border border-black/5 rounded-xl p-1">

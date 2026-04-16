@@ -56,6 +56,7 @@ const isLoadingSessions = ref(false)
 const showEditDialog = ref(false)
 const editSessionId = ref<string>('')
 const editDialogTitle = ref('')
+const searchKeyword = ref('')
 
 const messages = ref<ChatMessage[]>([])
 const input = ref('')
@@ -158,8 +159,19 @@ const convertApiSession = (conv: ConversationInfo): ChatSession => ({
 // 解析后端返回的时间格式 (yyyy-MM-ddTHH:mm:ss)
 const parseDateTime = (dateStr: string): Date => {
   if (!dateStr) return new Date()
-  // 确保添加时区信息，防止被解析为 UTC
-  return new Date(dateStr.endsWith('Z') ? dateStr : dateStr + '+08:00')
+  // 手动解析时间，确保作为本地时间处理
+  const parts = dateStr.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/)
+  if (parts && parts.length >= 7) {
+    return new Date(
+      parseInt(parts[1] || '0'),      // year
+      parseInt(parts[2] || '0') - 1,  // month (0-based)
+      parseInt(parts[3] || '0'),      // day
+      parseInt(parts[4] || '0'),      // hour
+      parseInt(parts[5] || '0'),      // minute
+      parseInt(parts[6] || '0')       // second
+    )
+  }
+  return new Date(dateStr)
 }
 
 const escapeHtml = (text: string) => {
@@ -753,13 +765,6 @@ const handleSend = async () => {
   }
 }
 
-const clearChat = () => {
-  if (window.confirm('确定要清空当前对话的所有内容吗？')) {
-    messages.value = []
-    updateCurrentSession()
-  }
-}
-
 const handleKeyDown = (e: KeyboardEvent) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
@@ -770,20 +775,47 @@ const handleKeyDown = (e: KeyboardEvent) => {
 // 格式化时间
 const formatTime = (date: Date) => {
   const now = new Date()
-  const diff = now.getTime() - date.getTime()
+  // 将两个时间都设置为0点，只比较日期部分
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const messageDay = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const diff = today.getTime() - messageDay.getTime()
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
 
   if (days === 0) {
+    // 今天：显示时间
     return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
   } else if (days === 1) {
-    return '昨天'
+    // 昨天：显示昨天 + 时间
+    return '昨天 ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
   } else if (days < 7) {
+    // 7天内：显示星期 + 时间
     const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-    return weekdays[date.getDay()]
+    return weekdays[date.getDay()] + ' ' + date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
   } else {
-    return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+    // 更早：显示年月日 + 时间
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const time = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+    // 如果是今年，不显示年份
+    if (year === now.getFullYear()) {
+      return `${month}-${day} ${time}`
+    } else {
+      return `${year}-${month}-${day} ${time}`
+    }
   }
 }
+
+// 过滤后的会话列表
+const filteredSessions = computed(() => {
+  if (!searchKeyword.value.trim()) {
+    return chatSessions.value
+  }
+  const keyword = searchKeyword.value.toLowerCase().trim()
+  return chatSessions.value.filter(session =>
+    session.title.toLowerCase().includes(keyword)
+  )
+})
 </script>
 
 <template>
@@ -815,6 +847,7 @@ const formatTime = (date: Date) => {
           <div class="relative">
             <Search :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
             <Input
+              v-model="searchKeyword"
               placeholder="搜索对话..."
               class="pl-9 h-8 text-sm bg-stone-50/80 border-black/5 rounded-lg focus:bg-white"
             />
@@ -824,47 +857,62 @@ const formatTime = (date: Date) => {
         <!-- 对话列表 -->
         <ScrollArea class="flex-1 min-h-0 overflow-hidden px-3">
           <div class="space-y-0.5 py-1">
-            <button
-              v-for="session in chatSessions"
-              :key="session.id"
-              @click="switchSession(session.id)"
-              class="w-full group relative rounded-xl px-3 py-2.5 cursor-pointer transition-all text-left"
-              :class="currentSessionId === session.id
-                ? 'bg-zinc-100 shadow-sm'
-                : 'hover:bg-stone-50'"
-            >
-              <div class="flex items-center gap-2.5">
-                <MessageSquare :size="14" class="shrink-0" :class="currentSessionId === session.id ? 'text-zinc-700' : 'text-neutral-300'" />
-                <div class="flex-1 min-w-0">
-                  <p
-                    class="text-[13px] truncate leading-snug"
-                    :class="currentSessionId === session.id ? 'font-semibold text-neutral-900' : 'text-neutral-600'"
-                  >
-                    {{ session.title }}
-                  </p>
-                  <p class="text-[11px] text-neutral-400 mt-0.5 flex items-center gap-1">
-                    <Clock :size="10" />
-                    {{ formatTime(session.updatedAt) }}
-                  </p>
+            <!-- 有会话时显示列表 -->
+            <template v-if="filteredSessions.length > 0">
+              <button
+                v-for="session in filteredSessions"
+                :key="session.id"
+                @click="switchSession(session.id)"
+                class="w-full group relative rounded-xl px-3 py-2.5 cursor-pointer transition-all text-left"
+                :class="currentSessionId === session.id
+                  ? 'bg-zinc-100 shadow-sm'
+                  : 'hover:bg-stone-50'"
+              >
+                <div class="flex items-center gap-2.5">
+                  <MessageSquare :size="14" class="shrink-0" :class="currentSessionId === session.id ? 'text-zinc-700' : 'text-neutral-300'" />
+                  <div class="flex-1 min-w-0">
+                    <p
+                      class="text-[13px] truncate leading-snug"
+                      :class="currentSessionId === session.id ? 'font-semibold text-neutral-900' : 'text-neutral-600'"
+                    >
+                      {{ session.title }}
+                    </p>
+                    <p class="text-[11px] text-neutral-400 mt-0.5 flex items-center gap-1">
+                      <Clock :size="10" />
+                      {{ formatTime(session.updatedAt) }}
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                    <button
+                      @click.stop="openEditDialog(session.id)"
+                      class="p-1 text-neutral-400 hover:text-neutral-600 hover:bg-white rounded-md"
+                      title="重命名"
+                    >
+                      <Pencil :size="12" />
+                    </button>
+                    <button
+                      @click.stop="openDeleteDialog(session.id)"
+                      class="p-1 text-neutral-400 hover:text-rose-500 hover:bg-rose-50 rounded-md"
+                      title="删除对话"
+                    >
+                      <Trash2 :size="12" />
+                    </button>
+                  </div>
                 </div>
-                <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all shrink-0">
-                  <button
-                    @click.stop="openEditDialog(session.id)"
-                    class="p-1 text-neutral-400 hover:text-neutral-600 hover:bg-white rounded-md"
-                    title="重命名"
-                  >
-                    <Pencil :size="12" />
-                  </button>
-                  <button
-                    @click.stop="openDeleteDialog(session.id)"
-                    class="p-1 text-neutral-400 hover:text-rose-500 hover:bg-rose-50 rounded-md"
-                    title="删除对话"
-                  >
-                    <Trash2 :size="12" />
-                  </button>
-                </div>
-              </div>
-            </button>
+              </button>
+            </template>
+
+            <!-- 无搜索结果时显示提示 -->
+            <div v-else-if="searchKeyword.trim()" class="flex flex-col items-center justify-center py-12 text-neutral-400">
+              <Search :size="32" class="mb-2 opacity-50" />
+              <p class="text-xs">未找到匹配的对话</p>
+            </div>
+
+            <!-- 无会话时显示提示 -->
+            <div v-else class="flex flex-col items-center justify-center py-12 text-neutral-400">
+              <MessageSquare :size="32" class="mb-2 opacity-50" />
+              <p class="text-xs">暂无对话</p>
+            </div>
           </div>
         </ScrollArea>
 
@@ -882,23 +930,6 @@ const formatTime = (date: Date) => {
               <Brain :size="10" />
               深度思考
             </Badge>
-          </div>
-          <div class="flex items-center gap-2">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <Button
-                    @click="clearChat"
-                    variant="ghost"
-                    size="icon"
-                    class="h-8 w-8 text-neutral-400 hover:text-rose-500"
-                  >
-                    <Trash2 :size="15" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>清空对话</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
           </div>
         </div>
 
@@ -924,7 +955,7 @@ const formatTime = (date: Date) => {
                 把问题变成<span class="bg-gradient-to-r from-zinc-800 to-zinc-500 bg-clip-text text-transparent">清晰答案</span>
               </h1>
               <p class="text-sm text-neutral-400 mt-3 max-w-md mx-auto leading-relaxed">
-                工具调用、知识检索与深度思考，一次对话给出可执行方案
+                工具调用、知识检索与深度思考，一次对话给出准确回答
               </p>
 
               <!-- 输入框 -->
@@ -1071,7 +1102,7 @@ const formatTime = (date: Date) => {
                   :class="msg.role === 'user' ? 'justify-end' : 'justify-start'"
                 >
                   <span class="text-[10px] text-neutral-300">
-                    {{ msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }) }}
+                    {{ formatTime(msg.timestamp) }}
                   </span>
                   <TooltipProvider>
                     <Tooltip>
@@ -1087,7 +1118,8 @@ const formatTime = (date: Date) => {
                       <TooltipContent>复制</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                  <template v-if="msg.role === 'model'">
+                  <!-- TODO: 下方是点赞和点踩按钮用于反馈AI回答的效果，暂时注释 -->
+                  <!-- <template v-if="msg.role === 'model'">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger as-child>
@@ -1122,7 +1154,7 @@ const formatTime = (date: Date) => {
                         <TooltipContent>需改进</TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                  </template>
+                  </template> -->
                 </div>
               </div>
             </div>

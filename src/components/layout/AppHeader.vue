@@ -82,7 +82,7 @@ const notifications = [
           {{ time }}
         </p>
       </div>
-      <div class="flex items-center gap-3">
+      <!-- <div class="flex items-center gap-3">
         <Popover v-model:open="showNotifications">
           <PopoverTrigger as-child>
             <button
@@ -148,7 +148,7 @@ const notifications = [
             </button>
           </PopoverContent>
         </Popover>
-      </div>
+      </div> -->
     </div>
   </header>
 </template>
