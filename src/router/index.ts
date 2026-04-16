@@ -61,15 +61,6 @@ const router = createRouter({
           }
         },
         {
-          path: 'content',
-          name: 'admin-content',
-          component: () => import('@/views/admin/AdminContentView.vue'),
-          meta: {
-            title: '内容资产',
-            subtitle: '对应笔记、分类、计划、步骤、每日清单与便签，查看内容沉淀与执行数据。'
-          }
-        },
-        {
           path: 'intent-tree',
           name: 'admin-intent-tree',
           component: () => import('@/views/admin/AdminIntentTreeView.vue'),

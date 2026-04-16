@@ -5,6 +5,16 @@
       "Bash(yes \"n\")",
       "Bash(npx shadcn-vue@latest add sidebar)",
       "Bash(npm run:*)"
+    ],
+    "additionalDirectories": [
+      "D:\\javatools\\IDEAtool\\javaproject\\ThinkDo\\think-do-system\\src\\main\\java\\com\\springleaf\\thinkdo\\domain\\response",
+      "D:\\javatools\\IDEAtool\\javaproject\\ThinkDo\\think-do-system\\src\\main\\java\\com\\springleaf\\thinkdo\\controller",
+      "D:\\javatools\\IDEAtool\\javaproject\\ThinkDo\\think-do-system\\src\\main\\java\\com\\springleaf\\thinkdo\\service",
+      "D:\\javatools\\IDEAtool\\javaproject\\ThinkDo\\think-do-ai\\src\\main\\java\\com\\springleaf\\thinkdo\\service",
+      "D:\\javatools\\IDEAtool\\javaproject\\ThinkDo\\think-do-note\\src\\main\\java\\com\\springleaf\\thinkdo\\service",
+      "D:\\javatools\\IDEAtool\\javaproject\\ThinkDo\\think-do-admin\\src\\main\\java\\com\\springleaf\\thinkdo",
+      "D:\\javatools\\IDEAtool\\javaproject\\ThinkDo\\think-do-admin",
+      "D:\\javatools\\IDEAtool\\javaproject\\ThinkDo"
     ]
   }
 }

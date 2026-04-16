@@ -12,7 +12,6 @@ defineProps<{
   title: string
   value: string
   description: string
-  trend: string
   icon: Component
   iconClass?: string
 }>()
@@ -36,9 +35,6 @@ defineProps<{
     <CardContent class="space-y-2">
       <p class="text-sm leading-6 text-slate-500">
         {{ description }}
-      </p>
-      <p class="text-sm text-slate-700">
-        {{ trend }}
       </p>
     </CardContent>
   </Card>

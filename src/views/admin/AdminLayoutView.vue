@@ -56,12 +56,6 @@ const navItems = [
     ]
   },
   {
-    label: '内容资产',
-    to: '/admin/content',
-    icon: BookText,
-    hint: '查看笔记、计划、清单与便签数据'
-  },
-  {
     label: '笔记管理',
     to: '/admin/notes',
     icon: StickyNote,

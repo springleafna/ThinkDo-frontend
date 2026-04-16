@@ -178,3 +178,42 @@ export const adminMemoApi = {
     return request.delete<void>(`/admin/memo/delete/${id}`)
   }
 }
+
+// ==================== 运营总览 ====================
+
+export interface AdminDashboardStats {
+  userTotal: number
+  conversationTotal: number
+  documentTotal: number
+  noteTotal: number
+  planTotal: number
+  memoTotal: number
+}
+
+export interface AdminDashboardTrend {
+  userRegisterCount: number
+  userRegisterCompare: string
+  conversationCreateCount: number
+  conversationCreateCompare: string
+  documentUploadCount: number
+  documentUploadCompare: string
+  contentCreateCount: number
+  contentCreateCompare: string
+}
+
+export const adminDashboardApi = {
+  /**
+   * 获取运营总览统计数据
+   * GET /admin/dashboard/stats
+   */
+  getStats() {
+    return request.get<AdminDashboardStats>('/admin/dashboard/stats')
+  },
+  /**
+   * 获取今日趋势数据
+   * GET /admin/dashboard/trend
+   */
+  getTrend() {
+    return request.get<AdminDashboardTrend>('/admin/dashboard/trend')
+  }
+}
