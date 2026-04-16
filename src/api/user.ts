@@ -1,4 +1,4 @@
-import { request } from '@/utils/request'
+import { request, type RequestConfig } from '@/utils/request'
 
 // 用户相关接口类型定义
 export interface User {
@@ -24,6 +24,19 @@ export interface LoginResponse {
 export interface RegisterParams {
   username: string
   password: string
+}
+
+// 用户修改用户名请求参数
+export interface UpdateUsernameParams {
+  newUsername: string
+  password: string
+}
+
+// 用户修改密码请求参数
+export interface UpdatePasswordParams {
+  oldPassword: string
+  newPassword: string
+  confirmPassword: string
 }
 
 // 用户相关 API
@@ -68,5 +81,21 @@ export const userApi = {
   // 更新用户信息
   updateUserInfo(data: Partial<User>) {
     return request.put<User>('/user/info', data)
+  },
+
+  /**
+   * 用户修改用户名
+   * PUT /system/user/updateUsername
+   */
+  updateUsername(data: UpdateUsernameParams, config?: RequestConfig) {
+    return request.put<void>('/system/user/updateUsername', data, config)
+  },
+
+  /**
+   * 用户修改密码
+   * PUT /system/user/updatePassword
+   */
+  updatePassword(data: UpdatePasswordParams, config?: RequestConfig) {
+    return request.put<void>('/system/user/updatePassword', data, config)
   }
 }

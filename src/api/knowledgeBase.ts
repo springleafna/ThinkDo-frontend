@@ -1,4 +1,4 @@
-import { request } from '@/utils/request'
+import { request, type RequestConfig } from '@/utils/request'
 
 // 创建知识库请求参数
 export interface CreateKnowledgeBaseParams {
@@ -9,8 +9,8 @@ export interface CreateKnowledgeBaseParams {
 
 // 更新知识库请求参数
 export interface UpdateKnowledgeBaseParams {
-  id: string
-  name: string
+  name?: string
+  description?: string
 }
 
 // 知识库信息
@@ -60,11 +60,11 @@ export const knowledgeBaseApi = {
   },
 
   /**
-   * 重命名知识库
+   * 更新知识库（名称或描述）
    * PUT /knowledge-base/{kb-id}
    */
-  rename(kbId: string, data: Omit<UpdateKnowledgeBaseParams, 'id'>) {
-    return request.put<void>(`/knowledge-base/${kbId}`, data)
+  update(kbId: string, data: UpdateKnowledgeBaseParams, config?: RequestConfig) {
+    return request.put<void>(`/knowledge-base/${kbId}`, data, config)
   },
 
   /**

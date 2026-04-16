@@ -102,8 +102,8 @@ const fileTypes = ref([
   { id: 'all', name: '全部文件', icon: File, count: 0 },
   { id: 'pdf', name: 'PDF', icon: FileText, count: 0 },
   { id: 'word', name: 'Word', icon: FileText, count: 0 },
-  { id: 'spreadsheet', name: '表格', icon: FileSpreadsheet, count: 0 },
-  { id: 'presentation', name: '演示', icon: Presentation, count: 0 },
+  { id: 'spreadsheet', name: 'Excel', icon: FileSpreadsheet, count: 0 },
+  { id: 'presentation', name: 'PPT', icon: Presentation, count: 0 },
   { id: 'text', name: '文本', icon: FileType, count: 0 }
 ])
 
@@ -483,6 +483,15 @@ const handleFileSelect = (event: Event) => {
   if (target.files && target.files.length > 0) {
     const file = target.files[0]
     if (file) {
+      // 验证文件大小（最大50MB）
+      const maxSize = 50 * 1024 * 1024 // 50MB in bytes
+      if (file.size > maxSize) {
+        toast.error(`文件大小超过50MB限制，当前文件大小：${(file.size / 1024 / 1024).toFixed(2)}MB`)
+        // 清空选择
+        target.value = ''
+        selectedFile.value = null
+        return
+      }
       selectedFile.value = file
     }
   }
@@ -1042,6 +1051,7 @@ onMounted(() => {
               <input
                 ref="fileInputRef"
                 type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv"
                 @change="handleFileSelect"
                 :disabled="isUploading"
                 class="hidden"
@@ -1061,7 +1071,7 @@ onMounted(() => {
               已选择：{{ selectedFile.name }} ({{ ((selectedFile.size / 1024)).toFixed(1) }} KB)
             </p>
             <p v-else class="text-xs text-neutral-400 mt-1">
-              支持上传各种文档、图片、视频等格式
+              支持PDF、Word、Excel、PPT、TXT、Markdown格式，最大50MB
             </p>
           </div>
 

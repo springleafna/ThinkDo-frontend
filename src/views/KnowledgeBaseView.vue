@@ -7,18 +7,13 @@ import {
   Plus,
   Search,
   Folder,
-  FolderOpen,
   FileText,
   Upload,
   Trash2,
   Edit3,
-  MoreVertical,
   Clock,
   Grid3x3,
   List,
-  Library,
-  Archive,
-  Star,
   Loader2
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
@@ -60,16 +55,6 @@ const viewMode = ref<'grid' | 'list'>('grid')
 // 搜索关键词
 const searchKeyword = ref('')
 
-// 知识库分类
-const selectedCategory = ref('all')
-
-const categories = ref([
-  { id: 'all', name: '全部知识库', icon: Library, count: 0 },
-  { id: 'recent', name: '最近使用', icon: Clock, count: 0 },
-  { id: 'favorite', name: '收藏夹', icon: Star, count: 0 },
-  { id: 'archive', name: '已归档', icon: Archive, count: 0 }
-])
-
 // 加载状态
 const isLoading = ref(false)
 
@@ -86,6 +71,15 @@ const showDeleteDialog = ref(false)
 const isDeleting = ref(false)
 const deletingKB = ref<KnowledgeBaseUI | null>(null)
 
+// 编辑知识库对话框
+const showEditDialog = ref(false)
+const isEditing = ref(false)
+const editingKB = ref<KnowledgeBaseUI | null>(null)
+const editForm = ref({
+  name: '',
+  description: ''
+})
+
 // 扩展的知识库接口（包含UI需要的字段）
 interface KnowledgeBaseUI extends KnowledgeBase {
   category?: string
@@ -101,7 +95,6 @@ const fetchKnowledgeBases = async () => {
     isLoading.value = true
     const data = await knowledgeBaseApi.getList()
     knowledgeBases.value = data.records || []
-    updateCategoryCount()
   } catch (error) {
     console.error('获取知识库列表失败：', error)
     toast.error('获取知识库列表失败')
@@ -179,13 +172,6 @@ const formatTime = (dateString: string) => {
 const filteredKnowledgeBases = computed(() => {
   let result = knowledgeBases.value
 
-  // 按分类筛选
-  if (selectedCategory.value === 'favorite') {
-    result = result.filter(kb => kb.isFavorite)
-  } else if (selectedCategory.value !== 'all') {
-    result = result.filter(kb => kb.category === selectedCategory.value)
-  }
-
   // 按关键词搜索
   if (searchKeyword.value) {
     const keyword = searchKeyword.value.toLowerCase()
@@ -196,29 +182,6 @@ const filteredKnowledgeBases = computed(() => {
 
   return result
 })
-
-// 更新分类计数
-const updateCategoryCount = () => {
-  categories.value.forEach(cat => {
-    if (cat.id === 'all') {
-      cat.count = knowledgeBases.value.length
-    } else if (cat.id === 'favorite') {
-      cat.count = knowledgeBases.value.filter(k => k.isFavorite).length
-    } else {
-      cat.count = knowledgeBases.value.filter(k => k.category === cat.id).length
-    }
-  })
-}
-
-// 切换收藏状态
-const toggleFavorite = (kbId: string) => {
-  const kb = knowledgeBases.value.find(k => k.id === kbId)
-  if (kb) {
-    kb.isFavorite = !kb.isFavorite
-    toast.success(kb.isFavorite ? '已添加到收藏' : '已取消收藏')
-    updateCategoryCount()
-  }
-}
 
 // 删除知识库
 const deleteKnowledgeBase = (kb: KnowledgeBaseUI) => {
@@ -248,6 +211,47 @@ const handleConfirmDelete = async () => {
 // 新建知识库
 const createKnowledgeBase = () => {
   openCreateDialog()
+}
+
+// 打开编辑对话框
+const openEditDialog = (kb: KnowledgeBaseUI) => {
+  editingKB.value = kb
+  editForm.value = {
+    name: kb.name,
+    description: kb.description || ''
+  }
+  showEditDialog.value = true
+}
+
+// 编辑知识库
+const handleEditKnowledgeBase = async () => {
+  if (!editingKB.value) return
+
+  if (!editForm.value.name.trim()) {
+    toast.error('知识库名称不能为空')
+    return
+  }
+
+  try {
+    isEditing.value = true
+    await knowledgeBaseApi.update(editingKB.value.id, {
+      name: editForm.value.name.trim(),
+      description: editForm.value.description.trim() || undefined
+    }, { showErrorMessage: false })
+    toast.success('知识库已更新')
+    showEditDialog.value = false
+    editingKB.value = null
+    await fetchKnowledgeBases()
+  } catch (error: any) {
+    toast.error(error.message || '更新知识库失败')
+  } finally {
+    isEditing.value = false
+  }
+}
+
+// 编辑知识库
+const editKnowledgeBase = (kb: KnowledgeBaseUI) => {
+  openEditDialog(kb)
 }
 
 // 查看知识库文件列表
@@ -332,42 +336,9 @@ onMounted(() => {
           </div>
 
           <!-- 主体内容 -->
-          <div class="flex gap-6">
-            <!-- 左侧分类列表 -->
-            <aside class="w-60 shrink-0 hidden lg:block">
-              <div class="sticky top-0 space-y-6">
-                <!-- 分类 -->
-                <div>
-                  <h3 class="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-3 px-1">
-                    分类
-                  </h3>
-                  <div class="space-y-1">
-                    <button
-                      v-for="category in categories"
-                      :key="category.id"
-                      @click="selectedCategory = category.id"
-                      :class="[
-                        'w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all text-left',
-                        selectedCategory === category.id
-                          ? 'bg-zinc-100 text-zinc-900 font-semibold'
-                          : 'text-neutral-500 hover:bg-black/5 hover:text-neutral-900'
-                      ]"
-                    >
-                      <div class="flex items-center gap-3">
-                        <component :is="category.icon" :size="16" />
-                        <span class="text-sm">{{ category.name }}</span>
-                      </div>
-                      <span class="text-xs text-neutral-400">{{ category.count }}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </aside>
-
-            <!-- 右侧知识库列表 -->
-            <div class="flex-1 min-w-0">
+          <div class="flex-1 min-w-0">
               <!-- 网格视图 -->
-              <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div v-if="viewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 <div
                   v-for="kb in filteredKnowledgeBases"
                   :key="kb.id"
@@ -375,25 +346,10 @@ onMounted(() => {
                   class="group bg-white border border-black/5 rounded-2xl p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer"
                 >
                   <!-- 知识库头部 -->
-                  <div class="flex items-start justify-between mb-4">
+                  <div class="mb-4">
                     <div class="w-12 h-12 bg-gradient-to-br from-neutral-100 to-neutral-50 border border-black/5 rounded-xl flex items-center justify-center shadow-lg shadow-black/5">
                       <Folder :size="24" class="text-neutral-600" />
                     </div>
-                    <button
-                      @click.stop="toggleFavorite(kb.id)"
-                      class="shrink-0"
-                    >
-                      <Star
-                        v-if="kb.isFavorite"
-                        :size="18"
-                        class="fill-yellow-400 text-yellow-400"
-                      />
-                      <Star
-                        v-else
-                        :size="18"
-                        class="text-neutral-300 group-hover:text-neutral-500"
-                      />
-                    </button>
                   </div>
 
                   <!-- 知识库名称 -->
@@ -415,7 +371,7 @@ onMounted(() => {
                     </div>
                     <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        @click.stop
+                        @click.stop="editKnowledgeBase(kb)"
                         class="p-1.5 hover:bg-black/5 rounded-lg transition-colors"
                         title="编辑"
                       >
@@ -482,21 +438,6 @@ onMounted(() => {
                     <!-- 操作按钮 -->
                     <div class="flex items-center gap-2 shrink-0">
                       <button
-                        @click.stop="toggleFavorite(kb.id)"
-                        class="p-2 hover:bg-black/5 rounded-lg transition-colors"
-                      >
-                        <Star
-                          v-if="kb.isFavorite"
-                          :size="16"
-                          class="fill-yellow-400 text-yellow-400"
-                        />
-                        <Star
-                          v-else
-                          :size="16"
-                          class="text-neutral-300"
-                        />
-                      </button>
-                      <button
                         @click.stop
                         class="p-2 hover:bg-black/5 rounded-lg transition-colors"
                       >
@@ -534,7 +475,6 @@ onMounted(() => {
             </div>
           </div>
         </div>
-      </div>
     </main>
 
     <!-- 创建知识库对话框 -->
@@ -562,17 +502,10 @@ onMounted(() => {
             <label class="text-sm font-medium text-neutral-700">知识库描述</label>
             <textarea
               v-model="createForm.description"
-              placeholder="请输入知识库描述（可选）"
+              placeholder="请输入知识库描述"
               :disabled="isCreating"
               class="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-200 transition-all resize-none min-h-[80px]"
             />
-          </div>
-
-          <div class="space-y-2">
-            <label class="text-sm font-medium text-neutral-700">嵌入模型</label>
-            <div class="px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg text-sm text-neutral-600">
-              qwen3-embedding:8b-fp16
-            </div>
           </div>
         </div>
 
@@ -592,6 +525,59 @@ onMounted(() => {
           >
             <Loader2 v-if="isCreating" :size="16" class="mr-2 animate-spin" />
             {{ isCreating ? '创建中...' : '创建' }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- 编辑知识库对话框 -->
+    <Dialog v-model:open="showEditDialog">
+      <DialogContent class="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle class="text-lg font-semibold text-neutral-900">编辑知识库</DialogTitle>
+          <DialogDescription class="text-sm text-neutral-500">
+            修改知识库名称或描述
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="space-y-4 py-4">
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-neutral-700">知识库名称</label>
+            <Input
+              v-model="editForm.name"
+              placeholder="请输入知识库名称"
+              :disabled="isEditing"
+              @keyup.enter="handleEditKnowledgeBase"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-neutral-700">知识库描述</label>
+            <textarea
+              v-model="editForm.description"
+              placeholder="请输入知识库描述"
+              :disabled="isEditing"
+              class="w-full px-3 py-2 bg-white border border-neutral-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-neutral-200 transition-all resize-none min-h-[80px]"
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            @click="showEditDialog = false"
+            :disabled="isEditing"
+            class="flex-1"
+          >
+            取消
+          </Button>
+          <Button
+            @click="handleEditKnowledgeBase"
+            :disabled="isEditing"
+            class="flex-1"
+          >
+            <Loader2 v-if="isEditing" :size="16" class="mr-2 animate-spin" />
+            {{ isEditing ? '保存中...' : '保存' }}
           </Button>
         </DialogFooter>
       </DialogContent>

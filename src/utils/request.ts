@@ -71,7 +71,11 @@ service.interceptors.response.use(
     }
 
     const errorMessage = data.message || '请求失败'
-    toast.error(errorMessage)
+    // 如果配置中没有明确禁用错误提示，则显示
+    const requestConfig = config as RequestConfig
+    if (requestConfig.showErrorMessage !== false) {
+      toast.error(errorMessage)
+    }
 
     return Promise.reject(new Error(errorMessage))
   },
