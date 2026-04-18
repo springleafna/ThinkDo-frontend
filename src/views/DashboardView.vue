@@ -8,9 +8,6 @@ import {
   CalendarCheck,
   StickyNote,
   BookText,
-  TrendingUp,
-  CheckCircle2,
-  Clock,
   Plus,
   PenTool,
   Check
@@ -170,30 +167,6 @@ const getCardStyleClass = (backgroundColor: string) => {
   }
 }
 
-// 获取图标组件
-const getIconComponent = (backgroundColor: string) => {
-  const iconMap: Record<string, any> = {
-    // Amber/Yellow - 想法
-    '#fef3c7': TrendingUp,
-    '#fef9e3': TrendingUp,
-    '#fef08a': TrendingUp,
-    // Rose/Red - 提醒
-    '#fee2e2': Clock,
-    '#fecaca': Clock,
-    // Emerald/Green - 任务
-    '#dcfce7': CheckCircle2,
-    '#bbf7d0': CheckCircle2,
-    // Sky/Blue - 笔记
-    '#e0f2fe': StickyNote,
-    '#f4f8fe': StickyNote,
-    '#bae6fd': StickyNote,
-    // Purple - 思考
-    '#f3e8ff': StickyNote,
-    '#e9d5ff': StickyNote,
-  }
-  return iconMap[backgroundColor] || StickyNote
-}
-
 // 思维笔记数据
 const insightNotes = ref<NoteListItem[]>([])
 
@@ -237,11 +210,32 @@ const getPlanProgress = (plan: Plan) => {
   return plan.status === 1 ? 100 : 0
 }
 
-// 获取计划颜色
-const getPlanColor = (plan: Plan) => {
+// 获取计划颜色（根据索引）
+const getPlanColor = (plan: Plan, index: number) => {
+  if (index === 0) return 'custom-blue' // 第一条：RGB(90, 94, 218)
+  if (index === 1) return 'custom-orange' // 第二条：RGB(238, 149, 10)
   if (plan.priority === 3) return 'zinc'
   if (plan.quadrant === 1) return 'amber'
   return 'zinc'
+}
+
+// 获取计划颜色样式
+const getPlanColorStyle = (color: string) => {
+  if (color === 'custom-blue') return {
+    bg: 'rgb(90, 94, 218)',
+    bgLight: 'rgb(90, 94, 218, 0.1)',
+    text: 'rgb(90, 94, 218)',
+    tagBg: 'rgba(90, 94, 218, 0.1)',
+    tagText: 'rgb(70, 74, 198)'
+  }
+  if (color === 'custom-orange') return {
+    bg: 'rgb(238, 149, 10)',
+    bgLight: 'rgb(238, 149, 10, 0.1)',
+    text: 'rgb(238, 149, 10)',
+    tagBg: 'rgba(238, 149, 10, 0.1)',
+    tagText: 'rgb(218, 129, 0)'
+  }
+  return null
 }
 
 // 获取计划标签
@@ -343,31 +337,38 @@ const placeholderCount = computed(() => Math.max(0, 2 - insightNotes.value.lengt
                   </div>
 
                   <!-- 计划列表 -->
-                  <div v-for="plan in plans" :key="plan.id" class="relative pl-8 group/item">
-                    <div
-                      class="absolute left-0 top-1.5 w-[15px] h-[15px] rounded-full border-4 border-white z-10 shadow-sm"
-                      :class="getPlanColor(plan) === 'zinc' ? 'bg-zinc-900' : 'bg-amber-500'"
-                    ></div>
-                    <div class="flex flex-col md:flex-row md:items-center gap-2 mb-2">
-                      <span
-                        class="mono text-[10px] px-2 py-0.5 rounded-md self-start"
-                        :class="getPlanColor(plan) === 'zinc' ? 'bg-zinc-100 text-zinc-600' : 'bg-amber-50 text-amber-700'"
-                      >
-                        {{ getPlanTag(plan) }}
-                      </span>
-                      <h3 class="text-base font-medium text-neutral-900">{{ plan.title }}</h3>
-                    </div>
-                    <div class="w-full bg-black/5 h-[4px] rounded-full overflow-hidden">
+                  <template v-for="(plan, index) in plans" :key="plan.id">
+                    <div class="relative pl-8 group/item">
                       <div
-                        class="h-full rounded-full transition-all duration-1000"
-                        :class="getPlanColor(plan) === 'zinc' ? 'bg-zinc-900' : 'bg-amber-500'"
-                        :style="{ width: getPlanProgress(plan) + '%' }"
+                        class="absolute left-0 top-1.5 w-[15px] h-[15px] rounded-full border-4 border-white z-10 shadow-sm"
+                        :style="getPlanColorStyle(getPlanColor(plan, index)) ? { backgroundColor: getPlanColorStyle(getPlanColor(plan, index))?.bg } : {}"
+                        :class="!getPlanColorStyle(getPlanColor(plan, index)) && (getPlanColor(plan, index) === 'zinc' ? 'bg-zinc-900' : 'bg-amber-500')"
                       ></div>
+                      <div class="flex flex-col md:flex-row md:items-center gap-2 mb-2">
+                        <span
+                          class="mono text-[10px] px-2 py-0.5 rounded-md self-start"
+                          :style="getPlanColorStyle(getPlanColor(plan, index)) ? { backgroundColor: getPlanColorStyle(getPlanColor(plan, index))?.tagBg, color: getPlanColorStyle(getPlanColor(plan, index))?.tagText } : {}"
+                          :class="!getPlanColorStyle(getPlanColor(plan, index)) && (getPlanColor(plan, index) === 'zinc' ? 'bg-zinc-100 text-zinc-600' : 'bg-amber-50 text-amber-700')"
+                        >
+                          {{ getPlanTag(plan) }}
+                        </span>
+                        <h3 class="text-base font-medium text-neutral-900">{{ plan.title }}</h3>
+                      </div>
+                      <div class="w-full bg-black/5 h-[4px] rounded-full overflow-hidden">
+                        <div
+                          class="h-full rounded-full transition-all duration-1000"
+                          :style="Object.assign(
+                            getPlanColorStyle(getPlanColor(plan, index)) ? { backgroundColor: getPlanColorStyle(getPlanColor(plan, index))?.bg } : {},
+                            { width: getPlanProgress(plan) + '%' }
+                          )"
+                          :class="!getPlanColorStyle(getPlanColor(plan, index)) && (getPlanColor(plan, index) === 'zinc' ? 'bg-zinc-900' : 'bg-amber-500')"
+                        ></div>
+                      </div>
+                      <div class="mt-2">
+                        <span class="text-[10px] opacity-40 mono">{{ getPlanProgress(plan) }}% COMPLETED</span>
+                      </div>
                     </div>
-                    <div class="mt-2">
-                      <span class="text-[10px] opacity-40 mono">{{ getPlanProgress(plan) }}% COMPLETED</span>
-                    </div>
-                  </div>
+                  </template>
                 </div>
               </div>
 
@@ -572,10 +573,9 @@ const placeholderCount = computed(() => Math.max(0, 2 - insightNotes.value.lengt
                   @click="navigateToMemos"
                 >
                   <div class="flex items-start justify-between mb-2">
-                    <component
-                      :is="getIconComponent(memo.backgroundColor)"
-                      :class="['w-4 h-4 flex-shrink-0', getCardStyleClass(memo.backgroundColor).icon]"
-                    />
+                    <span :class="['text-[10px] font-medium', getCardStyleClass(memo.backgroundColor).icon]">
+                      灵感便签
+                    </span>
                   </div>
                   <p :class="['text-[13px] font-medium leading-snug line-clamp-3 flex-1', getCardStyleClass(memo.backgroundColor).text]">
                     {{ memo.title || memo.content }}
