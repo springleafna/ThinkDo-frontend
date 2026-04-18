@@ -320,16 +320,16 @@ const placeholderCount = computed(() => Math.max(0, 2 - insightNotes.value.lengt
                   </button>
                 </div>
 
-                <div class="space-y-8 relative">
+                <div class="space-y-8 relative min-h-[180px]">
                   <div class="absolute left-[7px] top-2 bottom-2 w-[1px] bg-black/5"></div>
 
                   <!-- 空状态 -->
-                  <div v-if="plans.length === 0 && !plansLoading" class="relative pl-8">
+                  <div v-if="plans.length === 0 && !plansLoading" class="relative pl-8 min-h-[140px] flex items-center">
                     <p class="text-sm text-neutral-400 italic">暂时还没有计划，点击右上角的 + 按钮创建一个吧！</p>
                   </div>
 
                   <!-- 加载状态 -->
-                  <div v-if="plansLoading" class="relative pl-8 space-y-4">
+                  <div v-if="plansLoading" class="relative pl-8 space-y-4 min-h-[140px]">
                     <div v-for="i in 2" :key="i" class="animate-pulse">
                       <div class="h-4 bg-stone-100 rounded w-1/3 mb-2"></div>
                       <div class="h-3 bg-stone-100 rounded w-full"></div>

@@ -56,6 +56,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { DateTimePicker } from '@/components/ui/datetime-picker'
 import {
   Collapsible,
   CollapsibleContent,
@@ -156,6 +157,21 @@ const deletingPlan = ref<Plan | null>(null)
 const deletingSubTask = ref<{ planId: string; subTaskId: string; subTaskTitle: string } | null>(null)
 const loading = ref(false)
 const categoriesLoading = ref(false)
+
+// 延迟重新加载的定时器
+let reloadTimer: ReturnType<typeof setTimeout> | null = null
+
+// 延迟重新加载计划列表（防抖）
+const debouncedReloadPlans = () => {
+  if (reloadTimer) {
+    clearTimeout(reloadTimer)
+  }
+  // 延迟2秒后重新加载，给用户时间完成多个操作
+  reloadTimer = setTimeout(async () => {
+    await loadPlans()
+    reloadTimer = null
+  }, 2000)
+}
 
 // 检查计划是否展开
 const isPlanExpanded = (planId: string) => expandedPlans.value[planId] || false
@@ -368,7 +384,7 @@ const loadPlans = async () => {
         subTasks,
         startTime: planApi.startTime || undefined,
         dueTime: planApi.dueTime || undefined,
-        tags: planApi.tags ? planApi.tags.split(',').map(t => t.trim()).filter(t => t) : [],
+        tags: planApi.tags ? planApi.tags.split(/[,，]/).map(t => t.trim()).filter(t => t) : [],
         color: 'bg-zinc-900', // 默认颜色
         priority: mapPriorityFromApi(planApi.priority),
         repeatConfig: convertRepeatConfigFromApi(planApi.repeatType, planApi.repeatConf),
@@ -465,36 +481,83 @@ const calculateProgress = (subTasks: SubTask[], planCompleted: boolean) => {
 }
 
 const togglePlanCompletion = async (planId: string) => {
+  const plan = plans.value.find(p => p.id === planId)
+  if (!plan) return
+
+  // 保存旧状态用于回滚
+  const oldCompleted = plan.completed
+  const oldProgress = plan.progress
+
+  // 乐观更新：立即更新前端状态
+  plan.completed = !oldCompleted
+
+  // 重新计算进度（基于子任务状态）
+  const newProgress = calculateProgress(plan.subTasks, plan.completed)
+  plan.progress = newProgress
+
+  // 同时更新所有子任务的状态
+  plan.subTasks.forEach(st => {
+    st.completed = plan.completed
+  })
+
+  // 显示成功提示
+  if (plan.completed) {
+    toast.success('太棒了！计划已完成！')
+  }
+
   try {
     await planApi.toggleStatus(parseInt(planId))
-
-    // 重新加载计划列表
-    await loadPlans()
-
-    const plan = plans.value.find(p => p.id === planId)
-    if (plan && plan.completed) {
-      toast.success('太棒了！计划已完成！')
-    }
+    // 成功后延迟重新加载确保数据一致（避免快速操作时的状态闪烁）
+    debouncedReloadPlans()
   } catch (error) {
+    // 失败时回滚状态
+    plan.completed = oldCompleted
+    plan.progress = oldProgress
+    plan.subTasks.forEach(st => {
+      st.completed = oldCompleted
+    })
     console.error('切换计划状态失败', error)
-    toast.error('切换计划状态失败')
+    toast.error('切换计划状态失败，请重试')
   }
 }
 
 const toggleSubTask = async (planId: string, subTaskId: string) => {
+  const plan = plans.value.find(p => p.id === planId)
+  if (!plan) return
+
+  const subTask = plan.subTasks.find(st => st.id === subTaskId)
+  if (!subTask) return
+
+  // 保存旧状态用于回滚
+  const oldSubTaskCompleted = subTask.completed
+  const oldPlanProgress = plan.progress
+  const oldPlanCompleted = plan.completed
+
+  // 乐观更新：立即更新前端状态
+  subTask.completed = !oldSubTaskCompleted
+
+  // 重新计算计划进度
+  const newProgress = calculateProgress(plan.subTasks, plan.completed)
+  plan.progress = newProgress
+
+  // 检查是否所有子任务都完成了
+  const allCompleted = plan.subTasks.every(st => st.completed)
+  if (allCompleted && !oldPlanCompleted) {
+    plan.completed = true
+    toast.success('太棒了！计划已完成！')
+  }
+
   try {
     await planStepApi.toggleStatus(parseInt(subTaskId))
-
-    // 重新加载计划列表
-    await loadPlans()
-
-    const plan = plans.value.find(p => p.id === planId)
-    if (plan && plan.completed) {
-      toast.success('太棒了！计划已完成！')
-    }
+    // 成功后延迟重新加载确保数据一致（避免快速操作时的状态闪烁）
+    debouncedReloadPlans()
   } catch (error) {
+    // 失败时回滚状态
+    subTask.completed = oldSubTaskCompleted
+    plan.progress = oldPlanProgress
+    plan.completed = oldPlanCompleted
     console.error('切换子任务状态失败', error)
-    toast.error('切换子任务状态失败')
+    toast.error('切换子任务状态失败，请重试')
   }
 }
 
@@ -505,20 +568,50 @@ const addSubTask = async (planId: string) => {
   const plan = plans.value.find(p => p.id === planId)
   if (!plan || plan.completed) return
 
+  const trimmedTitle = title.trim()
+
+  // 生成临时ID
+  const tempId = `temp-${Date.now()}`
+
+  // 乐观更新：立即在前端添加子任务
+  const tempSubTask: SubTask = {
+    id: tempId,
+    title: trimmedTitle,
+    completed: false
+  }
+
+  // 保存旧的子任务列表长度用于回滚
+  const oldSubTasksLength = plan.subTasks.length
+  const oldProgress = plan.progress
+
+  // 立即添加到列表
+  plan.subTasks.push(tempSubTask)
+
+  // 重新计算进度
+  plan.progress = calculateProgress(plan.subTasks, plan.completed)
+
+  // 立即清空输入框
+  quickTaskInputs.value[planId] = ''
+
   try {
+    // 后台发送请求
     await planStepApi.create({
       planId: parseInt(planId),
-      title: title.trim()
+      title: trimmedTitle
     })
-    toast.success('子任务已添加')
 
-    // 重新加载计划列表
-    await loadPlans()
-
-    quickTaskInputs.value[planId] = ''
+    // 成功后延迟重新加载以确保获取正确的ID（避免快速操作时的状态闪烁）
+    debouncedReloadPlans()
   } catch (error) {
+    // 失败时回滚：移除临时添加的子任务
+    plan.subTasks = plan.subTasks.filter(st => st.id !== tempId)
+    plan.progress = oldProgress
+
+    // 恢复输入框内容
+    quickTaskInputs.value[planId] = trimmedTitle
+
     console.error('添加子任务失败', error)
-    toast.error('添加子任务失败')
+    toast.error('添加子任务失败，请重试')
   }
 }
 
@@ -1540,18 +1633,18 @@ const handleAiCreate = async () => {
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
             <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">开始时间（可选）</label>
-            <Input
+            <DateTimePicker
               v-model="newPlan.startTime"
-              type="datetime-local"
-              class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
+              placeholder="请选择开始时间"
+              class="w-full"
             />
           </div>
           <div class="space-y-2">
             <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止时间（可选）</label>
-            <Input
+            <DateTimePicker
               v-model="newPlan.dueTime"
-              type="datetime-local"
-              class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
+              placeholder="请选择截止时间"
+              class="w-full"
             />
           </div>
         </div>
@@ -1815,18 +1908,18 @@ const handleAiCreate = async () => {
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
             <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">开始时间（可选）</label>
-            <Input
+            <DateTimePicker
               v-model="editingPlan.startTime"
-              type="datetime-local"
-              class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
+              placeholder="请选择开始时间"
+              class="w-full"
             />
           </div>
           <div class="space-y-2">
             <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止时间（可选）</label>
-            <Input
+            <DateTimePicker
               v-model="editingPlan.dueTime"
-              type="datetime-local"
-              class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
+              placeholder="请选择截止时间"
+              class="w-full"
             />
           </div>
         </div>
