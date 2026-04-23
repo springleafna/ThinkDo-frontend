@@ -17,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { TimePicker } from '@/components/ui/time-picker'
 import {
   Dialog,
   DialogContent,
@@ -356,25 +357,6 @@ const formatTime = (dateTimeStr?: string): string => {
   }
 }
 
-// 将ISO时间字符串转换为time input需要的格式(HH:mm)
-const formatTimeForInput = (dateTimeStr?: string): string => {
-  if (!dateTimeStr) return ''
-  try {
-    // 如果已经是 HH:mm 格式，直接返回
-    if (dateTimeStr.match(/^\d{2}:\d{2}$/)) {
-      return dateTimeStr
-    }
-    // 处理 ISO 格式的时间字符串
-    const date = new Date(dateTimeStr)
-    if (isNaN(date.getTime())) return ''
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${hours}:${minutes}`
-  } catch (e) {
-    return ''
-  }
-}
-
 // 初始化
 onMounted(() => {
   loadTodayTasks()
@@ -604,18 +586,18 @@ onMounted(() => {
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
             <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">开始时间（可选）</label>
-            <Input
+            <TimePicker
               v-model="newTask.startTime"
-              type="time"
-              class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
+              placeholder="请选择开始时间"
+              class="w-full"
             />
           </div>
           <div class="space-y-2">
             <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止时间（可选）</label>
-            <Input
+            <TimePicker
               v-model="newTask.dueTime"
-              type="time"
-              class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
+              placeholder="请选择截止时间"
+              class="w-full"
             />
           </div>
         </div>
@@ -684,20 +666,18 @@ onMounted(() => {
         <div class="grid grid-cols-2 gap-4">
           <div class="space-y-2">
             <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">开始时间（可选）</label>
-            <Input
-              :model-value="formatTimeForInput(editingTask.startTime)"
-              @input="editingTask.startTime = $event.target.value"
-              type="time"
-              class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
+            <TimePicker
+              v-model="editingTask.startTime"
+              placeholder="请选择开始时间"
+              class="w-full"
             />
           </div>
           <div class="space-y-2">
             <label class="text-[12px] font-bold uppercase tracking-widest text-neutral-400 ml-1">截止时间（可选）</label>
-            <Input
-              :model-value="formatTimeForInput(editingTask.dueTime)"
-              @input="editingTask.dueTime = $event.target.value"
-              type="time"
-              class="w-full px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm"
+            <TimePicker
+              v-model="editingTask.dueTime"
+              placeholder="请选择截止时间"
+              class="w-full"
             />
           </div>
         </div>
