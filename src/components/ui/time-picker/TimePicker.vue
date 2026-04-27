@@ -121,10 +121,7 @@ const displayValue = computed(() => {
   return formatDisplay(selectedHours.value, selectedMinutes.value)
 })
 
-const handleClear = (e: MouseEvent) => {
-  e.preventDefault()
-  e.stopPropagation()
-
+const handleClear = () => {
   emit('update:modelValue', '')
   selectedHours.value = 0
   selectedMinutes.value = 0
@@ -137,24 +134,26 @@ const handleOpenChange = (open: boolean) => {
 
 <template>
   <Popover :open="isOpen" @update:open="handleOpenChange">
-    <PopoverTrigger as-child>
-      <Button
-        variant="outline"
-        :class="cn(
-          'w-full justify-start text-left font-normal px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm hover:bg-stone-100',
-          !modelValue && 'text-muted-foreground',
-          props.class
-        )"
-      >
-        <Clock class="mr-2 h-4 w-4 opacity-50" />
-        <span class="flex-1">{{ displayValue || placeholder }}</span>
-        <X
-          v-if="modelValue"
-          class="h-4 w-4 opacity-50 hover:opacity-100 cursor-pointer"
-          @click.stop="handleClear"
-        />
-      </Button>
-    </PopoverTrigger>
+    <div class="relative w-full">
+      <PopoverTrigger as-child>
+        <Button
+          variant="outline"
+          :class="cn(
+            'w-full justify-start text-left font-normal px-5 py-3.5 bg-stone-50 border border-black/5 rounded-2xl text-sm shadow-sm hover:bg-stone-100',
+            !modelValue && 'text-muted-foreground',
+            props.class
+          )"
+        >
+          <Clock class="mr-2 h-4 w-4 opacity-50" />
+          <span class="flex-1">{{ displayValue || placeholder }}</span>
+        </Button>
+      </PopoverTrigger>
+      <X
+        v-if="modelValue"
+        class="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 hover:opacity-100 cursor-pointer z-10"
+        @click="handleClear"
+      />
+    </div>
     <PopoverContent class="w-auto p-4" align="start">
       <div class="space-y-3">
         <div class="text-sm font-medium text-neutral-900">选择时间</div>

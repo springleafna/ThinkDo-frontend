@@ -395,7 +395,7 @@ watch(() => route.params.id, () => {
 
       <!-- 内容区域 -->
       <div class="flex-1 overflow-y-auto custom-scrollbar">
-        <div class="w-full px-6 sm:px-8 py-8 max-w-6xl mx-auto">
+        <div class="w-full px-6 sm:px-8 py-4 max-w-6xl mx-auto">
           <!-- 预览模式 -->
           <div v-if="!isEditing" class="flex flex-col gap-8">
             <!-- 主内容区 -->
