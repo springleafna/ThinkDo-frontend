@@ -328,7 +328,7 @@ defineExpose({
         <textarea
           v-model="markdownSource"
           placeholder="在这里输入Markdown内容..."
-          class="w-full h-full min-h-[300px] p-6 font-mono text-sm resize-none focus:outline-none border-none bg-transparent"
+          class="w-full h-full min-h-[300px] max-h-[calc(100vh-200px)] p-6 font-mono text-sm resize-none focus:outline-none border-none bg-transparent overflow-y-auto"
           @input="(e) => {
             const value = (e.target as HTMLTextAreaElement).value
             markdownSource = value
@@ -340,7 +340,7 @@ defineExpose({
         />
       </div>
       <!-- 富文本编辑模式 -->
-      <div v-else class="cursor-text relative w-full h-full">
+      <div v-else class="cursor-text relative w-full h-full max-h-[calc(100vh-200px)]">
         <EditorContent :editor="editor" class="w-full h-full" />
         <!-- 目录组件 -->
         <TableOfContents v-if="editor" :editor="editor" />
@@ -354,7 +354,7 @@ defineExpose({
 
 /* 编辑器容器固定高度，内容超出时内部滚动 */
 :deep(.ProseMirror) {
-  max-height: calc(100vh - 320px);
+  max-height: calc(100vh - 210px);
   overflow-y: auto;
 }
 

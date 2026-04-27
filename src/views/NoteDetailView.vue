@@ -323,9 +323,16 @@ watch(() => route.params.id, () => {
           <div class="h-6 w-px bg-black/10"></div>
 
           <!-- 笔记信息 -->
-          <div v-if="!isEditing">
-            <h1 class="text-lg font-semibold text-neutral-900">{{ note.title }}</h1>
-            <p class="text-xs text-neutral-400 mt-0.5">
+          <div class="flex-1 min-w-0">
+            <Input
+              v-if="isEditing"
+              v-model="form.title"
+              type="text"
+              placeholder="输入笔记标题..."
+              class="text-lg font-semibold bg-stone-50 border border-black/5 rounded-xl px-3 py-1.5 w-fit min-w-[300px] max-w-[600px]"
+            />
+            <h1 v-else class="text-lg font-semibold text-neutral-900">{{ note.title }}</h1>
+            <p v-if="!isEditing" class="text-xs text-neutral-400 mt-0.5">
               {{ formatTime(note.updatedAt) }}
             </p>
           </div>
@@ -402,8 +409,8 @@ watch(() => route.params.id, () => {
             <div class="flex-1 min-w-0">
               <div class="max-w-4xl prose prose-neutral max-w-none">
                 <!-- 元信息 -->
-                <Card class="mb-6 border-black/5">
-                  <CardContent class="py-3">
+                <Card class="mb-3 border-black/5">
+                  <CardContent>
                     <div class="flex items-center gap-4">
                       <div class="flex items-center gap-2 text-sm text-neutral-600">
                         <FolderOpen :size="16" />
@@ -418,7 +425,7 @@ watch(() => route.params.id, () => {
                 </Card>
 
                 <!-- 标签 -->
-                <div v-if="note.tags.length > 0" class="flex flex-wrap gap-2 mb-6">
+                <div v-if="note.tags.length > 0" class="flex flex-wrap gap-2 mb-3">
                   <Badge
                     v-for="tag in note.tags"
                     :key="tag"
@@ -445,16 +452,6 @@ watch(() => route.params.id, () => {
             <!-- 主编辑区 -->
             <div class="flex-1 min-w-0">
               <div class="space-y-6">
-              <!-- 标题编辑 -->
-              <div>
-                <Input
-                  v-model="form.title"
-                  type="text"
-                  placeholder="输入笔记标题..."
-                  class="text-lg font-medium"
-                />
-              </div>
-
               <!-- 分类和标签 -->
               <div class="flex flex-col md:flex-row md:items-center gap-4">
                 <!-- 分类选择 -->
