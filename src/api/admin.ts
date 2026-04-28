@@ -36,6 +36,11 @@ export interface AdminChangeUserRoleReq {
   roleName: string
 }
 
+export interface AdminResetPasswordReq {
+  userId: number
+  newPassword: string
+}
+
 export const adminUserApi = {
   getList(params: AdminUserQueryReq) {
     return request.get<PageResp<AdminUserInfo>>('/admin/user/list', { params })
@@ -45,6 +50,9 @@ export const adminUserApi = {
   },
   delete(id: number) {
     return request.delete<void>(`/admin/user/delete/${id}`)
+  },
+  resetPassword(data: AdminResetPasswordReq) {
+    return request.put<void>('/admin/user/resetPassword', data)
   }
 }
 

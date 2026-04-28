@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { Search, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { Search, ChevronLeft, ChevronRight, KeyRound } from 'lucide-vue-next'
 import { adminUserApi, type AdminUserInfo } from '@/api/admin'
 import { toast } from 'vue-sonner'
 
@@ -42,6 +42,10 @@ const roleForm = ref({ userId: 0, username: '', roleName: 'USER' })
 // 删除确认对话框
 const showDeleteDialog = ref(false)
 const deletingUser = ref<AdminUserInfo | null>(null)
+
+// 重置密码确认对话框
+const showResetPasswordDialog = ref(false)
+const resettingUser = ref<AdminUserInfo | null>(null)
 
 // 总页数
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
@@ -143,6 +147,27 @@ const confirmDelete = async () => {
   }
 }
 
+// 打开重置密码确认对话框
+const openResetPasswordDialog = (user: AdminUserInfo) => {
+  resettingUser.value = user
+  showResetPasswordDialog.value = true
+}
+
+// 确认重置密码
+const confirmResetPassword = async () => {
+  if (!resettingUser.value) return
+  try {
+    await adminUserApi.resetPassword({
+      userId: resettingUser.value.id,
+      newPassword: '123456'
+    })
+    toast.success('密码重置成功，新密码为：123456')
+    showResetPasswordDialog.value = false
+  } catch {
+    toast.error('密码重置失败')
+  }
+}
+
 onMounted(() => fetchData())
 </script>
 
@@ -212,6 +237,9 @@ onMounted(() => fetchData())
                       <Button variant="outline" class="h-8 rounded-md border-slate-200 bg-white px-3 text-xs" @click="openRoleDialog(user)">
                         分配角色
                       </Button>
+                      <Button variant="outline" class="h-8 rounded-md border-slate-200 bg-white px-3 text-xs" @click="openResetPasswordDialog(user)">
+                        重置密码
+                      </Button>
                       <Button variant="outline" class="h-8 rounded-md border-rose-200 bg-white px-3 text-xs text-rose-600 hover:bg-rose-50" @click="openDeleteDialog(user)">
                         删除
                       </Button>
@@ -276,6 +304,22 @@ onMounted(() => fetchData())
         <DialogFooter class="mt-4 flex justify-end gap-2">
           <Button variant="outline" class="h-8 rounded-md border-slate-200 px-3 text-sm" @click="showDeleteDialog = false">取消</Button>
           <Button variant="destructive" class="h-8 rounded-md px-3 text-sm" @click="confirmDelete">确认删除</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- 重置密码确认对话框 -->
+    <Dialog v-model:open="showResetPasswordDialog">
+      <DialogContent class="w-[360px] p-5">
+        <DialogHeader class="space-y-2">
+          <DialogTitle class="text-base font-semibold">重置密码</DialogTitle>
+          <DialogDescription class="text-sm text-slate-600">
+            确定重置用户「{{ resettingUser?.username }}」的密码吗？密码将重置为 <span class="font-medium text-slate-900">123456</span>。
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter class="mt-4 flex justify-end gap-2">
+          <Button variant="outline" class="h-8 rounded-md border-slate-200 px-3 text-sm" @click="showResetPasswordDialog = false">取消</Button>
+          <Button class="h-8 rounded-md bg-slate-900 px-3 text-sm text-white hover:bg-slate-800" @click="confirmResetPassword">确认重置</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
