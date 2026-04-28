@@ -64,7 +64,7 @@ const onStart = () => {
     <!-- Navigation -->
     <nav class="max-w-7xl mx-auto px-6 py-8 flex justify-between items-center animate-in fade-in slide-in-from-top-8 duration-1000">
       <div class="flex items-center gap-3 group cursor-pointer">
-        <img src="/thinkdo_logo.png" alt="ThinkDo Logo" class="h-9 w-9 rounded-lg shadow-sm group-hover:shadow-md transition-all object-contain" />
+        <img src="/thinkdo-icon.svg" alt="ThinkDo Logo" class="h-9 w-9 rounded-xl shadow-sm group-hover:shadow-md transition-all object-contain" />
         <span class="font-semibold text-xl tracking-tight">ThinkDo</span>
       </div>
       <button

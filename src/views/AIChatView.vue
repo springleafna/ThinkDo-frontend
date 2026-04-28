@@ -74,7 +74,7 @@ const currentStep = ref('')
 const quickPrompts = [
   '帮我记录一个灵感',
   '我还有哪些任务即将截止',
-  '你会什么',
+  '查询一下湾沚今天的天气',
   '我的知识库里关于RAG是怎么解释的'
 ]
 

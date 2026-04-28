@@ -123,8 +123,8 @@ const handleNavigation = (viewId: string) => {
         isOpen ? 'px-6 justify-start' : 'pl-[15px] justify-start'
       ]"
     >
-      <div class="bg-[#18181b] text-white p-2 rounded-xl shadow-lg shadow-black/5 shrink-0 transition-all duration-300 z-10 relative">
-        <Sparkles :size="18" />
+      <div class="rounded-xl shadow-lg shadow-black/5 shrink-0 transition-all duration-300 z-10 relative overflow-hidden bg-[#fcfaf7]">
+        <img src="/thinkdo-icon.svg" alt="ThinkDo Logo" class="h-[34px] w-[34px] object-contain" />
       </div>
 
       <span
