@@ -39,6 +39,7 @@ const filterLevel = ref<string | undefined>(undefined)
 const filterKind = ref<string | undefined>(undefined)
 const filterEnabled = ref<string | undefined>(undefined)
 const loading = ref(false)
+const togglingId = ref<string | null>(null)
 
 // ============ 分页 ============
 const pagination = ref({ current: 1, size: 10, total: 0, pages: 0 })
@@ -96,6 +97,7 @@ const handlePageChange = (page: number) => {
 // ============ 辅助函数 ============
 const getKindLabel = (kind: number) => IntentKindMap[kind] ?? 'UNKNOWN'
 const getLevelLabel = (level: number) => IntentLevelMap[level] ?? 'UNKNOWN'
+const isEnabled = (enabled: number | string | null | undefined) => Number(enabled) === 1
 
 const parseExamples = (examples: string | null): string[] => {
   if (!examples) return []
@@ -153,7 +155,7 @@ const confirmDelete = async () => {
 
 // ============ 启用/禁用 ============
 const handleToggleEnabled = async (row: IntentNodeTree) => {
-  const newEnabled = row.enabled === 1 ? 0 : 1
+  const newEnabled = isEnabled(row.enabled) ? 0 : 1
   try {
     await intentNodeApi.toggleEnabled(row.id)
     toast.success(newEnabled ? '已启用' : '已禁用')
@@ -168,6 +170,25 @@ const handleToggleEnabled = async (row: IntentNodeTree) => {
 }
 
 // 生成页码数组
+const handleSwitchChange = async (row: IntentNodeTree) => {
+  if (togglingId.value === row.id) return
+
+  const newEnabled = isEnabled(row.enabled) ? 0 : 1
+  togglingId.value = row.id
+
+  try {
+    await intentNodeApi.toggleEnabled(row.id)
+    toast.success(newEnabled ? '已启用' : '已禁用')
+    await fetchData()
+  } catch (error) {
+    console.error('切换状态失败:', error)
+    toast.error('操作失败')
+    await fetchData()
+  } finally {
+    togglingId.value = null
+  }
+}
+
 const pageNumbers = computed(() => {
   const pages: number[] = []
   const total = pagination.value.pages
@@ -299,8 +320,9 @@ const pageNumbers = computed(() => {
                 <td class="px-4 py-3 text-sm text-slate-700">{{ parseExamples(row.examples).length }}</td>
                 <td class="px-4 py-3">
                   <Switch
-                    :default-checked="row.enabled === 1"
-                    @click="handleToggleEnabled(row)"
+                    :model-value="isEnabled(row.enabled)"
+                    :disabled="togglingId === row.id"
+                    @update:model-value="() => handleSwitchChange(row)"
                   />
                 </td>
                 <td class="px-4 py-3">
