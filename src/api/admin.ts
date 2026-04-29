@@ -187,6 +187,76 @@ export const adminMemoApi = {
   }
 }
 
+// ==================== 会话管理 ====================
+
+export interface AdminConversationQueryReq extends PageReq {
+  keyword?: string
+  userId?: number
+  username?: string
+  startTime?: string
+  endTime?: string
+}
+
+export interface AdminConversationInfo {
+  conversationId: string
+  userId: number
+  username: string
+  title: string
+  messageCount: number
+  lastTime: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminConversationMessageItem {
+  id: number
+  role: string
+  content: string
+  createdAt: string
+}
+
+export interface AdminConversationDetail {
+  conversationId: string
+  userId: number
+  username: string
+  title: string
+  summary: string | null
+  lastTime: string
+  createdAt: string
+  messages: AdminConversationMessageItem[]
+}
+
+export const adminConversationApi = {
+  /**
+   * 分页查询会话列表
+   * GET /admin/conversation/list
+   */
+  getList(params: AdminConversationQueryReq) {
+    return request.get<PageResp<AdminConversationInfo>>('/admin/conversation/list', { params })
+  },
+  /**
+   * 获取会话详情（含消息记录）
+   * GET /admin/conversation/detail/{conversationId}
+   */
+  getDetail(conversationId: string) {
+    return request.get<AdminConversationDetail>(`/admin/conversation/detail/${conversationId}`)
+  },
+  /**
+   * 删除会话
+   * DELETE /admin/conversation/delete/{conversationId}
+   */
+  delete(conversationId: string) {
+    return request.delete<void>(`/admin/conversation/delete/${conversationId}`)
+  },
+  /**
+   * 批量删除会话
+   * DELETE /admin/conversation/batchDelete
+   */
+  batchDelete(conversationIds: string[]) {
+    return request.delete<void>('/admin/conversation/batchDelete', { data: conversationIds })
+  }
+}
+
 // ==================== 运营总览 ====================
 
 export interface AdminDashboardStats {

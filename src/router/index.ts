@@ -48,7 +48,7 @@ const router = createRouter({
           component: () => import('@/views/admin/AdminConversationView.vue'),
           meta: {
             title: '会话消息',
-            subtitle: '对应 tb_conversation、tb_message，管理聊天会话、消息留存和 AI 对话链路。'
+            subtitle: '对应 tb_conversation、tb_message，管理聊天会话、消息留存。'
           }
         },
         {
