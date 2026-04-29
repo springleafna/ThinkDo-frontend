@@ -80,11 +80,34 @@ const quickPrompts = [
 
 const copyMessage = async (text: string) => {
   try {
-    await navigator.clipboard.writeText(text)
-    toast.success('复制成功')
+    // 优先使用 Clipboard API（需要 HTTPS 或 localhost）
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+      toast.success('复制成功')
+      return
+    }
+
+    // 回退到传统方法（兼容 HTTP 环境）
+    const textArea = document.createElement('textarea')
+    textArea.value = text
+    textArea.style.position = 'fixed'
+    textArea.style.left = '-9999px'
+    textArea.style.top = '-9999px'
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+
+    const successful = document.execCommand('copy')
+    document.body.removeChild(textArea)
+
+    if (successful) {
+      toast.success('复制成功')
+    } else {
+      throw new Error('execCommand failed')
+    }
   } catch (error) {
     console.error('复制失败:', error)
-    toast.error('复制失败')
+    toast.error('复制失败，请手动复制')
   }
 }
 
