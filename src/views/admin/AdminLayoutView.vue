@@ -41,9 +41,13 @@ const navItems = [
   },
   {
     label: '知识库与文档',
-    to: '/admin/knowledge',
+    to: '/admin/knowledge-base',
     icon: Database,
-    hint: '管理知识库、文档分块'
+    hint: '管理知识库、文档分块',
+    children: [
+      { label: '知识库管理', to: '/admin/knowledge-base', icon: Database, hint: '' },
+      { label: '文档管理', to: '/admin/knowledge-docs', icon: BookText, hint: '' }
+    ]
   },
   {
     label: '意图管理',

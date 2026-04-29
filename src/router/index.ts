@@ -52,12 +52,21 @@ const router = createRouter({
           }
         },
         {
-          path: 'knowledge',
-          name: 'admin-knowledge',
-          component: () => import('@/views/admin/AdminKnowledgeView.vue'),
+          path: 'knowledge-base',
+          name: 'admin-knowledge-base',
+          component: () => import('@/views/admin/AdminKnowledgeBaseView.vue'),
           meta: {
-            title: '知识库与文档',
-            subtitle: '对应知识库、文档、分块与日志。'
+            title: '知识库管理',
+            subtitle: '管理所有知识库，查看范围、文档数与创建人。'
+          }
+        },
+        {
+          path: 'knowledge-docs',
+          name: 'admin-knowledge-docs',
+          component: () => import('@/views/admin/AdminKnowledgeDocView.vue'),
+          meta: {
+            title: '文档管理',
+            subtitle: '管理所有知识库文档，查看分块状态、处理日志与详情。'
           }
         },
         {
