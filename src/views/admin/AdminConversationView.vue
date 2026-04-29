@@ -193,48 +193,36 @@ onMounted(() => {
 
 <template>
   <div class="space-y-4">
-    <!-- 搜索筛选栏 -->
-      <CardContent>
-        <div class="flex flex-wrap items-end gap-3">
-          <div class="flex-1 min-w-[180px]">
-            <div class="relative">
-              <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-              <Input
-                v-model="searchKeyword"
-                placeholder="搜索会话标题..."
-                class="pl-9"
-                @keyup.enter="handleSearch"
-              />
-            </div>
-          </div>
-          <div class="flex-1 min-w-[180px]">
-            <div class="relative">
-              <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
-              <Input
-                v-model="searchUsername"
-                placeholder="搜索用户名..."
-                class="pl-9"
-                @keyup.enter="handleSearch"
-              />
-            </div>
-          </div>
-          <Button @click="handleSearch" class="bg-slate-900 hover:bg-slate-800">
-            <Search class="mr-1.5 h-4 w-4" />搜索
-          </Button>
-          <Button variant="outline" @click="clearFilters">清除</Button>
-        </div>
-      </CardContent>
-
     <!-- 会话列表 -->
     <Card class="border-slate-200 bg-white shadow-none">
-      <CardHeader>
-        <div class="flex items-center justify-between">
-          <div>
-            <CardTitle class="text-xl font-semibold text-slate-900">会话列表</CardTitle>
-            <CardDescription class="text-sm text-slate-500">
-              共 {{ total }} 条记录
-            </CardDescription>
+      <CardHeader class="gap-4">
+        <div class="flex flex-col gap-3 lg:flex-row">
+          <div class="relative max-w-md flex-1">
+            <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              v-model="searchKeyword"
+              placeholder="搜索会话标题..."
+              class="!h-10 border-slate-200 bg-white pl-10"
+              @keyup.enter="handleSearch"
+            />
           </div>
+          <div class="relative max-w-md flex-1">
+            <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              v-model="searchUsername"
+              placeholder="搜索用户名..."
+              class="!h-10 border-slate-200 bg-white pl-10"
+              @keyup.enter="handleSearch"
+            />
+          </div>
+          <Button variant="outline" size="lg" class="rounded-md border-slate-200 bg-white" @click="handleSearch">
+            <Search class="mr-1.5 h-4 w-4" />搜索
+          </Button>
+          <Button variant="outline" size="lg" class="rounded-md border-slate-200 bg-white" @click="clearFilters">
+            清空筛选
+          </Button>
+        </div>
+        <div class="flex items-center justify-between">
           <Button
             v-if="selectedIds.length > 0"
             variant="destructive"
@@ -307,7 +295,7 @@ onMounted(() => {
           <!-- 分页 -->
           <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
             <span class="text-sm text-slate-500">
-              第 {{ pageNum }} / {{ totalPages || 1 }} 页
+              共 {{ total }} 条记录，第 {{ pageNum }} / {{ totalPages || 1 }} 页
             </span>
             <div class="flex items-center gap-2">
               <Button

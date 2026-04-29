@@ -187,6 +187,176 @@ export const adminMemoApi = {
   }
 }
 
+// ==================== 知识库管理 ====================
+
+export interface AdminKnowledgeBaseQueryReq extends PageReq {
+  keyword?: string
+  scope?: string
+  username?: string
+}
+
+export interface AdminKnowledgeBaseInfo {
+  id: string
+  name: string
+  description: string | null
+  scope: string
+  embeddingModel: string
+  collectionName: string | null
+  documentCount: number
+  createdBy: number
+  username: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface AdminKnowledgeDocQueryReq extends PageReq {
+  kbId?: string
+  keyword?: string
+  status?: string
+}
+
+export interface AdminKnowledgeDocInfo {
+  id: string
+  kbId: string
+  kbName: string
+  docName: string
+  sourceType: string
+  enabled: boolean
+  chunkCount: number
+  fileType: string | null
+  fileSize: number | null
+  chunkStrategy: string | null
+  status: string
+  createdBy: number
+  username: string
+  createdAt: string
+  updatedAt: string
+}
+
+export interface KnowledgeDocDetail {
+  id: string
+  kbId: number
+  docName: string
+  sourceType: string
+  sourceLocation: string | null
+  enabled: boolean
+  chunkCount: number
+  fileUrl: string | null
+  fileType: string | null
+  fileSize: number | null
+  chunkStrategy: string | null
+  chunkConfig: string | null
+  status: string
+  createdBy: number
+  updatedBy: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ChunkLog {
+  id: string
+  docId: string
+  status: string
+  chunkStrategy: string
+  extractDuration: number | null
+  chunkDuration: number | null
+  embeddingDuration: number | null
+  otherDuration: number | null
+  totalDuration: number | null
+  chunkCount: number | null
+  errorMessage: string | null
+  startTime: string | null
+  endTime: string | null
+  createdAt: string
+}
+
+export interface KnowledgeChunk {
+  id: string
+  kbId: string
+  docId: string
+  chunkIndex: number
+  content: string
+  contentHash: string
+  charCount: number | null
+  tokenCount: number | null
+  enabled: number
+  createTime: string | null
+  updateTime: string | null
+}
+
+export const adminKnowledgeApi = {
+  // ===== 知识库 =====
+  /**
+   * 分页查询知识库列表
+   * GET /admin/knowledge/base/list
+   */
+  getBaseList(params: AdminKnowledgeBaseQueryReq) {
+    return request.get<PageResp<AdminKnowledgeBaseInfo>>('/admin/knowledge/base/list', { params })
+  },
+  /**
+   * 获取知识库详情
+   * GET /admin/knowledge/base/{kbId}
+   */
+  getBaseDetail(kbId: string) {
+    return request.get<AdminKnowledgeBaseInfo>(`/admin/knowledge/base/${kbId}`)
+  },
+  /**
+   * 删除知识库
+   * DELETE /admin/knowledge/base/{kbId}
+   */
+  deleteBase(kbId: string) {
+    return request.delete<void>(`/admin/knowledge/base/${kbId}`)
+  },
+
+  // ===== 文档 =====
+  /**
+   * 分页查询文档列表
+   * GET /admin/knowledge/doc/list
+   */
+  getDocList(params: AdminKnowledgeDocQueryReq) {
+    return request.get<PageResp<AdminKnowledgeDocInfo>>('/admin/knowledge/doc/list', { params })
+  },
+  /**
+   * 获取文档详情
+   * GET /admin/knowledge/doc/{docId}
+   */
+  getDocDetail(docId: string) {
+    return request.get<KnowledgeDocDetail>(`/admin/knowledge/doc/${docId}`)
+  },
+  /**
+   * 删除文档
+   * DELETE /admin/knowledge/doc/{docId}
+   */
+  deleteDoc(docId: string) {
+    return request.delete<void>(`/admin/knowledge/doc/${docId}`)
+  },
+  /**
+   * 启用/禁用文档
+   * PATCH /admin/knowledge/doc/{docId}/enable
+   */
+  enableDoc(docId: string, enabled: boolean) {
+    return request.patch<void>(`/admin/knowledge/doc/${docId}/enable`, null, {
+      params: { value: enabled }
+    })
+  },
+
+  // ===== 分块信息 =====
+  /**
+   * 查询文档分块日志
+   * GET /admin/knowledge/doc/{docId}/chunk-logs
+   */
+  getChunkLogs(docId: string) {
+    return request.get<ChunkLog[]>(`/admin/knowledge/doc/${docId}/chunk-logs`)
+  },
+  /**
+   * 查询文档分块详情
+   * GET /admin/knowledge/doc/{docId}/chunks
+   */
+  getChunks(docId: string) {
+    return request.get<KnowledgeChunk[]>(`/admin/knowledge/doc/${docId}/chunks`)
+  }
+}
+
 // ==================== 会话管理 ====================
 
 export interface AdminConversationQueryReq extends PageReq {

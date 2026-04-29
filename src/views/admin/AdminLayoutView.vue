@@ -40,10 +40,10 @@ const navItems = [
     hint: '查看 AI 对话会话与消息记录'
   },
   {
-    label: '知识库与 RAG',
+    label: '知识库与文档',
     to: '/admin/knowledge',
     icon: Database,
-    hint: '管理知识库、文档分块与意图节点'
+    hint: '管理知识库、文档分块'
   },
   {
     label: '意图管理',

@@ -56,8 +56,8 @@ const router = createRouter({
           name: 'admin-knowledge',
           component: () => import('@/views/admin/AdminKnowledgeView.vue'),
           meta: {
-            title: '知识库与 RAG',
-            subtitle: '对应知识库、文档、分块、日志与意图树节点，管理 RAG 检索链路。'
+            title: '知识库与文档',
+            subtitle: '对应知识库、文档、分块与日志。'
           }
         },
         {
