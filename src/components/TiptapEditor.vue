@@ -1,3 +1,15 @@
+<!--
+  TiptapEditor - 富文本编辑器
+
+  数据格式：
+  - 输入/输出：Markdown 格式 (v-model)
+  - 内部渲染：HTML (TipTap 编辑器)
+
+  特性：
+  - 支持 Markdown 源码编辑模式
+  - 自动 Markdown ↔ HTML 转换
+  - 代码高亮、图片、链接等
+-->
 <script setup lang="ts">
 import { watch, onBeforeUnmount, ref, computed } from 'vue'
 import { useEditor, EditorContent } from '@tiptap/vue-3'
@@ -13,6 +25,7 @@ import ts from 'highlight.js/lib/languages/typescript'
 import html from 'highlight.js/lib/languages/xml'
 import type { Editor } from '@tiptap/vue-3'
 import { marked } from 'marked'
+import TurndownService from 'turndown'
 
 // UI Components
 import { Button } from '@/components/ui/button'
@@ -57,6 +70,27 @@ marked.setOptions({
   gfm: true,
 })
 
+// 配置 turndown (HTML -> Markdown 转换)
+const turndownService = new TurndownService({
+  headingStyle: 'atx',           // 使用 # 格式
+  codeBlockStyle: 'fenced',      // 使用 ``` 格式
+  bulletListMarker: '-',         // 使用 - 作为列表标记
+  emDelimiter: '*',              // 使用 * 作为斜体标记
+  strongDelimiter: '**'          // 使用 ** 作为加粗标记
+})
+
+// 自定义规则：处理代码块语言
+turndownService.addRule('codeBlock', {
+  filter: (node) => {
+    return node.nodeName === 'PRE' && node.firstChild?.nodeName === 'CODE'
+  },
+  replacement: (content, node) => {
+    const codeNode = node.firstChild as HTMLElement
+    const language = codeNode.className.match(/language-(\w+)/)?.[1] || ''
+    return '\n\n```' + language + '\n' + content + '\n```\n\n'
+  }
+})
+
 interface Props {
   modelValue: string
   placeholder?: string
@@ -88,44 +122,18 @@ const markdownToHtml = (markdown: string): string => {
   }
 }
 
-// HTML转Markdown（简化版本）
+// HTML转Markdown（使用 turndown）
 const htmlToMarkdown = (html: string): string => {
-  let markdown = html
-
-  // 处理标题
-  markdown = markdown.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n')
-  markdown = markdown.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n')
-  markdown = markdown.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n')
-
-  // 处理图片
-  markdown = markdown.replace(/<img[^>]*src="([^"]*)"[^>]*>/gi, '![]($1)')
-
-  // 处理链接
-  markdown = markdown.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)')
-
-  // 处理加粗
-  markdown = markdown.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
-  markdown = markdown.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
-
-  // 处理斜体
-  markdown = markdown.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
-  markdown = markdown.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
-
-  // 处理代码
-  markdown = markdown.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`')
-  markdown = markdown.replace(/<pre[^>]*>(.*?)<\/pre>/gis, '```\n$1\n```')
-
-  // 处理段落
-  markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gis, '$1\n\n')
-
-  // 清理多余的换行
-  markdown = markdown.replace(/\n{3,}/g, '\n\n')
-
-  return markdown.trim()
+  try {
+    return turndownService.turndown(html)
+  } catch (e) {
+    console.error('HTML转Markdown失败:', e)
+    return html
+  }
 }
 
 const editor = useEditor({
-  content: props.modelValue,
+  content: props.modelValue ? markdownToHtml(props.modelValue) : '',
   extensions: [
     StarterKit.configure({
       codeBlock: false, // 禁用默认 codeBlock，使用 codeBlockLowlight
@@ -176,22 +184,19 @@ const editor = useEditor({
   },
   editable: props.editable,
   onUpdate: ({ editor }) => {
-    emit('update:modelValue', editor.getHTML())
+    // 将编辑器的 HTML 转换为 Markdown 发送给父组件
+    const html = editor.getHTML()
+    emit('update:modelValue', htmlToMarkdown(html))
   }
 })
 
 // 监听外部 modelValue 变化
 watch(() => props.modelValue, (value) => {
-  if (editor.value && value !== editor.value.getHTML()) {
-    // 检测是否是Markdown格式（简单的检测）
-    if (value && (value.includes('```') || value.startsWith('#') || value.includes('!['))) {
-      // 可能是Markdown，转换为HTML显示
-      isMarkdownMode.value = true
-      markdownSource.value = value
-      editor.value.commands.setContent(markdownToHtml(value))
-    } else {
-      // HTML格式，直接设置
-      editor.value.commands.setContent(value)
+  if (editor.value) {
+    const currentMarkdown = htmlToMarkdown(editor.value.getHTML())
+    if (value !== currentMarkdown) {
+      // 外部传入的 Markdown 值发生变化，更新编辑器
+      editor.value.commands.setContent(markdownToHtml(value || ''))
     }
   }
 })
@@ -204,14 +209,14 @@ watch(() => props.editable, (value) => {
 // 切换到Markdown源码模式
 const toggleMarkdownMode = () => {
   if (!isMarkdownMode.value) {
-    // 切换到Markdown模式：将当前HTML转换为Markdown
-    const currentHtml = editor.value?.getHTML() || ''
-    markdownSource.value = htmlToMarkdown(currentHtml)
+    // 切换到 Markdown 源码模式：显示当前 Markdown
+    markdownSource.value = props.modelValue || ''
     isMarkdownMode.value = true
   } else {
-    // 切换回富文本模式：将Markdown转换为HTML
+    // 切换回富文本模式：从 Markdown 源码更新
     const newHtml = markdownToHtml(markdownSource.value)
     editor.value?.commands.setContent(newHtml)
+    emit('update:modelValue', markdownSource.value)
     isMarkdownMode.value = false
   }
 }
@@ -332,10 +337,12 @@ defineExpose({
           @input="(e) => {
             const value = (e.target as HTMLTextAreaElement).value
             markdownSource = value
-            // 实时更新预览
+            // 实时更新预览并同步给父组件
             if (editor) {
-              editor.commands.setContent(markdownToHtml(value))
+              const html = markdownToHtml(value)
+              editor.commands.setContent(html)
             }
+            emit('update:modelValue', value)
           }"
         />
       </div>
