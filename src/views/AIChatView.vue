@@ -989,10 +989,11 @@ const filteredSessions = computed(() => {
                     v-model="input"
                     @keydown="handleKeyDown"
                     placeholder="输入你的问题..."
-                    class="w-full bg-transparent px-5 pt-4 pb-12 text-sm focus:outline-none resize-none min-h-[100px] custom-scrollbar"
+                    class="w-full bg-transparent px-5 pt-4 pb-14 text-sm focus:outline-none resize-none min-h-[100px] custom-scrollbar"
                     rows="3"
                   />
-                  <div class="absolute left-4 bottom-3 flex items-center gap-2">
+                  <div class="absolute left-0 right-0 bottom-0 h-12 bg-gradient-to-t from-white via-white/90 to-transparent pointer-events-none"></div>
+                  <div class="absolute left-4 bottom-3 flex items-center gap-2 z-10">
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger as-child>
@@ -1016,7 +1017,7 @@ const filteredSessions = computed(() => {
                     @click="isTyping ? handleStopGenerating() : handleSend()"
                     :disabled="isTyping ? isStopping : !input.trim()"
                     size="icon"
-                    class="absolute right-3 bottom-3 h-9 w-9 rounded-xl transition-all"
+                    class="absolute right-3 bottom-3 h-9 w-9 rounded-xl transition-all z-10"
                     :class="isTyping
                       ? 'bg-rose-600 hover:bg-rose-500'
                       : (input.trim() ? 'bg-zinc-900 hover:bg-zinc-800 shadow-md' : 'bg-zinc-100 text-zinc-400')"
@@ -1223,7 +1224,8 @@ const filteredSessions = computed(() => {
                 class="w-full bg-transparent px-4 pt-3 pb-12 text-sm focus:outline-none resize-none min-h-[80px] max-h-40 custom-scrollbar"
                 rows="2"
               />
-              <div class="absolute left-3 bottom-2.5 flex items-center gap-1.5">
+              <div class="absolute left-0 right-0 bottom-0 h-12 bg-gradient-to-t from-white via-white/90 to-transparent pointer-events-none"></div>
+              <div class="absolute left-3 bottom-2.5 flex items-center gap-1.5 z-10">
                 <button
                   type="button"
                   class="h-7 px-2 rounded-lg text-xs inline-flex items-center gap-1 transition-all"
@@ -1240,7 +1242,7 @@ const filteredSessions = computed(() => {
                 @click="isTyping ? handleStopGenerating() : handleSend()"
                 :disabled="isTyping ? isStopping : !input.trim()"
                 size="icon"
-                class="absolute right-2.5 bottom-2.5 h-8 w-8 rounded-xl transition-all"
+                class="absolute right-2.5 bottom-2.5 h-8 w-8 rounded-xl transition-all z-10"
                 :class="isTyping
                   ? 'bg-rose-600 hover:bg-rose-500'
                   : (input.trim() ? 'bg-zinc-900 hover:bg-zinc-800' : 'bg-zinc-100 text-zinc-400')"
