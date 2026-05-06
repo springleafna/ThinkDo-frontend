@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { Search, ChevronLeft, ChevronRight, Trash2, Eye } from 'lucide-vue-next'
+import { Search, Trash2, Eye } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import {
   adminConversationApi,
@@ -52,6 +52,17 @@ const selectedIds = ref<string[]>([])
 const showBatchDeleteDialog = ref(false)
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
+
+// 生成页码数组
+const pageNumbers = computed(() => {
+  const pages: number[] = []
+  const total = totalPages.value
+  const current = pageNum.value
+  const start = Math.max(1, current - 2)
+  const end = Math.min(total, current + 2)
+  for (let i = start; i <= end; i++) pages.push(i)
+  return pages
+})
 
 // ==================== 数据加载 ====================
 async function fetchData() {
@@ -294,25 +305,36 @@ onMounted(() => {
 
           <!-- 分页 -->
           <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
-            <span class="text-sm text-slate-500">
-              共 {{ total }} 条记录，第 {{ pageNum }} / {{ totalPages || 1 }} 页
-            </span>
+            <span class="text-sm text-slate-500">共 {{ total }} 条记录</span>
             <div class="flex items-center gap-2">
               <Button
                 variant="outline"
-                size="sm"
                 :disabled="pageNum <= 1"
+                class="h-8 rounded-md border-slate-200 bg-white px-3 text-xs"
                 @click="handlePageChange(pageNum - 1)"
               >
-                <ChevronLeft class="h-4 w-4" />
+                上一页
               </Button>
+              <template v-for="p in pageNumbers" :key="p">
+                <button
+                  :class="[
+                    'h-8 rounded-md px-3 text-xs font-medium transition-colors',
+                    p === pageNum
+                      ? 'bg-slate-900 text-white'
+                      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  ]"
+                  @click="handlePageChange(p)"
+                >
+                  {{ p }}
+                </button>
+              </template>
               <Button
                 variant="outline"
-                size="sm"
                 :disabled="pageNum >= totalPages"
+                class="h-8 rounded-md border-slate-200 bg-white px-3 text-xs"
                 @click="handlePageChange(pageNum + 1)"
               >
-                <ChevronRight class="h-4 w-4" />
+                下一页
               </Button>
             </div>
           </div>

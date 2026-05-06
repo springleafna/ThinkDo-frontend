@@ -25,7 +25,7 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/components/ui/dialog'
-import { Search, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { Search } from 'lucide-vue-next'
 import { adminMemoApi, type AdminMemoInfo } from '@/api/admin'
 import { toast } from 'vue-sonner'
 
@@ -46,6 +46,17 @@ const deletingMemo = ref<AdminMemoInfo | null>(null)
 
 // 总页数
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
+
+// 生成页码数组
+const pageNumbers = computed(() => {
+  const pages: number[] = []
+  const total = totalPages.value
+  const current = pageNum.value
+  const start = Math.max(1, current - 2)
+  const end = Math.min(total, current + 2)
+  for (let i = start; i <= end; i++) pages.push(i)
+  return pages
+})
 
 // 获取置顶 badge 样式
 const getPinnedClass = (pinned: number) => {
@@ -232,14 +243,37 @@ onMounted(() => fetchData())
           </div>
 
           <!-- 分页 -->
-          <div class="mt-4 flex items-center justify-between text-sm text-slate-500">
-            <span>共 {{ total }} 条，第 {{ pageNum }} / {{ totalPages || 1 }} 页</span>
-            <div class="flex gap-1">
-              <Button variant="outline" size="icon" class="h-8 w-8 rounded-md border-slate-200" :disabled="pageNum <= 1" @click="handlePageChange(pageNum - 1)">
-                <ChevronLeft class="size-4" />
+          <div class="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
+            <span class="text-sm text-slate-500">共 {{ total }} 条记录</span>
+            <div class="flex items-center gap-2">
+              <Button
+                variant="outline"
+                :disabled="pageNum <= 1"
+                class="h-8 rounded-md border-slate-200 bg-white px-3 text-xs"
+                @click="handlePageChange(pageNum - 1)"
+              >
+                上一页
               </Button>
-              <Button variant="outline" size="icon" class="h-8 w-8 rounded-md border-slate-200" :disabled="pageNum >= totalPages" @click="handlePageChange(pageNum + 1)">
-                <ChevronRight class="size-4" />
+              <template v-for="p in pageNumbers" :key="p">
+                <button
+                  :class="[
+                    'h-8 rounded-md px-3 text-xs font-medium transition-colors',
+                    p === pageNum
+                      ? 'bg-slate-900 text-white'
+                      : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  ]"
+                  @click="handlePageChange(p)"
+                >
+                  {{ p }}
+                </button>
+              </template>
+              <Button
+                variant="outline"
+                :disabled="pageNum >= totalPages"
+                class="h-8 rounded-md border-slate-200 bg-white px-3 text-xs"
+                @click="handlePageChange(pageNum + 1)"
+              >
+                下一页
               </Button>
             </div>
           </div>

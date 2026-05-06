@@ -33,7 +33,7 @@ const features = [
   },
   {
     icon: FileEdit,
-    title: '笔记与智能整理',
+    title: '笔记与智能增强',
     desc: '提供智能润色、扩写、纠错等增强能力，让零散记录转化为结构化的知识资产。',
     gradient: 'from-orange-400 to-rose-400',
     span: 'lg:col-span-2'
@@ -114,7 +114,7 @@ const onStart = () => {
         <div class="mb-16 text-center md:text-left flex flex-col md:flex-row justify-between items-end gap-6">
           <div>
             <h2 class="text-2xl font-semibold tracking-tight text-neutral-900 mb-2">全面的个人管理能力</h2>
-            <p class="text-neutral-500 text-sm">不只是记录，更强调记录之后的检索、追问、整理与执行。</p>
+            <p class="text-neutral-500 text-sm">记录、沉淀、检索、规划、执行</p>
           </div>
         </div>
 
@@ -167,13 +167,13 @@ const onStart = () => {
           <div class="bg-white/5 backdrop-blur-sm border border-white/10 p-8 rounded-3xl text-left hover:bg-white/10 transition-colors">
             <BrainCircuit class="text-emerald-400 mb-6" :size="28" :stroke-width="1.5" />
             <h3 class="text-lg font-medium text-white mb-2">2. AI 智能加工</h3>
-            <p class="text-sm text-neutral-400">利用智能对话追问细节，一键润色、整理和归档，提升资料复用率。</p>
+            <p class="text-sm text-neutral-400">利用 AI 一键润色、扩充、纠错文章记录，增强笔记内容。</p>
           </div>
 
           <div class="bg-white/5 backdrop-blur-sm border border-white/10 p-8 rounded-3xl text-left hover:bg-white/10 transition-colors">
             <Rocket class="text-rose-400 mb-6" :size="28" :stroke-width="1.5" />
             <h3 class="text-lg font-medium text-white mb-2">3. 拆解与执行</h3>
-            <p class="text-sm text-neutral-400">基于知识库制定战略规划，拆解为每日任务清单，步步为营达成目标。</p>
+            <p class="text-sm text-neutral-400">大计划拆解为多个子计划，步步为营达成目标。</p>
           </div>
         </div>
       </div>
