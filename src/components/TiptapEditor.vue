@@ -327,13 +327,14 @@ defineExpose({
     </div>
 
     <!-- 编辑器主体 -->
-    <div class="flex-1 relative w-full overflow-hidden">
+    <div class="flex-1 relative w-full overflow-hidden min-h-0">
       <!-- Markdown源码编辑模式 -->
       <div v-if="isMarkdownMode" class="h-full">
         <textarea
           v-model="markdownSource"
           placeholder="在这里输入Markdown内容..."
-          class="w-full h-full min-h-[300px] max-h-[calc(100vh-200px)] p-6 font-mono text-sm resize-none focus:outline-none border-none bg-transparent overflow-y-auto"
+          class="w-full p-6 font-mono text-sm resize-none focus:outline-none border-none bg-transparent overflow-y-auto"
+          style="min-height: calc(100vh - 210px); max-height: calc(100vh - 210px);"
           @input="(e) => {
             const value = (e.target as HTMLTextAreaElement).value
             markdownSource = value
@@ -347,7 +348,7 @@ defineExpose({
         />
       </div>
       <!-- 富文本编辑模式 -->
-      <div v-else class="cursor-text relative w-full h-full max-h-[calc(100vh-200px)]">
+      <div v-else class="cursor-text h-full">
         <EditorContent :editor="editor" class="w-full h-full" />
         <!-- 目录组件 -->
         <TableOfContents v-if="editor" :editor="editor" />
@@ -365,21 +366,30 @@ defineExpose({
   overflow-y: auto;
 }
 
+/* Markdown 模式 textarea 固定高度 */
+textarea {
+  max-height: calc(100vh - 210px);
+}
+
 /* 自定义编辑器滚动条样式 */
-:deep(.ProseMirror::-webkit-scrollbar) {
+:deep(.ProseMirror::-webkit-scrollbar),
+textarea::-webkit-scrollbar {
   width: 6px;
 }
 
-:deep(.ProseMirror::-webkit-scrollbar-track) {
+:deep(.ProseMirror::-webkit-scrollbar-track),
+textarea::-webkit-scrollbar-track {
   background: transparent;
 }
 
-:deep(.ProseMirror::-webkit-scrollbar-thumb) {
+:deep(.ProseMirror::-webkit-scrollbar-thumb),
+textarea::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.1);
   border-radius: 3px;
 }
 
-:deep(.ProseMirror::-webkit-scrollbar-thumb:hover) {
+:deep(.ProseMirror::-webkit-scrollbar-thumb:hover),
+textarea::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.2);
 }
 
