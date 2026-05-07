@@ -11,7 +11,8 @@ import {
   Tag,
   Calendar,
   FolderOpen,
-  X
+  X,
+  Download
 } from 'lucide-vue-next'
 import { toast } from 'vue-sonner'
 import { noteApi, type Note as NoteType } from '@/api/note'
@@ -274,6 +275,55 @@ const cancelDelete = () => {
   showDeleteDialog.value = false
 }
 
+// 导出笔记为 Markdown 文件
+const exportNote = () => {
+  try {
+    // 获取分类名称
+    const categoryName = categories.value.find(c => c.id === note.value.categoryId)?.name || '未分类'
+
+    // 构建 YAML Front Matter
+    const yamlFrontMatter = `---
+title: ${note.value.title || '未命名笔记'}
+category: ${categoryName}
+tags: [${note.value.tags.join(', ')}]
+created_at: ${formatTime(note.value.createdAt)}
+updated_at: ${formatTime(note.value.updatedAt)}
+---
+
+`
+
+    // 合并内容
+    const fullContent = yamlFrontMatter + note.value.content
+
+    // 生成文件名
+    let fileName = note.value.title.trim() || '未命名笔记'
+    // 处理非法文件名字符（Windows 文件系统不允许）
+    fileName = fileName.replace(/[\/\\:*?"<>|]/g, '-')
+    // 如果文件名为空或只有短横线，使用默认名称
+    if (!fileName || fileName === '-') {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '').slice(0, -5)
+      fileName = `未命名笔记-${timestamp}`
+    }
+    fileName += '.md'
+
+    // 创建 Blob 并下载
+    const blob = new Blob([fullContent], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    toast.success('笔记已导出')
+  } catch (error) {
+    console.error('导出笔记失败:', error)
+    toast.error('导出失败，请重试')
+  }
+}
+
 onMounted(() => {
   loadCategories()
   loadNoteDetail()
@@ -366,6 +416,17 @@ watch(() => route.params.id, () => {
             title="删除笔记"
           >
             <Trash2 :size="20" class="text-neutral-400" />
+          </Button>
+
+          <!-- 导出按钮 -->
+          <Button
+            @click="exportNote"
+            variant="ghost"
+            size="icon"
+            class="rounded-xl"
+            title="导出 Markdown"
+          >
+            <Download :size="20" class="text-neutral-600" />
           </Button>
 
           <div v-if="!isEditing" class="h-6 w-px bg-black/10"></div>
