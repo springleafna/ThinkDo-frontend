@@ -9,7 +9,6 @@ import {
   FileText,
   File,
   Trash2,
-  Download,
   Clock,
   Grid3x3,
   List,
@@ -796,13 +795,6 @@ onMounted(() => {
                       <span>分块</span>
                     </button>
                     <button
-                      @click.stop
-                      class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-black/5 rounded-lg text-xs hover:bg-black/10 transition-colors"
-                    >
-                      <Download :size="12" />
-                      <span>下载</span>
-                    </button>
-                    <button
                       @click.stop="deleteFile(file)"
                       class="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs hover:bg-rose-100 transition-colors"
                     >
@@ -889,13 +881,6 @@ onMounted(() => {
                         title="查看分块"
                       >
                         <FileText :size="16" class="text-neutral-400 hover:text-blue-600" />
-                      </button>
-                      <button
-                        @click.stop
-                        class="p-2 hover:bg-black/5 rounded-lg transition-colors"
-                        title="下载"
-                      >
-                        <Download :size="16" class="text-neutral-400" />
                       </button>
                       <button
                         @click.stop="deleteFile(file)"
